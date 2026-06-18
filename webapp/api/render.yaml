@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: bridge-dds-api
+    runtime: python
+    buildCommand: pip install -r webapp/api/requirements.txt && pip install .
+    startCommand: cd webapp/api && gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+    plan: free

@@ -4,20 +4,22 @@
  * Set secret: npx wrangler secret put ANTHROPIC_API_KEY
  */
 
-const VISION_PROMPT = `This image shows a bridge hand diagram (likely a BBO screenshot).
-Extract the four hands: North, East, South, West.
+const VISION_PROMPT = `This image shows a bridge hand diagram. Extract all four hands (North, East, South, West).
 
-For each hand, list the cards by suit in this exact order: spades, hearts, diamonds, clubs.
-Use these rank abbreviations: A K Q J T 9 8 7 6 5 4 3 2 (use T for 10).
-If a suit is void (no cards), leave it empty.
+IMPORTANT:
+- List cards by suit in order: spades.hearts.diamonds.clubs
+- Convert ALL instances of "10" to the letter "T" (ten = T)
+- Examples: K10 → KT, A1097 → AT97, Q10952 → QT952, A10652 → AT652
+- If a suit is void (no cards, shown as — or empty), leave it empty
+- Use only these characters: A K Q J T 9 8 7 6 5 4 3 2
 
-Respond ONLY with exactly 4 lines in this format, no other text:
+Respond ONLY with exactly 4 lines, no other text:
 N: <spades>.<hearts>.<diamonds>.<clubs>
 E: <spades>.<hearts>.<diamonds>.<clubs>
 S: <spades>.<hearts>.<diamonds>.<clubs>
 W: <spades>.<hearts>.<diamonds>.<clubs>
 
-Example: N: AJ7.653.AK7.KJ76`;
+Example: N: AQJT93.J943.AK7.`;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -69,7 +71,7 @@ async function handleExtractImage(request, env) {
   const mediaType = mediaTypes[ext] || "image/jpeg";
 
   const body = JSON.stringify({
-    model: "claude-haiku-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 300,
     messages: [{
       role: "user",

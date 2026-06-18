@@ -78,7 +78,7 @@ async function handleExtractImage(request, env) {
   const mediaType = mediaTypes[ext] || "image/jpeg";
 
   const body = JSON.stringify({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5",
     max_tokens: 300,
     messages: [{
       role: "user",
@@ -407,13 +407,28 @@ const HTML = `<!DOCTYPE html>
       } catch (err) { showError([err.message]); }
       showSpinner(false);
     }
+    function resizeImage(file, maxWidth) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          let w = img.width, h = img.height;
+          if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.8);
+        };
+        img.src = URL.createObjectURL(file);
+      });
+    }
     async function uploadImage(input) {
       if (!input.files || !input.files[0]) return;
       showError(null);
       showSpinner(true);
       document.getElementById('autoStatus').textContent = 'Extracting hands from image...';
+      const resized = await resizeImage(input.files[0], 800);
       const formData = new FormData();
-      formData.append('image', input.files[0]);
+      formData.append('image', resized, 'hand.jpg');
       try {
         const resp = await fetch('/extract-image', { method: 'POST', body: formData });
         const data = await resp.json();

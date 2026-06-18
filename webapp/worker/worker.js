@@ -57,7 +57,12 @@ async function handleExtractImage(request, env) {
   }
 
   const arrayBuffer = await file.arrayBuffer();
-  const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
 
   const ext = (file.name || "").split(".").pop().toLowerCase();
   const mediaTypes = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp" };

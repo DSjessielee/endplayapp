@@ -5,13 +5,10 @@ Accepts a PBN string, returns double dummy results.
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
 from endplay.types import Deal, Denom, Player
 from endplay.dds import calc_dd_table

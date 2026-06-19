@@ -186,7 +186,7 @@ const HTML = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>FunBridge</title>
+  <title>Bridge Double Dummy Analyzer</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { -webkit-text-size-adjust: 100%; }
@@ -278,7 +278,14 @@ const HTML = `<!DOCTYPE html>
     .result-item .strain { font-weight: 700; font-size: 1rem; }
     .result-item .strain.red { color: #f66; } .result-item .strain.black { color: #fff; } .result-item .strain.nt { color: #8cf; }
     .result-item .tricks { color: #ccc; font-size: 0.82rem; margin-top: 2px; }
-    .pbn-output { margin-top: 14px; padding: 8px 12px; background: #0d2818; border-radius: 8px; font-family: 'SF Mono', 'Consolas', monospace; font-size: 0.72rem; color: #8fc; word-break: break-all; }
+    .par-result { margin-top: 10px; padding: 10px 14px; background: #0d2818; border-radius: 8px; border-left: 4px solid #f90; font-size: 0.9rem; line-height: 1.5; }
+    .par-result .par-label { color: #fa0; font-weight: 700; }
+    .par-result .par-score { color: #fff; font-weight: 700; font-size: 1.05rem; }
+    .par-result .par-contracts { color: #ccc; font-size: 0.82rem; margin-top: 2px; }
+    .setting-row { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
+    .setting-row label { font-size: 0.82rem; color: #aaa; }
+    .setting-row select { padding: 6px 8px; border: 1px solid #3a6; border-radius: 4px; background: #162e1e; color: #fff; font-size: 0.84rem; outline: none; -webkit-appearance: none; appearance: none; }
+    .setting-row select:focus { border-color: #6f8; }
     .error-msg { color: #f88; background: #3a1111; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-top: 8px; width: 100%; max-width: 480px; }
     .spinner { display: none; margin: 8px auto; width: 24px; height: 24px; border: 3px solid #333; border-top: 3px solid #4a8; border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -302,7 +309,7 @@ const HTML = `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <h1>FunBridge</h1>
+  <h1>Bridge Double Dummy Analyzer</h1>
   <div class="tabs">
     <div class="tab active" onclick="switchTab('dds')">DD Analyzer</div>
     <div class="tab" onclick="switchTab('score')">Scoring</div>
@@ -341,6 +348,24 @@ const HTML = `<!DOCTYPE html>
         </div>
       </div>
       <div class="controls">
+        <div class="setting-row">
+          <label>Vul:
+            <select id="vulSelect">
+              <option value="none">None</option>
+              <option value="ns">N/S</option>
+              <option value="ew">E/W</option>
+              <option value="both">Both</option>
+            </select>
+          </label>
+          <label>Dealer:
+            <select id="dealerSelect">
+              <option value="N">North</option>
+              <option value="E">East</option>
+              <option value="S">South</option>
+              <option value="W">West</option>
+            </select>
+          </label>
+        </div>
         <div class="btn-row">
           <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">Analyze</button>
           <button class="btn-clear" onclick="clearAll()">Clear</button>
@@ -362,6 +387,7 @@ const HTML = `<!DOCTYPE html>
     <div class="results-panel" id="resultsPanel" style="display:none;">
       <div class="results-title">Double Dummy Results</div>
       <ul class="result-list" id="resultList"></ul>
+      <div class="par-result" id="parResult" style="display:none;"></div>
     </div>
   </div>
   <div id="tab-score" class="tab-content">
@@ -501,6 +527,7 @@ const HTML = `<!DOCTYPE html>
       document.querySelectorAll('.suit-input').forEach(el => { el.value = ''; el.classList.remove('error', 'auto-filled'); });
       document.querySelectorAll('.hand-box').forEach(el => el.classList.remove('auto-filled'));
       document.getElementById('resultsPanel').style.display = 'none';
+      document.getElementById('parResult').style.display = 'none';
       document.getElementById('autoStatus').textContent = '';
       showError(null);
     }
@@ -518,7 +545,11 @@ const HTML = `<!DOCTYPE html>
       if (hasError) { showError(['Each hand must have exactly 13 cards.']); return; }
       showSpinner(true);
       try {
-        const resp = await fetch('/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(hands) });
+        const payload = Object.assign({}, hands, {
+          vul: document.getElementById('vulSelect').value,
+          dealer: document.getElementById('dealerSelect').value,
+        });
+        const resp = await fetch('/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
         const data = await resp.json();
         if (!resp.ok) { showError(data.error || ['Analysis failed']); showSpinner(false); return; }
         const list = document.getElementById('resultList');
@@ -532,6 +563,15 @@ const HTML = `<!DOCTYPE html>
             + '<div class="tricks">N: ' + r.north + ' &nbsp; E: ' + r.east + ' &nbsp; S: ' + r.south + ' &nbsp; W: ' + r.west + '</div>';
           list.appendChild(li);
         });
+        var parDiv = document.getElementById('parResult');
+        if (data.par && data.par.score !== null) {
+          var sign = data.par.score >= 0 ? '+' : '';
+          var contracts = data.par.contracts.length > 0 ? data.par.contracts.join(', ') : '—';
+          parDiv.innerHTML = '<div><span class="par-label">Par</span> &nbsp;<span class="par-score">N/S ' + sign + data.par.score + '</span></div><div class="par-contracts">' + contracts + '</div>';
+          parDiv.style.display = 'block';
+        } else {
+          parDiv.style.display = 'none';
+        }
         document.getElementById('resultsPanel').style.display = 'block';
         document.getElementById('resultsPanel').scrollIntoView({ behavior: 'smooth' });
       } catch (err) { showError([err.message]); }

@@ -55,6 +55,10 @@ export default {
       return proxyToRender(request, "/solve");
     }
 
+    if (url.pathname === "/evaluate" && request.method === "POST") {
+      return proxyToRender(request, "/evaluate");
+    }
+
     // Serve frontend for all other GET requests
     if (request.method === "GET") {
       return new Response(HTML, {
@@ -446,6 +450,17 @@ const HTML = `<!DOCTYPE html>
       width: 100%;
       max-width: 480px;
     }
+    /* Evaluate tab */
+    .eval-container { width: 100%; max-width: 500px; }
+    .eval-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 390px) { .eval-grid { grid-template-columns: 1fr; } }
+    .eval-card { background: #0d2818; border: 2px solid #3a6; border-radius: 8px; padding: 10px 12px; }
+    .eval-card .hand-title { text-align: center; font-weight: 600; font-size: 0.9rem; color: #8fc; margin-bottom: 8px; }
+    .eval-row { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 3px 0; border-bottom: 1px solid #1a3a22; }
+    .eval-row:last-child { border-bottom: none; }
+    .eval-label { color: #aaa; }
+    .eval-value { color: #fff; font-weight: 600; }
+    .eval-desc { text-align: center; font-size: 0.78rem; color: #8cf; margin-top: 6px; font-style: italic; }
     /* Play tab */
     .play-container { width: 100%; max-width: 500px; }
     .play-setup { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; align-items: center; }
@@ -536,6 +551,7 @@ const HTML = `<!DOCTYPE html>
   <div class="tabs">
     <div class="tab active" onclick="switchTab('dds')">DD Analyzer</div>
     <div class="tab" onclick="switchTab('play')">Play</div>
+    <div class="tab" onclick="switchTab('eval')">Evaluate</div>
     <div class="tab" onclick="switchTab('score')">Scoring</div>
   </div>
   <div class="main-container">
@@ -664,6 +680,12 @@ const HTML = `<!DOCTYPE html>
       </div>
     </div>
   </div>
+  <div id="tab-eval" class="tab-content">
+    <div class="eval-container">
+      <button class="btn-analyze" onclick="evaluateHands()" style="margin-bottom:12px;">Evaluate Hands</button>
+      <div id="evalGrid" class="eval-grid"></div>
+    </div>
+  </div>
   <div id="tab-score" class="tab-content">
     <div class="score-form">
       <div class="score-row">
@@ -719,7 +741,7 @@ const HTML = `<!DOCTYPE html>
   <div id="errorBox" class="error-msg" style="display:none;"></div>
 
   <script>
-    const TABS = ['dds', 'play', 'score'];
+    const TABS = ['dds', 'play', 'eval', 'score'];
     function switchTab(tab) {
       document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', TABS[i] === tab));
       TABS.forEach(t => {
@@ -1001,6 +1023,36 @@ const HTML = `<!DOCTYPE html>
       const inputs = getInputs(dir);
       SAMPLE[dir].forEach((s, i) => { inputs[i].value = s; });
     });
+
+    // ---- EVALUATE TAB ----
+    async function evaluateHands() {
+      showError(null);
+      const hands = {};
+      DIRS.forEach(dir => { hands[dir] = buildPbnHand(dir); });
+      try {
+        const resp = await fetch('/evaluate', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(hands) });
+        const data = await resp.json();
+        if (!resp.ok) { showError(data.error || ['Evaluation failed']); return; }
+        const grid = document.getElementById('evalGrid');
+        grid.innerHTML = '';
+        ['N','E','S','W'].forEach(dir => {
+          const ev = data.evaluations[dir];
+          if (!ev) return;
+          const card = document.createElement('div');
+          card.className = 'eval-card';
+          card.innerHTML = '<div class="hand-title">' + ev.name + '</div>'
+            + '<div class="eval-row"><span class="eval-label">HCP</span><span class="eval-value">' + ev.hcp + '</span></div>'
+            + '<div class="eval-row"><span class="eval-label">Dist pts</span><span class="eval-value">' + ev.dist_points + '</span></div>'
+            + '<div class="eval-row"><span class="eval-label">Total pts</span><span class="eval-value">' + ev.total_points + '</span></div>'
+            + '<div class="eval-row"><span class="eval-label">Losers</span><span class="eval-value">' + ev.losers + '</span></div>'
+            + '<div class="eval-row"><span class="eval-label">Controls</span><span class="eval-value">' + ev.controls + '</span></div>'
+            + '<div class="eval-row"><span class="eval-label">Rule of N</span><span class="eval-value">' + ev.rule_of_n + '</span></div>'
+            + '<div class="eval-row"><span class="eval-label">Shape</span><span class="eval-value">' + ev.shape + '</span></div>'
+            + (ev.description ? '<div class="eval-desc">' + ev.description + '</div>' : '');
+          grid.appendChild(card);
+        });
+      } catch (err) { showError([err.message]); }
+    }
 
     // ---- PLAY TAB ----
     let playState = { pbn: '', trump: 'NT', first: 'E', plays: [], nsTricks: 0, ewTricks: 0 };

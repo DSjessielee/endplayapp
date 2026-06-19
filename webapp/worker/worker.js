@@ -447,7 +447,7 @@ const HTML = `<!DOCTYPE html>
       showError(null);
       showSpinner(true);
       document.getElementById('autoStatus').textContent = 'Extracting hands from image...';
-      const resized = await resizeImage(input.files[0], 800);
+      const resized = await resizeImage(input.files[0], 1200);
       const formData = new FormData();
       formData.append('image', resized, 'hand.jpg');
       try {

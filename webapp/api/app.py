@@ -12,6 +12,7 @@ from flask_cors import CORS
 
 from endplay.types import Deal, Denom, Player, Contract, Vul
 from endplay.dds import calc_dd_table
+from endplay.dds.solve import solve_board, SolveMode
 from endplay.dds.parscore import par
 
 app = Flask(__name__)
@@ -166,6 +167,57 @@ def score():
             "score": points,
             "declarer": declarer,
             "vulnerability": vulnerability,
+        })
+    except Exception as e:
+        return jsonify({"error": [str(e)]}), 400
+
+
+@app.route("/solve", methods=["POST"])
+def solve():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": ["No JSON body"]}), 400
+
+    pbn = data.get("pbn", "")
+    trump_str = data.get("trump", "NT").upper()
+    plays = data.get("plays", [])
+
+    trump_map = {"S": Denom.spades, "H": Denom.hearts, "D": Denom.diamonds,
+                 "C": Denom.clubs, "NT": Denom.nt, "N": Denom.nt}
+    trump = trump_map.get(trump_str, Denom.nt)
+
+    first_str = data.get("first", "N").upper()
+    first_map = {"N": Player.north, "E": Player.east, "S": Player.south, "W": Player.west}
+    first = first_map.get(first_str, Player.north)
+
+    try:
+        deal = Deal(pbn, first=first, trump=trump)
+
+        for card_str in plays:
+            deal.play(card_str)
+
+        result = solve_board(deal, SolveMode.Default)
+        moves = []
+        for card, tricks in result:
+            moves.append({"card": str(card), "tricks": tricks})
+
+        curtrick = [str(c) for c in deal.curtrick]
+        curplayer = deal.curplayer.abbr
+
+        ns_tricks = data.get("ns_tricks", 0)
+        ew_tricks = data.get("ew_tricks", 0)
+
+        hands = {}
+        for p in Player:
+            hands[p.abbr] = str(deal[p])
+
+        return jsonify({
+            "moves": moves,
+            "curplayer": curplayer,
+            "curtrick": curtrick,
+            "hands": hands,
+            "ns_tricks": ns_tricks,
+            "ew_tricks": ew_tricks,
         })
     except Exception as e:
         return jsonify({"error": [str(e)]}), 400

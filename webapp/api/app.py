@@ -10,10 +10,14 @@ from pathlib import Path
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from endplay.types import Deal, Denom, Player, Contract, Vul
+from endplay.types import Deal, Denom, Player, Contract, Vul, Hand
 from endplay.dds import calc_dd_table
 from endplay.dds.solve import solve_board, SolveMode
 from endplay.dds.parscore import par
+from endplay.evaluate import (hcp, dist_points, total_points, losers, controls,
+                               shape, exact_shape, rule_of_n,
+                               is_balanced, is_semibalanced, is_single_suited,
+                               is_two_suited, is_three_suited)
 
 app = Flask(__name__)
 CORS(app)
@@ -221,6 +225,49 @@ def solve():
         })
     except Exception as e:
         return jsonify({"error": [str(e)]}), 400
+
+
+@app.route("/evaluate", methods=["POST"])
+def evaluate():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": ["No JSON body"]}), 400
+
+    results = {}
+    for player in ["N", "E", "S", "W"]:
+        raw = data.get(player, "").strip()
+        if not raw:
+            continue
+        try:
+            hand = Hand(raw)
+        except Exception:
+            continue
+
+        name = ["North", "East", "South", "West"]["NESW".index(player)]
+        es = exact_shape(hand)
+        desc = []
+        if is_balanced(hand): desc.append("Balanced")
+        elif is_semibalanced(hand): desc.append("Semi-balanced")
+        elif is_three_suited(hand): desc.append("Three-suited")
+        elif is_two_suited(hand): desc.append("Two-suited")
+        elif is_single_suited(hand): desc.append("Single-suited")
+
+        results[player] = {
+            "name": name,
+            "hcp": int(hcp(hand)),
+            "dist_points": int(dist_points(hand)),
+            "total_points": int(total_points(hand)),
+            "losers": losers(hand),
+            "controls": controls(hand),
+            "rule_of_n": int(rule_of_n(hand)),
+            "shape": "-".join(str(x) for x in es),
+            "description": ", ".join(desc) if desc else "",
+        }
+
+    if not results:
+        return jsonify({"error": ["No valid hands provided"]}), 400
+
+    return jsonify({"evaluations": results})
 
 
 if __name__ == "__main__":

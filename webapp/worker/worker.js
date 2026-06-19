@@ -242,6 +242,9 @@ const HTML = `<!DOCTYPE html>
     .btn-analyze:disabled { background: #555; cursor: not-allowed; }
     .btn-clear { background: #555; color: #fff; } .btn-clear:hover { background: #666; }
     .btn-upload { background: #36a; color: #fff; font-size: 0.84rem; } .btn-upload:hover { background: #47b; }
+    .btn-swap { background: #864; color: #fff; font-size: 0.75rem; padding: 7px 10px; }
+    .btn-swap:hover { background: #975; }
+    .swap-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
     #imageInput { display: none; }
     .auto-status { font-size: 0.75rem; color: #8cf; min-height: 1em; text-align: center; }
     .results-panel { width: 100%; max-width: 480px; }
@@ -317,6 +320,14 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-upload" onclick="document.getElementById('imageInput').click()">Load Image</button>
           <input type="file" id="imageInput" accept="image/*" onchange="uploadImage(this)" />
         </div>
+        <div class="swap-row">
+          <button class="btn-swap" onclick="swapHands('N','S')">N&#8596;S</button>
+          <button class="btn-swap" onclick="swapHands('N','E')">N&#8596;E</button>
+          <button class="btn-swap" onclick="swapHands('N','W')">N&#8596;W</button>
+          <button class="btn-swap" onclick="swapHands('E','W')">E&#8596;W</button>
+          <button class="btn-swap" onclick="swapHands('E','S')">E&#8596;S</button>
+          <button class="btn-swap" onclick="swapHands('S','W')">S&#8596;W</button>
+        </div>
         <div class="spinner" id="spinner"></div>
         <div class="auto-status" id="autoStatus"></div>
       </div>
@@ -324,7 +335,6 @@ const HTML = `<!DOCTYPE html>
     <div class="results-panel" id="resultsPanel" style="display:none;">
       <div class="results-title">Double Dummy Results</div>
       <ul class="result-list" id="resultList"></ul>
-      <div class="pbn-output" id="pbnOutput"></div>
     </div>
   </div>
   <div id="errorBox" class="error-msg" style="display:none;"></div>
@@ -359,6 +369,14 @@ const HTML = `<!DOCTYPE html>
       if (remaining.reduce((s, r) => s + r.length, 0) !== 13) return;
       setHand(emptyDir, remaining);
       status.textContent = DIR_NAMES[emptyDir] + ' auto-filled with remaining cards';
+    }
+    function swapHands(a, b) {
+      const handA = getHand(a);
+      const handB = getHand(b);
+      const inputsA = getInputs(a);
+      const inputsB = getInputs(b);
+      handA.forEach((v, i) => { inputsB[i].value = v; });
+      handB.forEach((v, i) => { inputsA[i].value = v; });
     }
     function showSpinner(on) {
       document.getElementById('spinner').style.display = on ? 'block' : 'none';
@@ -405,7 +423,6 @@ const HTML = `<!DOCTYPE html>
             + '<div class="tricks">N: ' + r.north + ' &nbsp; E: ' + r.east + ' &nbsp; S: ' + r.south + ' &nbsp; W: ' + r.west + '</div>';
           list.appendChild(li);
         });
-        document.getElementById('pbnOutput').textContent = 'PBN: ' + data.pbn;
         document.getElementById('resultsPanel').style.display = 'block';
         document.getElementById('resultsPanel').scrollIntoView({ behavior: 'smooth' });
       } catch (err) { showError([err.message]); }

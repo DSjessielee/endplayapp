@@ -51,6 +51,10 @@ export default {
       return proxyToRender(request, "/score");
     }
 
+    if (url.pathname === "/solve" && request.method === "POST") {
+      return proxyToRender(request, "/solve");
+    }
+
     // Serve frontend for all other GET requests
     if (request.method === "GET") {
       return new Response(HTML, {
@@ -177,6 +181,7 @@ function jsonResponse(data, status = 200) {
   });
 }
 
+
 // --- Embedded Frontend HTML ---
 
 const HTML = `<!DOCTYPE html>
@@ -192,68 +197,206 @@ const HTML = `<!DOCTYPE html>
     html { -webkit-text-size-adjust: 100%; }
     body {
       font-family: -apple-system, 'SF Pro', 'Segoe UI', system-ui, sans-serif;
-      background: #1a472a; color: #f0f0f0;
-      min-height: 100vh; min-height: -webkit-fill-available;
-      display: flex; flex-direction: column; align-items: center;
+      background: #1a472a;
+      color: #f0f0f0;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       padding: 24px 16px;
       padding-top: env(safe-area-inset-top, 24px);
       padding-bottom: env(safe-area-inset-bottom, 24px);
     }
     h1 { font-size: 1.4rem; margin-bottom: 4px; color: #fff; }
     .subtitle { color: #aaa; font-size: 0.78rem; margin-bottom: 16px; }
-    .main-container { display: flex; flex-direction: column; gap: 24px; align-items: center; max-width: 900px; width: 100%; }
+
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      align-items: center;
+      max-width: 900px;
+      width: 100%;
+    }
+
+    /* Compass layout */
     .compass {
       display: grid;
-      grid-template-areas: ".     north ." "west  center east" ".     south .";
-      grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto auto;
-      gap: 6px; align-items: center; justify-items: center; width: 100%; max-width: 480px;
+      grid-template-areas:
+        ".     north ."
+        "west  center east"
+        ".     south .";
+      grid-template-columns: 1fr auto 1fr;
+      grid-template-rows: auto auto auto;
+      gap: 6px;
+      align-items: center;
+      justify-items: center;
+      width: 100%;
+      max-width: 480px;
     }
-    .hand-box.north { grid-area: north; } .hand-box.east { grid-area: east; }
-    .hand-box.south { grid-area: south; } .hand-box.west { grid-area: west; }
-    .center-box { grid-area: center; display: flex; align-items: center; justify-content: center; }
+    .hand-box.north { grid-area: north; }
+    .hand-box.east  { grid-area: east; }
+    .hand-box.south { grid-area: south; }
+    .hand-box.west  { grid-area: west; }
+    .center-box {
+      grid-area: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     .compass-rose {
-      width: 60px; height: 60px; border: 2px solid #4a8; border-radius: 8px;
-      display: grid; grid-template-areas: ". n ." "w . e" ". s .";
-      grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr;
-      font-weight: bold; font-size: 0.85rem; color: #4a8; background: #1a472a; flex-shrink: 0;
+      width: 60px; height: 60px;
+      border: 2px solid #4a8;
+      border-radius: 8px;
+      display: grid;
+      grid-template-areas: ". n ." "w . e" ". s .";
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 1fr 1fr 1fr;
+      font-weight: bold; font-size: 0.85rem; color: #4a8;
+      background: #1a472a;
+      flex-shrink: 0;
     }
     .compass-rose span { display: flex; align-items: center; justify-content: center; }
-    .compass-rose .cr-n { grid-area: n; } .compass-rose .cr-s { grid-area: s; }
-    .compass-rose .cr-e { grid-area: e; } .compass-rose .cr-w { grid-area: w; }
-    .hand-box { background: #0d2818; border: 2px solid #3a6; border-radius: 8px; padding: 8px 10px; width: 100%; max-width: 170px; min-width: 110px; }
+    .compass-rose .cr-n { grid-area: n; }
+    .compass-rose .cr-s { grid-area: s; }
+    .compass-rose .cr-e { grid-area: e; }
+    .compass-rose .cr-w { grid-area: w; }
+
+    /* Hand box with suit rows */
+    .hand-box {
+      background: #0d2818;
+      border: 2px solid #3a6;
+      border-radius: 8px;
+      padding: 8px 10px;
+      width: 100%;
+      max-width: 170px;
+      min-width: 110px;
+    }
     .hand-box.auto-filled { border-color: #47b; }
-    .hand-title { text-align: center; font-weight: 600; font-size: 0.82rem; color: #8fc; margin-bottom: 5px; }
-    .suit-row { display: flex; align-items: center; margin-bottom: 3px; }
+    .hand-title {
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.82rem;
+      color: #8fc;
+      margin-bottom: 5px;
+    }
+    .suit-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 3px;
+    }
     .suit-row:last-child { margin-bottom: 0; }
-    .suit-symbol { width: 20px; font-size: 1.1rem; text-align: center; flex-shrink: 0; }
-    .suit-symbol.spade { color: #ccc; } .suit-symbol.heart { color: #f55; }
-    .suit-symbol.diamond { color: #f80; } .suit-symbol.club { color: #5b5; }
+    .suit-symbol {
+      width: 20px;
+      font-size: 1.1rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .suit-symbol.spade   { color: #ccc; }
+    .suit-symbol.heart   { color: #f55; }
+    .suit-symbol.diamond { color: #f80; }
+    .suit-symbol.club    { color: #5b5; }
     .suit-input {
-      flex: 1; min-width: 0; padding: 6px 6px; border: 1px solid #3a6; border-radius: 4px;
-      background: #162e1e; color: #fff; font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
-      font-size: 0.88rem; outline: none; text-transform: uppercase;
-      -webkit-appearance: none; appearance: none;
+      flex: 1;
+      min-width: 0;
+      padding: 6px 6px;
+      border: 1px solid #3a6;
+      border-radius: 4px;
+      background: #162e1e;
+      color: #fff;
+      font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+      font-size: 0.88rem;
+      outline: none;
+      text-transform: uppercase;
+      -webkit-appearance: none;
+      appearance: none;
     }
     .suit-input:focus { border-color: #6f8; background: #1a3a22; }
     .suit-input.error { border-color: #e55; }
     .suit-input.auto-filled { color: #8cf; border-color: #47b; }
-    .controls { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; align-items: center; width: 100%; max-width: 480px; }
-    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; width: 100%; }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+      align-items: center;
+      width: 100%;
+      max-width: 480px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+    }
     button {
-      padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600;
-      cursor: pointer; transition: background 0.2s, transform 0.1s;
-      -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     button:active { transform: scale(0.95); }
     .btn-analyze { background: #2a7; color: #fff; flex: 1; min-width: 100px; }
     .btn-analyze:hover { background: #3b8; }
     .btn-analyze:disabled { background: #555; cursor: not-allowed; }
-    .btn-clear { background: #555; color: #fff; } .btn-clear:hover { background: #666; }
-    .btn-upload { background: #36a; color: #fff; font-size: 0.84rem; } .btn-upload:hover { background: #47b; }
+    .btn-clear { background: #555; color: #fff; }
+    .btn-clear:hover { background: #666; }
+    .btn-upload { background: #36a; color: #fff; font-size: 0.84rem; }
+    .btn-upload:hover { background: #47b; }
     .btn-swap { background: #864; color: #fff; font-size: 0.75rem; padding: 7px 10px; }
     .btn-swap:hover { background: #975; }
     .swap-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
     #imageInput { display: none; }
+
+    .auto-status {
+      font-size: 0.75rem;
+      color: #8cf;
+      min-height: 1em;
+      text-align: center;
+    }
+
+    /* Results */
+    .results-panel {
+      width: 100%;
+      max-width: 480px;
+    }
+    .results-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 10px; color: #8fc; }
+    .result-list { list-style: none; }
+    .result-item {
+      padding: 10px 14px;
+      margin-bottom: 7px;
+      background: #0d2818;
+      border-radius: 8px;
+      border-left: 4px solid #3a6;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .result-item .strain { font-weight: 700; font-size: 1rem; }
+    .result-item .strain.red { color: #f66; }
+    .result-item .strain.black { color: #fff; }
+    .result-item .strain.nt { color: #8cf; }
+    .result-item .tricks { color: #ccc; font-size: 0.82rem; margin-top: 2px; }
+    .par-result {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: #0d2818;
+      border-radius: 8px;
+      border-left: 4px solid #f90;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .par-result .par-label { color: #fa0; font-weight: 700; }
+    .par-result .par-score { color: #fff; font-weight: 700; font-size: 1.05rem; }
+    .par-result .par-contracts { color: #ccc; font-size: 0.82rem; margin-top: 2px; }
     .tabs { display: flex; gap: 0; margin-bottom: 16px; }
     .tab { padding: 10px 24px; background: #0d2818; color: #8fc; border: 2px solid #3a6; border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; font-size: 0.9rem; -webkit-tap-highlight-color: transparent; }
     .tab.active { background: #1a472a; color: #fff; border-color: #4a8; }
@@ -270,48 +413,129 @@ const HTML = `<!DOCTYPE html>
     .score-points.positive { color: #4c8; }
     .score-points.negative { color: #f66; }
     .score-contract { font-size: 0.85rem; color: #aaa; margin-top: 4px; }
-    .auto-status { font-size: 0.75rem; color: #8cf; min-height: 1em; text-align: center; }
-    .results-panel { width: 100%; max-width: 480px; }
-    .results-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 10px; color: #8fc; }
-    .result-list { list-style: none; }
-    .result-item { padding: 10px 14px; margin-bottom: 7px; background: #0d2818; border-radius: 8px; border-left: 4px solid #3a6; font-size: 0.9rem; line-height: 1.5; }
-    .result-item .strain { font-weight: 700; font-size: 1rem; }
-    .result-item .strain.red { color: #f66; } .result-item .strain.black { color: #fff; } .result-item .strain.nt { color: #8cf; }
-    .result-item .tricks { color: #ccc; font-size: 0.82rem; margin-top: 2px; }
-    .par-result { margin-top: 10px; padding: 10px 14px; background: #0d2818; border-radius: 8px; border-left: 4px solid #f90; font-size: 0.9rem; line-height: 1.5; }
-    .par-result .par-label { color: #fa0; font-weight: 700; }
-    .par-result .par-score { color: #fff; font-weight: 700; font-size: 1.05rem; }
-    .par-result .par-contracts { color: #ccc; font-size: 0.82rem; margin-top: 2px; }
-    .setting-row { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; }
-    .setting-row label { font-size: 0.82rem; color: #aaa; }
-    .setting-row select { padding: 6px 8px; border: 1px solid #3a6; border-radius: 4px; background: #162e1e; color: #fff; font-size: 0.84rem; outline: none; -webkit-appearance: none; appearance: none; }
+    .setting-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .setting-row label {
+      font-size: 0.82rem;
+      color: #aaa;
+    }
+    .setting-row select {
+      padding: 6px 8px;
+      border: 1px solid #3a6;
+      border-radius: 4px;
+      background: #162e1e;
+      color: #fff;
+      font-size: 0.84rem;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
     .setting-row select:focus { border-color: #6f8; }
-    .error-msg { color: #f88; background: #3a1111; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-top: 8px; width: 100%; max-width: 480px; }
-    .spinner { display: none; margin: 8px auto; width: 24px; height: 24px; border: 3px solid #333; border-top: 3px solid #4a8; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .error-msg {
+      color: #f88;
+      background: #3a1111;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      margin-top: 8px;
+      width: 100%;
+      max-width: 480px;
+    }
+    /* Play tab */
+    .play-container { width: 100%; max-width: 500px; }
+    .play-setup { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; align-items: center; }
+    .play-setup select { padding: 6px 8px; border: 1px solid #3a6; border-radius: 4px; background: #162e1e; color: #fff; font-size: 0.85rem; -webkit-appearance: none; }
+    .play-setup button { padding: 8px 16px; }
+    .play-board { display: grid; grid-template-areas: ". north ." "west trick east" ". south ."; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; justify-items: center; }
+    .play-hand { background: #0d2818; border: 2px solid #3a6; border-radius: 8px; padding: 6px 8px; min-width: 100px; max-width: 160px; width: 100%; }
+    .play-hand.active-player { border-color: #ff0; }
+    .play-hand.north { grid-area: north; } .play-hand.south { grid-area: south; }
+    .play-hand.west { grid-area: west; } .play-hand.east { grid-area: east; }
+    .play-hand .hand-title { text-align: center; font-weight: 600; font-size: 0.78rem; color: #8fc; margin-bottom: 4px; }
+    .play-suit { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 2px; align-items: center; }
+    .play-suit .suit-sym { font-size: 0.9rem; width: 16px; text-align: center; flex-shrink: 0; }
+    .play-card { padding: 3px 5px; border: 1px solid #3a6; border-radius: 3px; background: #162e1e; color: #ccc; font-family: 'SF Mono','Consolas',monospace; font-size: 0.8rem; cursor: default; user-select: none; -webkit-tap-highlight-color: transparent; }
+    .play-card.playable { cursor: pointer; color: #fff; background: #1a3a22; border-color: #4c8; }
+    .play-card.playable:hover { background: #2a5a32; }
+    .play-card.best { color: #4f8; font-weight: 700; }
+    .play-card .dd-hint { font-size: 0.65rem; color: #8cf; margin-left: 1px; }
+    .trick-area { grid-area: trick; width: 100px; height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0d2818; border: 2px solid #3a6; border-radius: 8px; }
+    .trick-cards { display: grid; grid-template-areas: ". n ." "w . e" ". s ."; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; width: 90px; height: 70px; font-size: 0.8rem; }
+    .trick-cards span { display: flex; align-items: center; justify-content: center; }
+    .trick-cards .tc-n { grid-area: n; } .trick-cards .tc-s { grid-area: s; }
+    .trick-cards .tc-e { grid-area: e; } .trick-cards .tc-w { grid-area: w; }
+    .play-info { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-size: 0.9rem; }
+    .play-info .tricks-ns { color: #4c8; } .play-info .tricks-ew { color: #f88; }
+    .play-btns { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+    .btn-undo { background: #864; color: #fff; font-size: 0.82rem; padding: 8px 16px; }
+    .btn-undo:hover { background: #975; }
+    .spinner {
+      display: none;
+      margin: 8px auto;
+      width: 24px; height: 24px;
+      border: 3px solid #333;
+      border-top: 3px solid #4a8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Tablet (iPad) ---- */
     @media (min-width: 700px) {
-      .main-container { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 32px; }
-      .compass { max-width: 480px; grid-template-columns: 170px auto 170px; }
-      .hand-box { max-width: 170px; } .results-panel { max-width: 360px; }
+      .main-container {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 32px;
+      }
+      .compass {
+        max-width: 480px;
+        grid-template-columns: 170px auto 170px;
+      }
+      .hand-box { max-width: 170px; }
+      .results-panel { max-width: 360px; }
     }
+
+    /* ---- Small phone (iPhone SE, mini) ---- */
     @media (max-width: 390px) {
-      body { padding: 16px 10px; } h1 { font-size: 1.2rem; } .compass { gap: 4px; }
-      .hand-box { padding: 6px 6px; min-width: 95px; max-width: 140px; }
+      body { padding: 16px 10px; }
+      h1 { font-size: 1.2rem; }
+      .compass { gap: 4px; }
+      .hand-box {
+        padding: 6px 6px;
+        min-width: 95px;
+        max-width: 140px;
+      }
       .hand-title { font-size: 0.75rem; margin-bottom: 3px; }
-      .suit-symbol { width: 16px; font-size: 0.95rem; } .suit-input { padding: 5px 4px; font-size: 0.82rem; }
+      .suit-symbol { width: 16px; font-size: 0.95rem; }
+      .suit-input { padding: 5px 4px; font-size: 0.82rem; }
       .compass-rose { width: 48px; height: 48px; font-size: 0.75rem; }
-      button { padding: 10px 14px; font-size: 0.84rem; } .result-item { padding: 8px 10px; font-size: 0.84rem; }
+      button { padding: 10px 14px; font-size: 0.84rem; }
+      .result-item { padding: 8px 10px; font-size: 0.84rem; }
     }
+
+    /* ---- Medium phone (iPhone 14/15/16) ---- */
     @media (min-width: 391px) and (max-width: 699px) {
-      .compass { grid-template-columns: 1fr auto 1fr; }
-      .hand-box { max-width: 160px; } .compass-rose { width: 56px; height: 56px; }
+      .compass {
+        grid-template-columns: 1fr auto 1fr;
+      }
+      .hand-box { max-width: 160px; }
+      .compass-rose { width: 56px; height: 56px; }
     }
   </style>
 </head>
 <body>
   <h1>Bridge Double Dummy Analyzer</h1>
+  <p class="subtitle">Enter cards by suit, or upload a screenshot</p>
   <div class="tabs">
     <div class="tab active" onclick="switchTab('dds')">DD Analyzer</div>
+    <div class="tab" onclick="switchTab('play')">Play</div>
     <div class="tab" onclick="switchTab('score')">Scoring</div>
   </div>
   <div class="main-container">
@@ -324,29 +548,41 @@ const HTML = `<!DOCTYPE html>
           <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="N" data-suit="2" placeholder="876" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="N" data-suit="3" placeholder="5432" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
         </div>
+
         <div class="hand-box west" id="box-west">
           <div class="hand-title">West</div>
-          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="W" data-suit="0" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="W" data-suit="1" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="W" data-suit="2" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="W" data-suit="3" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="W" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="W" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="W" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="W" data-suit="3" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
         </div>
-        <div class="center-box"><div class="compass-rose"><span class="cr-n">N</span><span class="cr-w">W</span><span class="cr-e">E</span><span class="cr-s">S</span></div></div>
+
+        <div class="center-box">
+          <div class="compass-rose">
+            <span class="cr-n">N</span>
+            <span class="cr-w">W</span>
+            <span class="cr-e">E</span>
+            <span class="cr-s">S</span>
+          </div>
+        </div>
+
         <div class="hand-box east" id="box-east">
           <div class="hand-title">East</div>
-          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="E" data-suit="0" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="E" data-suit="1" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="E" data-suit="2" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="E" data-suit="3" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="E" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="E" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="E" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="E" data-suit="3" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
         </div>
+
         <div class="hand-box south" id="box-south">
           <div class="hand-title">South</div>
-          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="S" data-suit="0" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="S" data-suit="1" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="S" data-suit="2" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="S" data-suit="3" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="S" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="S" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="S" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="S" data-suit="3" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
         </div>
       </div>
+
       <div class="controls">
         <div class="setting-row">
           <label>Vul:
@@ -384,10 +620,48 @@ const HTML = `<!DOCTYPE html>
         <div class="auto-status" id="autoStatus"></div>
       </div>
     </div>
+
     <div class="results-panel" id="resultsPanel" style="display:none;">
       <div class="results-title">Double Dummy Results</div>
       <ul class="result-list" id="resultList"></ul>
       <div class="par-result" id="parResult" style="display:none;"></div>
+    </div>
+  </div>
+  <div id="tab-play" class="tab-content">
+    <div class="play-container">
+      <div class="play-setup">
+        <label>Contract: <select id="play-level">
+          <option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option>
+        </select>
+        <select id="play-trump">
+          <option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S" selected>♠</option><option value="NT">NT</option>
+        </select></label>
+        <label>Declarer: <select id="play-declarer">
+          <option value="N">North</option><option value="E">East</option><option value="S" selected>South</option><option value="W">West</option>
+        </select></label>
+        <button class="btn-analyze" onclick="startPlay()">Start Play</button>
+      </div>
+      <div id="playBoard" style="display:none;">
+        <div class="play-board">
+          <div class="play-hand north" id="ph-N"><div class="hand-title">North</div><div id="ph-cards-N"></div></div>
+          <div class="play-hand west" id="ph-W"><div class="hand-title">West</div><div id="ph-cards-W"></div></div>
+          <div class="trick-area"><div class="trick-cards">
+            <span class="tc-n" id="tc-N"></span><span class="tc-w" id="tc-W"></span>
+            <span class="tc-e" id="tc-E"></span><span class="tc-s" id="tc-S"></span>
+          </div></div>
+          <div class="play-hand east" id="ph-E"><div class="hand-title">East</div><div id="ph-cards-E"></div></div>
+          <div class="play-hand south" id="ph-S"><div class="hand-title">South</div><div id="ph-cards-S"></div></div>
+        </div>
+        <div class="play-info">
+          <span class="tricks-ns">N/S: <strong id="play-ns">0</strong></span>
+          <span class="tricks-ew">E/W: <strong id="play-ew">0</strong></span>
+          <span id="play-status" style="color:#8cf;"></span>
+        </div>
+        <div class="play-btns">
+          <button class="btn-undo" onclick="undoPlay()">Undo</button>
+          <button class="btn-clear" onclick="resetPlay()">Reset</button>
+        </div>
+      </div>
     </div>
   </div>
   <div id="tab-score" class="tab-content">
@@ -441,17 +715,19 @@ const HTML = `<!DOCTYPE html>
     </div>
   </div>
   </div>
+
   <div id="errorBox" class="error-msg" style="display:none;"></div>
+
   <script>
+    const TABS = ['dds', 'play', 'score'];
     function switchTab(tab) {
-      document.querySelectorAll('.tab').forEach((t, i) => {
-        t.classList.toggle('active', (tab === 'dds' && i === 0) || (tab === 'score' && i === 1));
+      document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', TABS[i] === tab));
+      TABS.forEach(t => {
+        const el = document.getElementById('tab-' + t);
+        if (el) { el.style.display = t === tab ? 'flex' : 'none'; el.classList.toggle('active', t === tab); }
       });
-      document.getElementById('tab-dds').style.display = tab === 'dds' ? 'flex' : 'none';
-      document.getElementById('tab-dds').classList.toggle('active', tab === 'dds');
-      document.getElementById('tab-score').style.display = tab === 'score' ? 'flex' : 'none';
-      document.getElementById('tab-score').classList.toggle('active', tab === 'score');
     }
+
     async function calcScore() {
       const data = {
         level: parseInt(document.getElementById('sc-level').value),
@@ -474,37 +750,70 @@ const HTML = `<!DOCTYPE html>
         document.getElementById('scoreContract').textContent = res.contract;
       } catch (err) { showError([err.message]); }
     }
+
     const ALL_RANKS = 'AKQJT98765432';
     const DIRS = ['N', 'E', 'S', 'W'];
     const DIR_NAMES = {N: 'North', E: 'East', S: 'South', W: 'West'};
-    function getInputs(dir) { return [0,1,2,3].map(s => document.querySelector('.suit-input[data-dir="'+dir+'"][data-suit="'+s+'"]')); }
-    function getHand(dir) { return getInputs(dir).map(el => el.value.trim().toUpperCase()); }
+
+    function getInputs(dir) {
+      return [0,1,2,3].map(s =>
+        document.querySelector(\`.suit-input[data-dir="\${dir}"][data-suit="\${s}"]\`)
+      );
+    }
+
+    function getHand(dir) {
+      return getInputs(dir).map(el => el.value.trim().toUpperCase());
+    }
+
     function setHand(dir, suits) {
       const inputs = getInputs(dir);
-      suits.forEach((s, i) => { inputs[i].value = s; inputs[i].classList.add('auto-filled'); });
+      suits.forEach((s, i) => {
+        inputs[i].value = s;
+        inputs[i].classList.add('auto-filled');
+      });
       document.getElementById('box-' + DIR_NAMES[dir].toLowerCase()).classList.add('auto-filled');
     }
-    function handCardCount(dir) { return getHand(dir).join('').length; }
-    function isHandComplete(dir) { return handCardCount(dir) === 13; }
+
+    function handCardCount(dir) {
+      return getHand(dir).join('').length;
+    }
+
+    function isHandComplete(dir) {
+      return handCardCount(dir) === 13;
+    }
+
     function tryAutoPopulate() {
       document.querySelectorAll('.suit-input.auto-filled').forEach(el => el.classList.remove('auto-filled'));
       document.querySelectorAll('.hand-box.auto-filled').forEach(el => el.classList.remove('auto-filled'));
       const status = document.getElementById('autoStatus');
       status.textContent = '';
+
       const complete = DIRS.filter(d => isHandComplete(d));
       const incomplete = DIRS.filter(d => !isHandComplete(d));
+
       if (complete.length < 3 || incomplete.length !== 1) return;
+
       const emptyDir = incomplete[0];
       if (handCardCount(emptyDir) > 0) return;
+
       const remaining = [0,1,2,3].map(suit => {
         const allOfSuit = new Set(ALL_RANKS.split(''));
-        complete.forEach(dir => { for (const c of getHand(dir)[suit].toUpperCase()) allOfSuit.delete(c); });
-        return Array.from(allOfSuit).sort((a,b) => ALL_RANKS.indexOf(a) - ALL_RANKS.indexOf(b)).join('');
+        complete.forEach(dir => {
+          const cards = getHand(dir)[suit].toUpperCase();
+          for (const c of cards) allOfSuit.delete(c);
+        });
+        return Array.from(allOfSuit).sort((a,b) =>
+          ALL_RANKS.indexOf(a) - ALL_RANKS.indexOf(b)
+        ).join('');
       });
-      if (remaining.reduce((s, r) => s + r.length, 0) !== 13) return;
+
+      const total = remaining.reduce((s, r) => s + r.length, 0);
+      if (total !== 13) return;
+
       setHand(emptyDir, remaining);
-      status.textContent = DIR_NAMES[emptyDir] + ' auto-filled with remaining cards';
+      status.textContent = \`\${DIR_NAMES[emptyDir]} auto-filled with remaining cards\`;
     }
+
     function swapHands(a, b) {
       const handA = getHand(a);
       const handB = getHand(b);
@@ -513,96 +822,140 @@ const HTML = `<!DOCTYPE html>
       handA.forEach((v, i) => { inputsB[i].value = v; });
       handB.forEach((v, i) => { inputsA[i].value = v; });
     }
+
     function showSpinner(on) {
       document.getElementById('spinner').style.display = on ? 'block' : 'none';
       document.getElementById('analyzeBtn').disabled = on;
     }
+
     function showError(msgs) {
       const box = document.getElementById('errorBox');
       if (!msgs || msgs.length === 0) { box.style.display = 'none'; return; }
       box.innerHTML = msgs.map(m => '&bull; ' + m).join('<br>');
       box.style.display = 'block';
     }
+
     function clearAll() {
-      document.querySelectorAll('.suit-input').forEach(el => { el.value = ''; el.classList.remove('error', 'auto-filled'); });
+      document.querySelectorAll('.suit-input').forEach(el => {
+        el.value = '';
+        el.classList.remove('error', 'auto-filled');
+      });
       document.querySelectorAll('.hand-box').forEach(el => el.classList.remove('auto-filled'));
       document.getElementById('resultsPanel').style.display = 'none';
       document.getElementById('parResult').style.display = 'none';
       document.getElementById('autoStatus').textContent = '';
       showError(null);
     }
+
+    function buildPbnHand(dir) {
+      return getHand(dir).join('.');
+    }
+
     async function analyze() {
       showError(null);
       document.getElementById('resultsPanel').style.display = 'none';
       document.querySelectorAll('.suit-input').forEach(el => el.classList.remove('error'));
+
       const hands = {};
       let hasError = false;
       DIRS.forEach(dir => {
-        const h = getHand(dir).join('.');
+        const h = buildPbnHand(dir);
         hands[dir] = h;
-        if (h.replace(/\\./g, '').length !== 13) { getInputs(dir).forEach(el => el.classList.add('error')); hasError = true; }
+        if (h.replace(/\\./g, '').length !== 13) {
+          getInputs(dir).forEach(el => el.classList.add('error'));
+          hasError = true;
+        }
       });
-      if (hasError) { showError(['Each hand must have exactly 13 cards.']); return; }
+
+      if (hasError) {
+        showError(['Each hand must have exactly 13 cards.']);
+        return;
+      }
+
       showSpinner(true);
       try {
         const payload = Object.assign({}, hands, {
           vul: document.getElementById('vulSelect').value,
           dealer: document.getElementById('dealerSelect').value,
         });
-        const resp = await fetch('/analyze', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+        const resp = await fetch('/analyze', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload),
+        });
         const data = await resp.json();
-        if (!resp.ok) { showError(data.error || ['Analysis failed']); showSpinner(false); return; }
+
+        if (!resp.ok) {
+          showError(data.error || ['Analysis failed']);
+          showSpinner(false);
+          return;
+        }
+
         const list = document.getElementById('resultList');
         list.innerHTML = '';
-        const colorMap = {'\\u2663': 'black', '\\u2666': 'red', '\\u2665': 'red', '\\u2660': 'black', 'NT': 'nt'};
+        const colorMap = {'♣': 'black', '♦': 'red', '♥': 'red', '♠': 'black', 'NT': 'nt'};
+
         data.results.forEach(r => {
           const li = document.createElement('li');
           li.className = 'result-item';
-          li.innerHTML = '<div><span class="strain ' + (colorMap[r.symbol] || 'black') + '">' + r.symbol + ' ' + r.name + '</span></div>'
-            + '<div class="tricks">N/S: <strong>' + r.ns + ' trick' + (r.ns !== 1 ? 's' : '') + '</strong> &nbsp;|&nbsp; E/W: <strong>' + r.ew + ' trick' + (r.ew !== 1 ? 's' : '') + '</strong></div>'
-            + '<div class="tricks">N: ' + r.north + ' &nbsp; E: ' + r.east + ' &nbsp; S: ' + r.south + ' &nbsp; W: ' + r.west + '</div>';
+          li.innerHTML = \`
+            <div><span class="strain \${colorMap[r.symbol] || 'black'}">\${r.symbol} \${r.name}</span></div>
+            <div class="tricks">
+              N/S: <strong>\${r.ns} trick\${r.ns !== 1 ? 's' : ''}</strong> &nbsp;|&nbsp;
+              E/W: <strong>\${r.ew} trick\${r.ew !== 1 ? 's' : ''}</strong>
+            </div>
+            <div class="tricks">N: \${r.north} &nbsp; E: \${r.east} &nbsp; S: \${r.south} &nbsp; W: \${r.west}</div>
+          \`;
           list.appendChild(li);
         });
-        var parDiv = document.getElementById('parResult');
+
+        const parDiv = document.getElementById('parResult');
         if (data.par && data.par.score !== null) {
-          var sign = data.par.score >= 0 ? '+' : '';
-          var contracts = data.par.contracts.length > 0 ? data.par.contracts.join(', ') : '—';
-          parDiv.innerHTML = '<div><span class="par-label">Par</span> &nbsp;<span class="par-score">N/S ' + sign + data.par.score + '</span></div><div class="par-contracts">' + contracts + '</div>';
+          const sign = data.par.score >= 0 ? '+' : '';
+          const contracts = data.par.contracts.length > 0
+            ? data.par.contracts.join(', ') : '—';
+          parDiv.innerHTML = \`
+            <div><span class="par-label">Par</span> &nbsp;
+              <span class="par-score">N/S \${sign}\${data.par.score}</span></div>
+            <div class="par-contracts">\${contracts}</div>
+          \`;
           parDiv.style.display = 'block';
         } else {
           parDiv.style.display = 'none';
         }
+
         document.getElementById('resultsPanel').style.display = 'block';
         document.getElementById('resultsPanel').scrollIntoView({ behavior: 'smooth' });
-      } catch (err) { showError([err.message]); }
+      } catch (err) {
+        showError([err.message]);
+      }
       showSpinner(false);
     }
-    function resizeImage(file, maxWidth) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          let w = img.width, h = img.height;
-          if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
-          const canvas = document.createElement('canvas');
-          canvas.width = w; canvas.height = h;
-          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          canvas.toBlob(blob => resolve(blob), 'image/png');
-        };
-        img.src = URL.createObjectURL(file);
-      });
-    }
+
     async function uploadImage(input) {
       if (!input.files || !input.files[0]) return;
       showError(null);
       showSpinner(true);
       document.getElementById('autoStatus').textContent = 'Extracting hands from image...';
-      const resized = await resizeImage(input.files[0], 1200);
+
       const formData = new FormData();
-      formData.append('image', resized, 'hand.png');
+      formData.append('image', input.files[0]);
+
       try {
-        const resp = await fetch('/extract-image', { method: 'POST', body: formData });
+        const resp = await fetch('/extract-image', {
+          method: 'POST',
+          body: formData,
+        });
         const data = await resp.json();
-        if (!resp.ok) { showError(data.error || ['Image extraction failed']); document.getElementById('autoStatus').textContent = ''; showSpinner(false); input.value = ''; return; }
+
+        if (!resp.ok) {
+          showError(data.error || ['Image extraction failed']);
+          document.getElementById('autoStatus').textContent = '';
+          showSpinner(false);
+          input.value = '';
+          return;
+        }
+
         if (data.hands) {
           DIRS.forEach(dir => {
             const hand = data.hands[dir] || '';
@@ -611,20 +964,247 @@ const HTML = `<!DOCTYPE html>
             suits.forEach((s, i) => { if (inputs[i]) inputs[i].value = s; });
           });
           tryAutoPopulate();
-          document.getElementById('autoStatus').textContent = 'Image loaded via ' + (data.method || 'Claude Vision');
+
+          let statusMsg = 'Image loaded via ' + (data.method || 'OCR');
+          if (data.warnings && data.warnings.length > 0) {
+            statusMsg += ' — check for OCR errors';
+            showError(data.warnings);
+          }
+          document.getElementById('autoStatus').textContent = statusMsg;
         }
-      } catch (err) { showError([err.message]); document.getElementById('autoStatus').textContent = ''; }
+      } catch (err) {
+        showError([err.message]);
+        document.getElementById('autoStatus').textContent = '';
+      }
       showSpinner(false);
       input.value = '';
     }
+
     document.querySelectorAll('.suit-input').forEach(el => {
       el.addEventListener('input', () => {
         el.classList.remove('auto-filled');
-        document.getElementById('box-' + DIR_NAMES[el.getAttribute('data-dir')].toLowerCase()).classList.remove('auto-filled');
+        const dir = el.getAttribute('data-dir');
+        document.getElementById('box-' + DIR_NAMES[dir].toLowerCase()).classList.remove('auto-filled');
         tryAutoPopulate();
       });
-      el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.target.blur(); analyze(); } });
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.target.blur();
+          analyze();
+        }
+      });
     });
+
+    // ---- PREFILL SAMPLE HAND ----
+    const SAMPLE = {N:['AQ98','85','AQT754','J'], E:['74','AKQ6','KJ9','KQ97'], S:['T6','JT743','862','543'], W:['KJ532','92','3','AT862']};
+    DIRS.forEach(dir => {
+      const inputs = getInputs(dir);
+      SAMPLE[dir].forEach((s, i) => { inputs[i].value = s; });
+    });
+
+    // ---- PLAY TAB ----
+    let playState = { pbn: '', trump: 'NT', first: 'E', plays: [], nsTricks: 0, ewTricks: 0 };
+    const SUIT_SYM = {S: '♠', H: '♥', D: '♦', C: '♣'};
+    const SUIT_CLASS = {S: 'spade', H: 'heart', D: 'diamond', C: 'club'};
+    const SUIT_ORDER = ['S','H','D','C'];
+
+    const LHO = {N: 'E', E: 'S', S: 'W', W: 'N'};
+
+    function startPlay() {
+      const hands = {};
+      let valid = true;
+      DIRS.forEach(dir => {
+        const h = buildPbnHand(dir);
+        if (h.replace(/\\./g, '').length !== 13) valid = false;
+        hands[dir] = h;
+      });
+      if (!valid) { showError(['Fill all 4 hands in DD Analyzer first (13 cards each).']); return; }
+      showError(null);
+
+      playState.pbn = 'N:' + hands.N + ' ' + hands.E + ' ' + hands.S + ' ' + hands.W;
+      playState.trump = document.getElementById('play-trump').value;
+      playState.declarer = document.getElementById('play-declarer').value;
+      playState.first = LHO[playState.declarer];
+      playState.level = parseInt(document.getElementById('play-level').value);
+      playState.plays = [];
+      playState.nsTricks = 0;
+      playState.ewTricks = 0;
+      document.getElementById('playBoard').style.display = 'block';
+      fetchSolve();
+    }
+
+    function resetPlay() {
+      playState.plays = [];
+      playState.nsTricks = 0;
+      playState.ewTricks = 0;
+      fetchSolve();
+    }
+
+    function undoPlay() {
+      if (playState.plays.length === 0) return;
+      playState.plays.pop();
+      // Recalculate tricks: need server to tell us
+      // For simplicity, reset trick count and re-derive from play length
+      // Actually we need to track trick boundaries. Simpler: just refetch.
+      playState.nsTricks = 0;
+      playState.ewTricks = 0;
+      fetchSolve();
+    }
+
+    async function fetchSolve() {
+      try {
+        const resp = await fetch('/solve', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            pbn: playState.pbn,
+            trump: playState.trump,
+            first: playState.first,
+            plays: playState.plays,
+          }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { showError(data.error || ['Solve failed']); return; }
+        showError(null);
+        renderPlayBoard(data);
+      } catch (err) { showError([err.message]); }
+    }
+
+    function parseCard(cardStr) {
+      // Card string like "♠A" or "♥K" — extract suit letter and rank
+      const suitMap = {'♠':'S','♥':'H','♦':'D','♣':'C'};
+      const suit = suitMap[cardStr[0]] || cardStr[0];
+      const rank = cardStr.slice(1);
+      return { suit, rank, str: cardStr };
+    }
+
+    function renderPlayBoard(data) {
+      const needed = playState.level + 6;
+      const moveMap = {};
+      let bestTricks = -1;
+      data.moves.forEach(m => {
+        const c = parseCard(m.card);
+        moveMap[c.suit + c.rank] = m.tricks;
+        if (m.tricks > bestTricks) bestTricks = m.tricks;
+      });
+
+      // Render each hand
+      DIRS.forEach(dir => {
+        const container = document.getElementById('ph-cards-' + dir);
+        container.innerHTML = '';
+        const handStr = data.hands[dir] || '...';
+        const suits = handStr.split('.');
+        const handEl = document.getElementById('ph-' + dir);
+        handEl.classList.toggle('active-player', dir === data.curplayer);
+
+        SUIT_ORDER.forEach((s, si) => {
+          const cards = suits[si] || '';
+          if (!cards) return;
+          const row = document.createElement('div');
+          row.className = 'play-suit';
+          row.innerHTML = '<span class="suit-sym ' + SUIT_CLASS[s] + '">' + SUIT_SYM[s] + '</span>';
+          for (const rank of cards) {
+            const key = s + rank;
+            const btn = document.createElement('span');
+            btn.className = 'play-card';
+            const tricks = moveMap[key];
+            if (tricks !== undefined) {
+              btn.classList.add('playable');
+              if (tricks === bestTricks) btn.classList.add('best');
+              // Show relative to contract: tricks won by declarer's side minus needed
+              const isDecNS = (playState.declarer === 'N' || playState.declarer === 'S');
+              const isCurNS = (data.curplayer === 'N' || data.curplayer === 'S');
+              const totalTricksLeft = 13 - playState.nsTricks - playState.ewTricks;
+              let decTricks;
+              if (isDecNS === isCurNS) {
+                decTricks = (isDecNS ? playState.nsTricks : playState.ewTricks) + tricks;
+              } else {
+                decTricks = (isDecNS ? playState.nsTricks : playState.ewTricks) + (totalTricksLeft - tricks);
+              }
+              const diff = decTricks - needed;
+              let hintText, hintColor;
+              if (diff === 0) { hintText = '='; hintColor = '#8cf'; }
+              else if (diff > 0) { hintText = '+' + diff; hintColor = '#4f8'; }
+              else { hintText = '' + diff; hintColor = '#f66'; }
+              btn.innerHTML = rank + '<span class="dd-hint" style="color:' + hintColor + '">' + hintText + '</span>';
+              btn.onclick = () => playCard(SUIT_SYM[s] + rank);
+            } else {
+              btn.textContent = rank;
+            }
+            row.appendChild(btn);
+          }
+          container.appendChild(row);
+        });
+      });
+
+      // Render trick area
+      DIRS.forEach(dir => {
+        document.getElementById('tc-' + dir).textContent = '';
+      });
+      data.curtrick.forEach((cardStr, i) => {
+        const firstIdx = DIRS.indexOf(data.curplayer);
+        // curtrick cards are played starting from deal.first
+        // We need to figure out which player played each card
+        // The first card in curtrick was played by the leader of this trick
+        // We reconstruct from the number of plays mod 4
+        const trickStart = playState.plays.length - data.curtrick.length;
+        const leaderOfTrick = data.curplayer; // curplayer is NEXT to play, not leader
+        // Actually curplayer = first.next(len(curtrick))
+        // So leader = curplayer rotated back by curtrick.length
+        const playerOrder = ['N','E','S','W'];
+        const curIdx = playerOrder.indexOf(data.curplayer);
+        const leaderIdx = (curIdx - data.curtrick.length + 4) % 4;
+        const whoPlayed = playerOrder[(leaderIdx + i) % 4];
+        document.getElementById('tc-' + whoPlayed).textContent = cardStr;
+      });
+
+      // Update trick count from play history
+      const totalTricks = Math.floor(playState.plays.length / 4);
+      document.getElementById('play-ns').textContent = playState.nsTricks;
+      document.getElementById('play-ew').textContent = playState.ewTricks;
+
+      const status = document.getElementById('play-status');
+      const trumpSym = SUIT_SYM[playState.trump] || 'NT';
+      const contractStr = playState.level + trumpSym + ' by ' + DIR_NAMES[playState.declarer];
+      if (data.moves.length === 0) {
+        const needed = playState.level + 6;
+        const decSide = (playState.declarer === 'N' || playState.declarer === 'S') ? playState.nsTricks : playState.ewTricks;
+        const made = decSide >= needed ? 'Made!' : 'Down ' + (needed - decSide);
+        status.textContent = contractStr + ' — ' + made;
+      } else {
+        status.textContent = contractStr + ' | ' + data.curplayer + ' to play';
+      }
+    }
+
+    async function playCard(cardStr) {
+      const prevTrickLen = playState.plays.length % 4;
+      playState.plays.push(cardStr);
+
+      // If this completes a trick (4th card), we need to track who won
+      // We'll let the server figure it out by comparing curtrick before/after
+      if (playState.plays.length % 4 === 0) {
+        // A trick just completed — fetch to find out who won
+        // We peek: the server will have cleared curtrick and updated first
+        const resp = await fetch('/solve', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            pbn: playState.pbn, trump: playState.trump,
+            first: playState.first, plays: playState.plays,
+          }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { showError(data.error || ['Error']); playState.plays.pop(); return; }
+        // The new curplayer is the trick winner — determine side
+        if (data.curplayer === 'N' || data.curplayer === 'S') playState.nsTricks++;
+        else playState.ewTricks++;
+        showError(null);
+        renderPlayBoard(data);
+      } else {
+        fetchSolve();
+      }
+    }
   </script>
 </body>
-</html>`;
+</html>
+`;

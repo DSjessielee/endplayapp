@@ -10,7 +10,7 @@ from pathlib import Path
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-from endplay.types import Deal, Denom, Player
+from endplay.types import Deal, Denom, Player, Contract, Vul
 from endplay.dds import calc_dd_table
 
 app = Flask(__name__)
@@ -107,6 +107,45 @@ def analyze():
         })
 
     return jsonify({"pbn": pbn, "results": results, "hands": hands})
+
+
+@app.route("/score", methods=["POST"])
+def score():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": ["No JSON body"]}), 400
+
+    level = data.get("level")
+    suit = data.get("suit", "").upper()
+    declarer = data.get("declarer", "N").upper()
+    vulnerability = data.get("vulnerability", "none").lower()
+    penalty = data.get("penalty", "").upper()
+    result = data.get("result", 0)
+
+    if not level or not suit:
+        return jsonify({"error": ["Level and suit are required"]}), 400
+
+    vul_map = {"none": Vul.none, "ns": Vul.ns, "ew": Vul.ew, "both": Vul.both, "all": Vul.both}
+    vul = vul_map.get(vulnerability, Vul.none)
+
+    try:
+        contract_str = f"{level}{suit}{declarer}{penalty}"
+        if result == 0:
+            contract_str += "="
+        else:
+            contract_str += f"{result:+d}"
+
+        contract = Contract(contract_str)
+        points = contract.score(vul)
+
+        return jsonify({
+            "contract": str(contract),
+            "score": points,
+            "declarer": declarer,
+            "vulnerability": vulnerability,
+        })
+    except Exception as e:
+        return jsonify({"error": [str(e)]}), 400
 
 
 if __name__ == "__main__":

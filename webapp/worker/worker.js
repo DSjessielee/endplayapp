@@ -47,6 +47,10 @@ export default {
       return handleAnalyze(request);
     }
 
+    if (url.pathname === "/score" && request.method === "POST") {
+      return proxyToRender(request, "/score");
+    }
+
     // Serve frontend for all other GET requests
     if (request.method === "GET") {
       return new Response(HTML, {
@@ -121,17 +125,19 @@ async function handleExtractImage(request, env) {
   return jsonResponse({ hands, method: "claude-vision" });
 }
 
-// --- DDS analysis proxy to Render ---
+// --- Proxy to Render ---
 
 async function handleAnalyze(request) {
-  const body = await request.text();
+  return proxyToRender(request, "/analyze");
+}
 
-  const resp = await fetch(DDS_API + "/analyze", {
+async function proxyToRender(request, path) {
+  const body = await request.text();
+  const resp = await fetch(DDS_API + path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body,
   });
-
   const data = await resp.text();
   return new Response(data, {
     status: resp.status,
@@ -180,7 +186,7 @@ const HTML = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>FunBridge - Double Dummy Analyzer</title>
+  <title>FunBridge</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { -webkit-text-size-adjust: 100%; }
@@ -248,6 +254,22 @@ const HTML = `<!DOCTYPE html>
     .btn-swap:hover { background: #975; }
     .swap-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
     #imageInput { display: none; }
+    .tabs { display: flex; gap: 0; margin-bottom: 16px; }
+    .tab { padding: 10px 24px; background: #0d2818; color: #8fc; border: 2px solid #3a6; border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; font-size: 0.9rem; -webkit-tap-highlight-color: transparent; }
+    .tab.active { background: #1a472a; color: #fff; border-color: #4a8; }
+    .tab-content { display: none; width: 100%; }
+    .tab-content.active { display: flex; flex-direction: column; align-items: center; }
+    .score-form { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 360px; }
+    .score-row { display: flex; align-items: center; gap: 10px; }
+    .score-row label { width: 90px; font-size: 0.85rem; color: #8fc; flex-shrink: 0; }
+    .score-select, .score-num { padding: 8px 10px; border: 1px solid #3a6; border-radius: 6px; background: #162e1e; color: #fff; font-size: 0.9rem; outline: none; -webkit-appearance: none; appearance: none; }
+    .score-select { flex: 1; }
+    .score-num { width: 70px; text-align: center; }
+    .score-result { margin-top: 16px; padding: 16px; background: #0d2818; border-radius: 8px; border-left: 4px solid #3a6; text-align: center; }
+    .score-points { font-size: 2rem; font-weight: 700; }
+    .score-points.positive { color: #4c8; }
+    .score-points.negative { color: #f66; }
+    .score-contract { font-size: 0.85rem; color: #aaa; margin-top: 4px; }
     .auto-status { font-size: 0.75rem; color: #8cf; min-height: 1em; text-align: center; }
     .results-panel { width: 100%; max-width: 480px; }
     .results-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 10px; color: #8fc; }
@@ -280,10 +302,13 @@ const HTML = `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <h1>FunBridge Double Dummy Analyzer</h1>
-  <p class="subtitle">Enter cards by suit, or upload a screenshot</p>
+  <h1>FunBridge</h1>
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('dds')">DD Analyzer</div>
+    <div class="tab" onclick="switchTab('score')">Scoring</div>
+  </div>
   <div class="main-container">
-    <div style="width:100%; display:flex; flex-direction:column; align-items:center;">
+    <div id="tab-dds" class="tab-content active" style="display:flex; flex-direction:column; align-items:center;">
       <div class="compass">
         <div class="hand-box north" id="box-north">
           <div class="hand-title">North</div>
@@ -339,8 +364,90 @@ const HTML = `<!DOCTYPE html>
       <ul class="result-list" id="resultList"></ul>
     </div>
   </div>
+  <div id="tab-score" class="tab-content">
+    <div class="score-form">
+      <div class="score-row">
+        <label>Level</label>
+        <select class="score-select" id="sc-level">
+          <option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option>
+        </select>
+      </div>
+      <div class="score-row">
+        <label>Suit</label>
+        <select class="score-select" id="sc-suit">
+          <option value="C">&#9827; Clubs</option><option value="D">&#9830; Diamonds</option><option value="H">&#9829; Hearts</option><option value="S">&#9824; Spades</option><option value="NT" selected>NT</option>
+        </select>
+      </div>
+      <div class="score-row">
+        <label>Declarer</label>
+        <select class="score-select" id="sc-declarer">
+          <option value="N">North</option><option value="E">East</option><option value="S" selected>South</option><option value="W">West</option>
+        </select>
+      </div>
+      <div class="score-row">
+        <label>Vulnerability</label>
+        <select class="score-select" id="sc-vul">
+          <option value="none">None</option><option value="ns">N/S</option><option value="ew">E/W</option><option value="both">Both</option>
+        </select>
+      </div>
+      <div class="score-row">
+        <label>Doubled</label>
+        <select class="score-select" id="sc-penalty">
+          <option value="">Undoubled</option><option value="X">Doubled</option><option value="XX">Redoubled</option>
+        </select>
+      </div>
+      <div class="score-row">
+        <label>Result</label>
+        <select class="score-select" id="sc-result">
+          <option value="-13">-13</option><option value="-12">-12</option><option value="-11">-11</option><option value="-10">-10</option>
+          <option value="-9">-9</option><option value="-8">-8</option><option value="-7">-7</option><option value="-6">-6</option>
+          <option value="-5">-5</option><option value="-4">-4</option><option value="-3">-3</option><option value="-2">-2</option>
+          <option value="-1">-1</option><option value="0" selected>= (just made)</option>
+          <option value="1">+1</option><option value="2">+2</option><option value="3">+3</option><option value="4">+4</option>
+          <option value="5">+5</option><option value="6">+6</option>
+        </select>
+      </div>
+      <button class="btn-analyze" onclick="calcScore()">Calculate Score</button>
+      <div class="score-result" id="scoreResult" style="display:none;">
+        <div class="score-points" id="scorePoints"></div>
+        <div class="score-contract" id="scoreContract"></div>
+      </div>
+    </div>
+  </div>
+  </div>
   <div id="errorBox" class="error-msg" style="display:none;"></div>
   <script>
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', (tab === 'dds' && i === 0) || (tab === 'score' && i === 1));
+      });
+      document.getElementById('tab-dds').style.display = tab === 'dds' ? 'flex' : 'none';
+      document.getElementById('tab-dds').classList.toggle('active', tab === 'dds');
+      document.getElementById('tab-score').style.display = tab === 'score' ? 'flex' : 'none';
+      document.getElementById('tab-score').classList.toggle('active', tab === 'score');
+    }
+    async function calcScore() {
+      const data = {
+        level: parseInt(document.getElementById('sc-level').value),
+        suit: document.getElementById('sc-suit').value,
+        declarer: document.getElementById('sc-declarer').value,
+        vulnerability: document.getElementById('sc-vul').value,
+        penalty: document.getElementById('sc-penalty').value,
+        result: parseInt(document.getElementById('sc-result').value),
+      };
+      try {
+        const resp = await fetch('/score', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+        const res = await resp.json();
+        if (!resp.ok) { showError(res.error || ['Score calculation failed']); return; }
+        showError(null);
+        const el = document.getElementById('scoreResult');
+        el.style.display = 'block';
+        const pts = document.getElementById('scorePoints');
+        pts.textContent = (res.score >= 0 ? '+' : '') + res.score;
+        pts.className = 'score-points ' + (res.score >= 0 ? 'positive' : 'negative');
+        document.getElementById('scoreContract').textContent = res.contract;
+      } catch (err) { showError([err.message]); }
+    }
     const ALL_RANKS = 'AKQJT98765432';
     const DIRS = ['N', 'E', 'S', 'W'];
     const DIR_NAMES = {N: 'North', E: 'East', S: 'South', W: 'West'};

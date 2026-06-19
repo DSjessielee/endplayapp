@@ -19,7 +19,9 @@ POSITIONS in the image:
 RULES:
 - List cards by suit in order: spades.hearts.diamonds.clubs
 - Convert ALL "10" to "T" (examples: K10→KT, A1097→AT97, Q10952→QT952, J109642→JT9642)
+- Read EVERY card carefully — long suits can have 6-7 cards (e.g. J87642 is 6 cards, AKQ10765 is 7 cards). Do not skip any.
 - If a suit is void (no cards, shown as — or empty), leave it empty
+- Each hand must have exactly 13 cards total across all 4 suits
 - Use only: A K Q J T 9 8 7 6 5 4 3 2
 - Ignore any text like "Par", "NS", "EW", board numbers, vulnerability, or dealer info
 

@@ -84,7 +84,7 @@ async function handleExtractImage(request, env) {
   const mediaType = mediaTypes[ext] || "image/jpeg";
 
   const body = JSON.stringify({
-    model: "claude-haiku-4-5",
+    model: "claude-sonnet-4-6",
     max_tokens: 300,
     messages: [{
       role: "user",

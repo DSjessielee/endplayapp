@@ -166,6 +166,9 @@
     .btn-clear:hover { background: #666; }
     .btn-upload { background: #36a; color: #fff; font-size: 0.84rem; }
     .btn-upload:hover { background: #47b; }
+    .btn-swap { background: #864; color: #fff; font-size: 0.75rem; padding: 7px 10px; }
+    .btn-swap:hover { background: #975; }
+    .swap-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
     #imageInput { display: none; }
 
     .auto-status {
@@ -196,16 +199,41 @@
     .result-item .strain.black { color: #fff; }
     .result-item .strain.nt { color: #8cf; }
     .result-item .tricks { color: #ccc; font-size: 0.82rem; margin-top: 2px; }
-    .pbn-output {
-      margin-top: 14px;
-      padding: 8px 12px;
+    .par-result {
+      margin-top: 10px;
+      padding: 10px 14px;
       background: #0d2818;
       border-radius: 8px;
-      font-family: 'SF Mono', 'Consolas', monospace;
-      font-size: 0.72rem;
-      color: #8fc;
-      word-break: break-all;
+      border-left: 4px solid #f90;
+      font-size: 0.9rem;
+      line-height: 1.5;
     }
+    .par-result .par-label { color: #fa0; font-weight: 700; }
+    .par-result .par-score { color: #fff; font-weight: 700; font-size: 1.05rem; }
+    .par-result .par-contracts { color: #ccc; font-size: 0.82rem; margin-top: 2px; }
+    .setting-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .setting-row label {
+      font-size: 0.82rem;
+      color: #aaa;
+    }
+    .setting-row select {
+      padding: 6px 8px;
+      border: 1px solid #3a6;
+      border-radius: 4px;
+      background: #162e1e;
+      color: #fff;
+      font-size: 0.84rem;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .setting-row select:focus { border-color: #6f8; }
     .error-msg {
       color: #f88;
       background: #3a1111;
@@ -322,11 +350,37 @@
       </div>
 
       <div class="controls">
+        <div class="setting-row">
+          <label>Vul:
+            <select id="vulSelect">
+              <option value="none">None</option>
+              <option value="ns">N/S</option>
+              <option value="ew">E/W</option>
+              <option value="both">Both</option>
+            </select>
+          </label>
+          <label>Dealer:
+            <select id="dealerSelect">
+              <option value="N">North</option>
+              <option value="E">East</option>
+              <option value="S">South</option>
+              <option value="W">West</option>
+            </select>
+          </label>
+        </div>
         <div class="btn-row">
           <button class="btn-analyze" id="analyzeBtn" onclick="analyze()">Analyze</button>
           <button class="btn-clear" onclick="clearAll()">Clear</button>
           <button class="btn-upload" onclick="document.getElementById('imageInput').click()">Load Image</button>
           <input type="file" id="imageInput" accept="image/*" onchange="uploadImage(this)" />
+        </div>
+        <div class="swap-row">
+          <button class="btn-swap" onclick="swapHands('N','S')">N&#8596;S</button>
+          <button class="btn-swap" onclick="swapHands('N','E')">N&#8596;E</button>
+          <button class="btn-swap" onclick="swapHands('N','W')">N&#8596;W</button>
+          <button class="btn-swap" onclick="swapHands('E','W')">E&#8596;W</button>
+          <button class="btn-swap" onclick="swapHands('E','S')">E&#8596;S</button>
+          <button class="btn-swap" onclick="swapHands('S','W')">S&#8596;W</button>
         </div>
         <div class="spinner" id="spinner"></div>
         <div class="auto-status" id="autoStatus"></div>
@@ -336,7 +390,7 @@
     <div class="results-panel" id="resultsPanel" style="display:none;">
       <div class="results-title">Double Dummy Results</div>
       <ul class="result-list" id="resultList"></ul>
-      <div class="pbn-output" id="pbnOutput"></div>
+      <div class="par-result" id="parResult" style="display:none;"></div>
     </div>
   </div>
 
@@ -406,6 +460,15 @@
       status.textContent = `${DIR_NAMES[emptyDir]} auto-filled with remaining cards`;
     }
 
+    function swapHands(a, b) {
+      const handA = getHand(a);
+      const handB = getHand(b);
+      const inputsA = getInputs(a);
+      const inputsB = getInputs(b);
+      handA.forEach((v, i) => { inputsB[i].value = v; });
+      handB.forEach((v, i) => { inputsA[i].value = v; });
+    }
+
     function showSpinner(on) {
       document.getElementById('spinner').style.display = on ? 'block' : 'none';
       document.getElementById('analyzeBtn').disabled = on;
@@ -425,6 +488,7 @@
       });
       document.querySelectorAll('.hand-box').forEach(el => el.classList.remove('auto-filled'));
       document.getElementById('resultsPanel').style.display = 'none';
+      document.getElementById('parResult').style.display = 'none';
       document.getElementById('autoStatus').textContent = '';
       showError(null);
     }
@@ -456,10 +520,14 @@
 
       showSpinner(true);
       try {
+        const payload = Object.assign({}, hands, {
+          vul: document.getElementById('vulSelect').value,
+          dealer: document.getElementById('dealerSelect').value,
+        });
         const resp = await fetch('/analyze', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify(hands),
+          body: JSON.stringify(payload),
         });
         const data = await resp.json();
 
@@ -487,7 +555,21 @@
           list.appendChild(li);
         });
 
-        document.getElementById('pbnOutput').textContent = 'PBN: ' + data.pbn;
+        const parDiv = document.getElementById('parResult');
+        if (data.par && data.par.score !== null) {
+          const sign = data.par.score >= 0 ? '+' : '';
+          const contracts = data.par.contracts.length > 0
+            ? data.par.contracts.join(', ') : '—';
+          parDiv.innerHTML = `
+            <div><span class="par-label">Par</span> &nbsp;
+              <span class="par-score">N/S ${sign}${data.par.score}</span></div>
+            <div class="par-contracts">${contracts}</div>
+          `;
+          parDiv.style.display = 'block';
+        } else {
+          parDiv.style.display = 'none';
+        }
+
         document.getElementById('resultsPanel').style.display = 'block';
         document.getElementById('resultsPanel').scrollIntoView({ behavior: 'smooth' });
       } catch (err) {

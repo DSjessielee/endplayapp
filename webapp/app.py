@@ -20,10 +20,9 @@ from typing import Optional
 
 from flask import Flask, render_template, request, jsonify
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-
-from endplay.types import Deal, Denom, Player
+from endplay.types import Deal, Denom, Player, Vul
 from endplay.dds import calc_dd_table
+from endplay.dds.parscore import par
 
 app = Flask(__name__)
 
@@ -226,6 +225,15 @@ def analyze():
 
     pbn = "N:" + " ".join(hands[p] for p in "NESW")
 
+    vul_str = data.get("vul", "none")
+    dealer_str = data.get("dealer", "N")
+
+    vul_map = {"none": Vul.none, "ns": Vul.ns, "ew": Vul.ew, "both": Vul.both}
+    vul = vul_map.get(vul_str, Vul.none)
+
+    dealer_map = {"N": Player.north, "E": Player.east, "S": Player.south, "W": Player.west}
+    dealer = dealer_map.get(dealer_str, Player.north)
+
     try:
         deal = Deal(pbn)
         table = calc_dd_table(deal)
@@ -246,7 +254,20 @@ def analyze():
             "ew": table[denom, Player.east],
         })
 
-    return jsonify({"pbn": pbn, "results": results, "hands": hands})
+    try:
+        par_result = par(table, vul, dealer)
+        par_score = par_result.score
+        par_contracts = [str(c) for c in par_result]
+    except Exception:
+        par_score = None
+        par_contracts = []
+
+    return jsonify({
+        "pbn": pbn,
+        "results": results,
+        "hands": hands,
+        "par": {"score": par_score, "contracts": par_contracts},
+    })
 
 
 @app.route("/extract-image", methods=["POST"])

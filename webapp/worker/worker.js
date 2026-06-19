@@ -437,7 +437,7 @@ const HTML = `<!DOCTYPE html>
           const canvas = document.createElement('canvas');
           canvas.width = w; canvas.height = h;
           canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-          canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.8);
+          canvas.toBlob(blob => resolve(blob), 'image/png');
         };
         img.src = URL.createObjectURL(file);
       });
@@ -449,7 +449,7 @@ const HTML = `<!DOCTYPE html>
       document.getElementById('autoStatus').textContent = 'Extracting hands from image...';
       const resized = await resizeImage(input.files[0], 1200);
       const formData = new FormData();
-      formData.append('image', resized, 'hand.jpg');
+      formData.append('image', resized, 'hand.png');
       try {
         const resp = await fetch('/extract-image', { method: 'POST', body: formData });
         const data = await resp.json();

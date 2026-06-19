@@ -25,6 +25,13 @@ from endplay.dds import calc_dd_table
 from endplay.dds.parscore import par
 
 app = Flask(__name__)
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+
+
+@app.after_request
+def add_no_cache(response):
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 VALID_RANKS = set("AKQJT98765432")
 ALL_RANKS = "AKQJT98765432"

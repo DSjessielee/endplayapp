@@ -8,22 +8,26 @@
 
 const DDS_API = 'https://bridge-dds-api.onrender.com';
 
-const VISION_PROMPT = `This image shows a bridge hand diagram. Extract all four hands (North, East, South, West).
+const VISION_PROMPT = `This image shows a bridge hand diagram with four hands.
 
-IMPORTANT:
+POSITIONS in the image:
+- NORTH is the hand at the TOP CENTER of the image
+- WEST is the hand on the LEFT SIDE of the image
+- EAST is the hand on the RIGHT SIDE of the image
+- SOUTH is the hand at the BOTTOM CENTER of the image
+
+RULES:
 - List cards by suit in order: spades.hearts.diamonds.clubs
-- Convert ALL instances of "10" to the letter "T" (ten = T)
-- Examples: K10 → KT, A1097 → AT97, Q10952 → QT952, A10652 → AT652
+- Convert ALL "10" to "T" (examples: K10→KT, A1097→AT97, Q10952→QT952, J109642→JT9642)
 - If a suit is void (no cards, shown as — or empty), leave it empty
-- Use only these characters: A K Q J T 9 8 7 6 5 4 3 2
+- Use only: A K Q J T 9 8 7 6 5 4 3 2
+- Ignore any text like "Par", "NS", "EW", board numbers, vulnerability, or dealer info
 
 Respond ONLY with exactly 4 lines, no other text:
 N: <spades>.<hearts>.<diamonds>.<clubs>
 E: <spades>.<hearts>.<diamonds>.<clubs>
 S: <spades>.<hearts>.<diamonds>.<clubs>
-W: <spades>.<hearts>.<diamonds>.<clubs>
-
-Example: N: AQJT93.J943.AK7.`;
+W: <spades>.<hearts>.<diamonds>.<clubs>`;
 
 export default {
   async fetch(request, env) {

@@ -8,22 +8,23 @@
 
 const DDS_API = 'https://bridge-dds-api.onrender.com';
 
-const VISION_PROMPT = `This image shows a bridge hand diagram with four hands.
+const VISION_PROMPT = `This image shows a bridge deal with four hands arranged in compass layout. It may be a screenshot from a bridge app (BBO, FunBridge, etc.), a printed hand diagram, or physical cards laid out on a table.
 
-POSITIONS in the image:
-- NORTH is the hand at the TOP CENTER of the image
-- WEST is the hand on the LEFT SIDE of the image
-- EAST is the hand on the RIGHT SIDE of the image
-- SOUTH is the hand at the BOTTOM CENTER of the image
+LAYOUT (always the same):
+- NORTH = TOP CENTER
+- WEST = LEFT SIDE
+- EAST = RIGHT SIDE
+- SOUTH = BOTTOM CENTER
+Within each hand, suits are shown top to bottom: ♠ spades, ♥ hearts, ♦ diamonds, ♣ clubs. Each suit row has a suit symbol (♠♥♦♣) followed by the card ranks.
 
 RULES:
-- List cards by suit in order: spades.hearts.diamonds.clubs
-- Convert ALL "10" to "T" (examples: K10→KT, A1097→AT97, Q10952→QT952, J109642→JT9642)
-- Read EVERY card carefully — long suits can have 6-7 cards (e.g. J87642 is 6 cards, AKQ10765 is 7 cards). Do not skip any.
-- If a suit is void (no cards, shown as — or empty), leave it empty
-- Each hand must have exactly 13 cards total across all 4 suits
-- Use only: A K Q J T 9 8 7 6 5 4 3 2
-- Ignore any text like "Par", "NS", "EW", board numbers, vulnerability, or dealer info
+- Output suits in order: spades.hearts.diamonds.clubs (separated by dots)
+- Convert ALL "10" to "T": K10→KT, A1097→AT97, Q10952→QT952, A10652→AT652, J109642→JT9642
+- Read EVERY card in each suit carefully — suits can have 0 to 13 cards. Do not skip any.
+- Void suit (no cards, shown as — or empty) = leave empty between dots
+- Each hand must total exactly 13 cards across all 4 suits
+- Use only these characters: A K Q J T 9 8 7 6 5 4 3 2
+- Ignore all other text: player names, board numbers, bidding, par scores, vulnerability, dealer info
 
 Respond ONLY with exactly 4 lines, no other text:
 N: <spades>.<hearts>.<diamonds>.<clubs>

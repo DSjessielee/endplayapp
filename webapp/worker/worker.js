@@ -8,25 +8,27 @@
 
 const DDS_API = 'https://bridge-dds-api.onrender.com';
 
-const VISION_PROMPT = `This image shows a bridge deal with four hands arranged in compass layout. It may be a screenshot from a bridge app (BBO, FunBridge, etc.), a printed hand diagram, or physical cards laid out on a table.
+const VISION_PROMPT = `This image shows a bridge deal with four hands in compass layout. It could be:
+- A screenshot from a bridge app (BBO, FunBridge, etc.)
+- A printed hand diagram on paper
+- Physical playing cards laid out on a table
 
-LAYOUT (always the same):
-- NORTH = TOP CENTER
-- WEST = LEFT SIDE
-- EAST = RIGHT SIDE
-- SOUTH = BOTTOM CENTER
-Within each hand, suits are shown top to bottom: ♠ spades, ♥ hearts, ♦ diamonds, ♣ clubs. Each suit row has a suit symbol (♠♥♦♣) followed by the card ranks.
+LAYOUT:
+- NORTH = the hand at the TOP of the image
+- WEST = the hand on the LEFT
+- EAST = the hand on the RIGHT
+- SOUTH = the hand at the BOTTOM
 
-RULES:
-- Output suits in order: spades.hearts.diamonds.clubs (separated by dots)
-- Convert ALL "10" to "T": K10→KT, A1097→AT97, Q10952→QT952, A10652→AT652, J109642→JT9642
-- Read EVERY card in each suit carefully — suits can have 0 to 13 cards. Do not skip any.
-- Void suit (no cards, shown as — or empty) = leave empty between dots
-- Each hand must total exactly 13 cards across all 4 suits
-- Use only these characters: A K Q J T 9 8 7 6 5 4 3 2
-- Ignore all other text: player names, board numbers, bidding, par scores, vulnerability, dealer info
+For physical cards: cards of the same suit are grouped together. Identify each card by its rank (A K Q J 10 9 8 7 6 5 4 3 2) and suit (spades ♠, hearts ♥, diamonds ♦, clubs ♣). Cards may overlap — look carefully at each one.
 
-Respond ONLY with exactly 4 lines, no other text:
+OUTPUT RULES:
+- List suits in order: spades.hearts.diamonds.clubs (dots between suits)
+- Convert "10" to "T"
+- Read EVERY card — do not skip any. Each hand has exactly 13 cards.
+- Empty suit = nothing between dots (e.g. AK..QJT9764.AKT means no hearts)
+- Use only: A K Q J T 9 8 7 6 5 4 3 2
+
+IMPORTANT: Do NOT explain your reasoning. Do NOT describe what you see. Output ONLY these 4 lines and nothing else:
 N: <spades>.<hearts>.<diamonds>.<clubs>
 E: <spades>.<hearts>.<diamonds>.<clubs>
 S: <spades>.<hearts>.<diamonds>.<clubs>
@@ -98,7 +100,7 @@ async function handleExtractImage(request, env) {
 
   const body = JSON.stringify({
     model: "claude-sonnet-4-6",
-    max_tokens: 300,
+    max_tokens: 500,
     messages: [{
       role: "user",
       content: [
@@ -128,7 +130,7 @@ async function handleExtractImage(request, env) {
   const hands = parseHands(text);
 
   if (!hands) {
-    return jsonResponse({ error: ["Could not parse hands from Claude response"] }, 400);
+    return jsonResponse({ error: ["Could not parse hands from Claude response:", text] }, 400);
   }
 
   return jsonResponse({ hands, method: "claude-vision" });
@@ -142,16 +144,20 @@ async function handleAnalyze(request) {
 
 async function proxyToRender(request, path) {
   const body = await request.text();
-  const resp = await fetch(DDS_API + path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-  });
-  const data = await resp.text();
-  return new Response(data, {
-    status: resp.status,
-    headers: { "Content-Type": "application/json", ...corsHeaders() },
-  });
+  try {
+    const resp = await fetch(DDS_API + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    const data = await resp.text();
+    return new Response(data, {
+      status: resp.status,
+      headers: { "Content-Type": "application/json", ...corsHeaders() },
+    });
+  } catch (e) {
+    return jsonResponse({ error: ["Backend is waking up — please wait 30 seconds and try again."] }, 503);
+  }
 }
 
 // --- Helpers ---
@@ -159,13 +165,39 @@ async function proxyToRender(request, path) {
 function parseHands(text) {
   const hands = {};
   for (const line of text.trim().split("\n")) {
-    const m = line.match(/^\s*([NESW])\s*:\s*(.+)$/);
+    const m = line.match(/([NESW])\s*:\s*(.+)/);
     if (!m) continue;
     let hand = m[2].trim().replace(/10/g, "T");
     hand = hand.replace(/[^AKQJT2-9.]/g, "");
     const parts = hand.split(".");
     if (parts.length === 4) {
       hands[m[1]] = hand;
+    } else if (parts.length > 4) {
+      hands[m[1]] = parts.slice(0, 4).join(".");
+    }
+  }
+  if (Object.keys(hands).length >= 3) return hands;
+
+  // Fallback: try to extract from verbose response
+  // Look for patterns like "NORTH:" or "North:" followed by card descriptions
+  const dirMap = {NORTH:'N', SOUTH:'S', EAST:'E', WEST:'W'};
+  for (const [full, abbr] of Object.entries(dirMap)) {
+    if (hands[abbr]) continue;
+    const re = new RegExp(full + '[^:]*:([\\s\\S]*?)(?=(?:NORTH|SOUTH|EAST|WEST|$))', 'i');
+    const bm = text.match(re);
+    if (!bm) continue;
+    const block = bm[1].replace(/10/g, 'T');
+    const suits = [];
+    for (const suitName of ['Spades?', 'Hearts?', 'Diamonds?', 'Clubs?']) {
+      const sm = block.match(new RegExp(suitName + '[:\\s,]*([AKQJT2-9,\\s]+)', 'i'));
+      if (sm) {
+        suits.push(sm[1].replace(/[^AKQJT2-9]/g, ''));
+      } else {
+        suits.push('');
+      }
+    }
+    if (suits.some(s => s.length > 0)) {
+      hands[abbr] = suits.join('.');
     }
   }
   return Object.keys(hands).length >= 3 ? hands : null;

@@ -669,12 +669,11 @@ const HTML = `<!DOCTYPE html>
         <div class="spinner" id="spinner"></div>
         <div class="auto-status" id="autoStatus"></div>
       </div>
-    </div>
-
-    <div class="results-panel" id="resultsPanel" style="display:none;">
-      <div class="results-title">Double Dummy Results</div>
-      <ul class="result-list" id="resultList"></ul>
-      <div class="par-result" id="parResult" style="display:none;"></div>
+      <div class="results-panel" id="resultsPanel" style="display:none;">
+        <div class="results-title">Double Dummy Results</div>
+        <ul class="result-list" id="resultList"></ul>
+        <div class="par-result" id="parResult" style="display:none;"></div>
+      </div>
     </div>
   </div>
   <div id="tab-play" class="tab-content">

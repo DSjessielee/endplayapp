@@ -348,21 +348,21 @@ const HTML = `<!DOCTYPE html>
       touch-action: manipulation;
     }
     button:active { transform: scale(0.95); }
-    .btn-analyze { background: #2a82bd; color: #1a1a2e; flex: 1; min-width: 100px; }
-    .btn-analyze:hover { background: #1e6fa0; }
+    .btn-analyze { background: #3498db; color: #1a1a2e; flex: 1; min-width: 100px; }
+    .btn-analyze:hover { background: #2980b9; }
     .btn-analyze:disabled { background: #555; cursor: not-allowed; }
     .btn-clear { background: #8899aa; color: #1a1a2e; }
     .btn-clear:hover { background: #778899; }
     .btn-upload { background: #3498db; color: #1a1a2e; font-size: 0.84rem; }
     .btn-upload:hover { background: #2980b9; }
-    .btn-swap { background: #864; color: #1a1a2e; font-size: 0.75rem; padding: 7px 10px; }
-    .btn-swap:hover { background: #975; }
+    .btn-swap { background: #c9a96e; color: #1a1a2e; font-size: 0.75rem; padding: 7px 10px; }
+    .btn-swap:hover { background: #b8944a; }
     .swap-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
     #imageInput { display: none; }
 
     .auto-status {
       font-size: 0.75rem;
-      color: #8cf;
+      color: #1a5276;
       min-height: 1em;
       text-align: center;
     }
@@ -386,7 +386,7 @@ const HTML = `<!DOCTYPE html>
     .result-item .strain { font-weight: 700; font-size: 1rem; }
     .result-item .strain.red { color: #f66; }
     .result-item .strain.black { color: #1a1a2e; }
-    .result-item .strain.nt { color: #8cf; }
+    .result-item .strain.nt { color: #1a5276; }
     .result-item .tricks { color: #556; font-size: 0.82rem; margin-top: 2px; }
     .par-result {
       margin-top: 10px;
@@ -459,7 +459,7 @@ const HTML = `<!DOCTYPE html>
     .eval-row:last-child { border-bottom: none; }
     .eval-label { color: #667; }
     .eval-value { color: #1a1a2e; font-weight: 600; }
-    .eval-desc { text-align: center; font-size: 0.78rem; color: #8cf; margin-top: 6px; font-style: italic; }
+    .eval-desc { text-align: center; font-size: 0.78rem; color: #1a5276; margin-top: 6px; font-style: italic; }
     /* Play tab */
     .play-container { width: 100%; max-width: 500px; }
     .play-setup { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; align-items: center; }
@@ -488,8 +488,8 @@ const HTML = `<!DOCTYPE html>
     .play-info { display: flex; justify-content: center; gap: 20px; margin-top: 10px; font-size: 0.9rem; }
     .play-info .tricks-ns { color: #1a8040; } .play-info .tricks-ew { color: #c0392b; }
     .play-btns { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
-    .btn-undo { background: #864; color: #1a1a2e; font-size: 0.82rem; padding: 8px 16px; }
-    .btn-undo:hover { background: #975; }
+    .btn-undo { background: #c9a96e; color: #1a1a2e; font-size: 0.82rem; padding: 8px 16px; }
+    .btn-undo:hover { background: #b8944a; }
     .spinner {
       display: none;
       margin: 8px auto;
@@ -672,7 +672,7 @@ const HTML = `<!DOCTYPE html>
         <div class="play-info">
           <span class="tricks-ns">N/S: <strong id="play-ns">0</strong></span>
           <span class="tricks-ew">E/W: <strong id="play-ew">0</strong></span>
-          <span id="play-status" style="color:#8cf;"></span>
+          <span id="play-status" style="color:#1a5276;"></span>
         </div>
         <div class="play-btns">
           <button class="btn-undo" onclick="undoPlay()">Undo</button>
@@ -1191,7 +1191,7 @@ const HTML = `<!DOCTYPE html>
               }
               const diff = decTricks - needed;
               let hintText, hintColor;
-              if (diff === 0) { hintText = '='; hintColor = '#2a82bd'; }
+              if (diff === 0) { hintText = '='; hintColor = '#1a5276'; }
               else if (diff > 0) { hintText = '+' + diff; hintColor = '#1a8040'; }
               else { hintText = '' + diff; hintColor = '#c0392b'; }
               btn.innerHTML = rank + '<span class="dd-hint" style="color:' + hintColor + '">' + hintText + '</span>';

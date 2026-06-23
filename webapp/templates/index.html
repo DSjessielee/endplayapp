@@ -506,6 +506,8 @@
         <div class="play-btns">
           <button class="btn-undo" onclick="undoPlay()">Undo</button>
           <button class="btn-clear" onclick="resetPlay()">Reset</button>
+          <button class="btn-analyze" onclick="exportPBN()" style="font-size:0.82rem;padding:8px 14px;">Save .pbn</button>
+          <button class="btn-analyze" onclick="exportLIN()" style="font-size:0.82rem;padding:8px 14px;">Save .lin</button>
         </div>
       </div>
     </div>
@@ -1233,6 +1235,82 @@
       } else {
         fetchSolve();
       }
+    }
+
+    // ---- EXPORT ----
+    function getExportHands() {
+      const hands = {};
+      DIRS.forEach(d => { hands[d] = buildPbnHand(d); });
+      return hands;
+    }
+
+    function downloadFile(filename, content) {
+      const blob = new Blob([content], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function exportPBN() {
+      const h = getExportHands();
+      const dealer = document.getElementById('dealerSelect').value;
+      const vulSel = document.getElementById('vulSelect').value;
+      const vulMap = { none: 'None', ns: 'NS', ew: 'EW', both: 'All' };
+      const vul = vulMap[vulSel] || 'None';
+      const pbn = 'N:' + h.N + ' ' + h.E + ' ' + h.S + ' ' + h.W;
+      const level = document.getElementById('play-level').value;
+      const trumpSel = document.getElementById('play-trump').value;
+      const trump = trumpSel === 'NT' ? 'NT' : trumpSel;
+      const declarer = document.getElementById('play-declarer').value;
+      const contract = level + trump;
+      const today = new Date();
+      const dateStr = today.getFullYear() + '.' + String(today.getMonth()+1).padStart(2,'0') + '.' + String(today.getDate()).padStart(2,'0');
+
+      const lines = [
+        '% PBN 2.1',
+        '[Event ""]',
+        '[Site "Bridge Double Dummy Analyzer"]',
+        '[Date "' + dateStr + '"]',
+        '[Board "1"]',
+        '[West "West"]',
+        '[North "North"]',
+        '[East "East"]',
+        '[South "South"]',
+        '[Dealer "' + dealer + '"]',
+        '[Vulnerable "' + vul + '"]',
+        '[Deal "' + pbn + '"]',
+        '[Declarer "' + declarer + '"]',
+        '[Contract "' + contract + '"]',
+        '[Result ""]',
+        '',
+      ];
+      downloadFile('deal.pbn', lines.join('\n'));
+    }
+
+    function exportLIN() {
+      const h = getExportHands();
+      const dealer = document.getElementById('dealerSelect').value;
+      const dealerNum = { S: '1', W: '2', N: '3', E: '4' };
+      const vulSel = document.getElementById('vulSelect').value;
+      const svMap = { none: 'o', ns: 'n', ew: 'e', both: 'b' };
+      const sv = svMap[vulSel] || 'o';
+
+      function handToLIN(pbnHand) {
+        const parts = pbnHand.split('.');
+        return 'S' + parts[0] + 'H' + parts[1] + 'D' + parts[2] + 'C' + parts[3];
+      }
+
+      const order = ['S','W','N','E'];
+      const dIdx = order.indexOf(dealer);
+      const hands = [];
+      for (let i = 0; i < 3; i++) {
+        hands.push(handToLIN(h[order[(dIdx + i) % 4]]));
+      }
+
+      const lin = 'pn|South,West,North,East|st||md|' + dealerNum[dealer] + hands.join(',') + ',|sv|' + sv + '|';
+      downloadFile('deal.lin', lin);
     }
   </script>
 </body>

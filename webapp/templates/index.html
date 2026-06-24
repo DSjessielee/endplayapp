@@ -203,7 +203,10 @@
       border-left: 4px solid #2a82bd;
       font-size: 0.9rem;
       line-height: 1.5;
+      cursor: pointer;
+      transition: background 0.15s;
     }
+    .result-item:hover { background: #e8f4fc; }
     .result-item .strain { font-weight: 700; font-size: 1rem; }
     .result-item .strain.red { color: #f66; }
     .result-item .strain.black { color: #1a1a2e; }
@@ -773,6 +776,7 @@
         list.innerHTML = '';
         const colorMap = {'♣': 'black', '♦': 'red', '♥': 'red', '♠': 'black', 'NT': 'nt'};
 
+        const trumpMap = {'♣':'C','♦':'D','♥':'H','♠':'S','NT':'NT'};
         data.results.forEach(r => {
           const li = document.createElement('li');
           li.className = 'result-item';
@@ -784,6 +788,19 @@
             </div>
             <div class="tricks">N: ${r.north} &nbsp; E: ${r.east} &nbsp; S: ${r.south} &nbsp; W: ${r.west}</div>
           `;
+          li.onclick = function() {
+            var players = {N: r.north, E: r.east, S: r.south, W: r.west};
+            var best = 'N', bestTricks = 0;
+            for (var d in players) {
+              if (players[d] > bestTricks) { bestTricks = players[d]; best = d; }
+            }
+            var level = Math.max(1, Math.min(7, bestTricks - 6));
+            document.getElementById('play-level').value = level;
+            document.getElementById('play-trump').value = trumpMap[r.symbol] || 'NT';
+            document.getElementById('play-declarer').value = best;
+            switchTab('play');
+            startPlay();
+          };
           list.appendChild(li);
         });
 

@@ -1302,9 +1302,13 @@ const HTML = `<!DOCTYPE html>
                 setHand(emptyDir, remaining);
                 document.getElementById('autoStatus').textContent =
                   DIR_NAMES[emptyDir] + ' auto-filled with remaining cards';
-              } else if (total > 0) {
+              } else if (total > 0 && total <= 13) {
+                setHand(emptyDir, remaining);
                 document.getElementById('autoStatus').textContent =
-                  DIR_NAMES[emptyDir] + ' could not auto-fill (' + total + ' cards remaining — check other hands)';
+                  DIR_NAMES[emptyDir] + ' auto-filled (' + total + ' cards — verify, expected 13)';
+              } else {
+                document.getElementById('autoStatus').textContent =
+                  DIR_NAMES[emptyDir] + ': ' + total + ' cards remaining — check other hands for errors';
               }
             } else if (loadedCount < 3) {
               document.getElementById('autoStatus').textContent =
@@ -1321,7 +1325,7 @@ const HTML = `<!DOCTYPE html>
           }
           var autoStatus = document.getElementById('autoStatus');
           var autoMsg = autoStatus.textContent;
-          if (autoMsg && autoMsg.indexOf('auto-filled') !== -1) {
+          if (autoMsg && (autoMsg.indexOf('auto-fill') !== -1 || autoMsg.indexOf('hands loaded') !== -1)) {
             statusMsg += ' | ' + autoMsg;
           }
           autoStatus.textContent = statusMsg;

@@ -135,8 +135,8 @@ async function handleExtractImage(request, env) {
   const prompt = isSingle ? SINGLE_HAND_PROMPT : VISION_PROMPT;
 
   const body = JSON.stringify({
-    model: "claude-sonnet-4-6",
-    max_tokens: isSingle ? 1000 : 500,
+    model: isSingle ? "claude-haiku-4-5-20251001" : "claude-sonnet-4-6",
+    max_tokens: isSingle ? 600 : 500,
     messages: [{
       role: "user",
       content: [

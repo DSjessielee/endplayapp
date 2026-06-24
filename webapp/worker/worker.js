@@ -574,11 +574,11 @@ const HTML = `<!DOCTYPE html>
     .play-hand.north { grid-area: north; } .play-hand.south { grid-area: south; }
     .play-hand.west { grid-area: west; } .play-hand.east { grid-area: east; }
     .play-hand .hand-title { text-align: center; font-weight: 600; font-size: 0.78rem; color: #2a6496; margin-bottom: 4px; }
-    .play-suit { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 2px; align-items: center; }
+    .play-suit { display: flex; flex-wrap: nowrap; gap: 1px; margin-bottom: 2px; align-items: center; }
     .play-suit .suit-sym { font-size: 0.9rem; width: 16px; text-align: center; flex-shrink: 0; }
     .play-suit .suit-sym.spade { color: #111; } .play-suit .suit-sym.heart { color: #d22; }
     .play-suit .suit-sym.diamond { color: #d22; } .play-suit .suit-sym.club { color: #111; }
-    .play-card { position: relative; padding: 3px 5px 10px 5px; border: 1px solid #a0c4d8; border-radius: 3px; background: #f0f7fb; color: #556; font-family: 'SF Mono','Consolas',monospace; font-size: 0.8rem; cursor: default; user-select: none; -webkit-tap-highlight-color: transparent; min-width: 22px; text-align: center; }
+    .play-card { position: relative; padding: 3px 4px 10px 4px; border: 1px solid #a0c4d8; border-radius: 3px; background: #f0f7fb; color: #556; font-family: 'SF Mono','Consolas',monospace; font-size: 0.8rem; cursor: default; user-select: none; -webkit-tap-highlight-color: transparent; min-width: 0; text-align: center; flex-shrink: 1; }
     .play-card.playable { cursor: pointer; color: #1a1a2e; background: #e0f0fa; border-color: #2a82bd; }
     .play-card.playable:hover { background: #c8e4f8; }
     .play-card.best { color: #1a8040; font-weight: 700; }
@@ -665,6 +665,13 @@ const HTML = `<!DOCTYPE html>
       }
       .hand-box { max-width: 160px; }
       .compass-rose { width: 56px; height: 56px; }
+    }
+
+    /* ---- Landscape phone ---- */
+    @media (orientation: landscape) and (max-height: 500px) {
+      .play-hand { max-width: 200px; }
+      .play-card { padding: 2px 3px 9px 3px; font-size: 0.75rem; }
+      .play-suit { gap: 1px; }
     }
   </style>
 </head>

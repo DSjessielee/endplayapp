@@ -520,8 +520,8 @@
         <div class="play-btns">
           <button class="btn-undo" onclick="undoPlay()">Undo</button>
           <button class="btn-clear" onclick="resetPlay()">Reset</button>
-          <button class="btn-analyze" onclick="exportPBN()" style="font-size:0.82rem;padding:8px 14px;">Save .pbn</button>
-          <button class="btn-analyze" onclick="exportLIN()" style="font-size:0.82rem;padding:8px 14px;">Save .lin</button>
+          <button class="btn-analyze" onclick="showExportModal('pbn')" style="font-size:0.82rem;padding:8px 14px;">Save .pbn</button>
+          <button class="btn-analyze" onclick="showExportModal('lin')" style="font-size:0.82rem;padding:8px 14px;">Save .lin</button>
         </div>
       </div>
     </div>
@@ -596,6 +596,22 @@
     </div>
   </div>
 
+  <div class="crop-overlay" id="exportOverlay">
+    <div style="background:#fff;border-radius:10px;padding:20px;max-width:340px;width:90%;color:#1a1a2e;">
+      <div style="font-weight:600;font-size:1rem;margin-bottom:12px;color:#2a6496;" id="exportTitle">Export</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="font-size:0.82rem;color:#667;">North <input id="ex-north" style="width:100%;padding:6px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.85rem;" value="North"></label>
+        <label style="font-size:0.82rem;color:#667;">South <input id="ex-south" style="width:100%;padding:6px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.85rem;" value="South"></label>
+        <label style="font-size:0.82rem;color:#667;">East <input id="ex-east" style="width:100%;padding:6px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.85rem;" value="East"></label>
+        <label style="font-size:0.82rem;color:#667;">West <input id="ex-west" style="width:100%;padding:6px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.85rem;" value="West"></label>
+        <label style="font-size:0.82rem;color:#667;">Board # <input id="ex-board" type="number" min="1" style="width:80px;padding:6px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.85rem;" value="1"></label>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px;justify-content:center;">
+        <button class="btn-analyze" id="exportConfirmBtn" style="font-size:0.85rem;padding:8px 20px;">Save</button>
+        <button class="btn-clear" onclick="document.getElementById('exportOverlay').classList.remove('active')" style="font-size:0.85rem;padding:8px 20px;">Cancel</button>
+      </div>
+    </div>
+  </div>
   <div id="errorBox" class="error-msg" style="display:none;"></div>
 
   <script>
@@ -1338,7 +1354,34 @@
       URL.revokeObjectURL(a.href);
     }
 
-    function exportPBN() {
+    var exportBoardNum = 1;
+    var pendingExportType = 'pbn';
+
+    function showExportModal(type) {
+      pendingExportType = type;
+      var today = new Date();
+      var dateStr = today.getFullYear() + '.' + String(today.getMonth()+1).padStart(2,'0') + '.' + String(today.getDate()).padStart(2,'0');
+      document.getElementById('exportTitle').textContent = 'Save .' + type + ' — ' + dateStr;
+      document.getElementById('ex-board').value = exportBoardNum;
+      document.getElementById('exportOverlay').classList.add('active');
+    }
+
+    document.getElementById('exportConfirmBtn').addEventListener('click', function() {
+      var names = {
+        N: document.getElementById('ex-north').value || 'North',
+        S: document.getElementById('ex-south').value || 'South',
+        E: document.getElementById('ex-east').value || 'East',
+        W: document.getElementById('ex-west').value || 'West',
+      };
+      var boardNum = parseInt(document.getElementById('ex-board').value) || exportBoardNum;
+      exportBoardNum = boardNum + 1;
+      document.getElementById('exportOverlay').classList.remove('active');
+
+      if (pendingExportType === 'pbn') doExportPBN(names, boardNum);
+      else doExportLIN(names, boardNum);
+    });
+
+    function doExportPBN(names, boardNum) {
       const h = getExportHands();
       const dealer = document.getElementById('dealerSelect').value;
       const vulSel = document.getElementById('vulSelect').value;
@@ -1358,11 +1401,11 @@
         '[Event ""]',
         '[Site "Bridge Double Dummy Analyzer"]',
         '[Date "' + dateStr + '"]',
-        '[Board "1"]',
-        '[West "West"]',
-        '[North "North"]',
-        '[East "East"]',
-        '[South "South"]',
+        '[Board "' + boardNum + '"]',
+        '[West "' + names.W + '"]',
+        '[North "' + names.N + '"]',
+        '[East "' + names.E + '"]',
+        '[South "' + names.S + '"]',
         '[Dealer "' + dealer + '"]',
         '[Vulnerable "' + vul + '"]',
         '[Deal "' + pbn + '"]',
@@ -1371,10 +1414,10 @@
         '[Result ""]',
         '',
       ];
-      downloadFile('deal.pbn', lines.join('\n'));
+      downloadFile('board' + boardNum + '.pbn', lines.join('\n'));
     }
 
-    function exportLIN() {
+    function doExportLIN(names, boardNum) {
       const h = getExportHands();
       const dealer = document.getElementById('dealerSelect').value;
       const dealerNum = { S: '1', W: '2', N: '3', E: '4' };
@@ -1394,8 +1437,9 @@
         hands.push(handToLIN(h[order[(dIdx + i) % 4]]));
       }
 
-      const lin = 'pn|South,West,North,East|st||md|' + dealerNum[dealer] + hands.join(',') + ',|sv|' + sv + '|';
-      downloadFile('deal.lin', lin);
+      const pn = names.S + ',' + names.W + ',' + names.N + ',' + names.E;
+      const lin = 'pn|' + pn + '|st||md|' + dealerNum[dealer] + hands.join(',') + ',|sv|' + sv + '|';
+      downloadFile('board' + boardNum + '.lin', lin);
     }
   </script>
 </body>

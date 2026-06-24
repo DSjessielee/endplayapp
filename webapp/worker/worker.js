@@ -1282,28 +1282,33 @@ const HTML = `<!DOCTYPE html>
 
           if (targetDir) {
             imageLoadedDirs.add(targetDir);
-            if (imageLoadedDirs.size >= 3) {
-              var missing = DIRS.filter(function(d) { return !imageLoadedDirs.has(d); });
-              if (missing.length === 1) {
-                var emptyDir = missing[0];
-                var remaining = [0,1,2,3].map(function(suit) {
-                  var allOfSuit = new Set(ALL_RANKS.split(''));
-                  DIRS.forEach(function(dir) {
-                    if (dir === emptyDir) return;
-                    var cards = getHand(dir)[suit].toUpperCase();
-                    for (var ci = 0; ci < cards.length; ci++) allOfSuit.delete(cards[ci]);
-                  });
-                  return Array.from(allOfSuit).sort(function(a,b) {
-                    return ALL_RANKS.indexOf(a) - ALL_RANKS.indexOf(b);
-                  }).join('');
+            var loadedCount = imageLoadedDirs.size;
+            var missing = DIRS.filter(function(d) { return !imageLoadedDirs.has(d); });
+            if (loadedCount >= 3 && missing.length === 1) {
+              var emptyDir = missing[0];
+              var remaining = [0,1,2,3].map(function(suit) {
+                var allOfSuit = new Set(ALL_RANKS.split(''));
+                DIRS.forEach(function(dir) {
+                  if (dir === emptyDir) return;
+                  var cards = getHand(dir)[suit].toUpperCase();
+                  for (var ci = 0; ci < cards.length; ci++) allOfSuit.delete(cards[ci]);
                 });
-                var total = remaining.reduce(function(s, r) { return s + r.length; }, 0);
-                if (total === 13) {
-                  setHand(emptyDir, remaining);
-                  document.getElementById('autoStatus').textContent =
-                    DIR_NAMES[emptyDir] + ' auto-filled with remaining cards';
-                }
+                return Array.from(allOfSuit).sort(function(a,b) {
+                  return ALL_RANKS.indexOf(a) - ALL_RANKS.indexOf(b);
+                }).join('');
+              });
+              var total = remaining.reduce(function(s, r) { return s + r.length; }, 0);
+              if (total === 13) {
+                setHand(emptyDir, remaining);
+                document.getElementById('autoStatus').textContent =
+                  DIR_NAMES[emptyDir] + ' auto-filled with remaining cards';
+              } else if (total > 0) {
+                document.getElementById('autoStatus').textContent =
+                  DIR_NAMES[emptyDir] + ' could not auto-fill (' + total + ' cards remaining — check other hands)';
               }
+            } else if (loadedCount < 3) {
+              document.getElementById('autoStatus').textContent =
+                loadedCount + ' of 3 hands loaded — ' + DIR_NAMES[missing[0]] + ' will auto-fill after one more';
             }
           } else {
             tryAutoPopulate();

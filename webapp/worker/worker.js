@@ -1696,7 +1696,8 @@ const HTML = `<!DOCTYPE html>
         '[Result ""]',
         '',
       ];
-      downloadFile('board' + boardNum + '.pbn', lines.join('\\n'));
+      var fdate = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+      downloadFile(fdate + '_board' + boardNum + '.pbn', lines.join('\\n'));
     }
 
     function doExportLIN(names, boardNum) {
@@ -1721,7 +1722,9 @@ const HTML = `<!DOCTYPE html>
 
       var pn = names.S + ',' + names.W + ',' + names.N + ',' + names.E;
       var lin = 'pn|' + pn + '|st||md|' + dealerNum[dealer] + hands.join(',') + ',|sv|' + sv + '|';
-      downloadFile('board' + boardNum + '.lin', lin);
+      var today = new Date();
+      var fdate = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+      downloadFile(fdate + '_board' + boardNum + '.lin', lin);
     }
   </script>
 </body>

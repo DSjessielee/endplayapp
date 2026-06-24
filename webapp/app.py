@@ -71,6 +71,38 @@ VISION_PROMPT = (
     "Example: N: AJ7.653.AK7.KJ76"
 )
 
+SINGLE_HAND_PROMPT = (
+    "This image shows a SINGLE bridge hand (13 cards for one player).\n"
+    "It could be from a bridge app screenshot, printed diagram, or physical cards.\n\n"
+    "STEP 1 — IDENTIFY EACH CARD:\n"
+    "Look at each card's CORNER INDEX (top-left corner) which shows a "
+    "RANK and a SUIT SYMBOL printed together.\n"
+    "- Read the rank: A, K, Q, J, 10, 9, 8, 7, 6, 5, 4, 3, or 2\n"
+    "- Read the suit symbol right next to it on the SAME card:\n"
+    "  Spade = black, pointed top like an upside-down heart with a stem\n"
+    "  Heart = red, classic heart shape\n"
+    "  Diamond = red, rotated square / rhombus shape\n"
+    "  Club = black, three round lobes like a clover with a stem\n"
+    "- Cards may be fanned/overlapping — check EVERY visible corner\n"
+    "- Face cards (K, Q, J) have artwork but the rank+suit is always in the corner\n"
+    "- Do NOT guess suit from color alone — always read the actual symbol\n\n"
+    "List each card you find, one per line, as: <rank> of <suit>\n"
+    "Example:\n"
+    "5 of hearts\n"
+    "K of spades\n"
+    "A of clubs\n"
+    "...\n\n"
+    "STEP 2 — COUNT AND VERIFY:\n"
+    "Count your list. A bridge hand has exactly 13 cards. "
+    "If you have more or fewer, re-examine.\n\n"
+    "STEP 3 — FORMAT OUTPUT:\n"
+    "On your FINAL line, group by suit (spades.hearts.diamonds.clubs), "
+    "ranks high-to-low, convert 10 to T.\n"
+    "Empty suit = nothing between dots.\n\n"
+    "Your final line must be exactly:\n"
+    "HAND: <spades>.<hearts>.<diamonds>.<clubs>"
+)
+
 
 def extract_hands_via_claude(image_bytes: bytes, media_type: str) -> Optional[dict[str, str]]:
     """Use Claude Vision API to extract bridge hands from an image."""
@@ -123,6 +155,52 @@ def _parse_hands_from_response(text: str) -> Optional[dict[str, str]]:
         if len(parts) == 4:
             hands[player] = hand
     return hands if len(hands) >= 3 else None
+
+
+def _extract_single_hand(image_bytes: bytes, media_type: str, direction: str) -> Optional[dict[str, str]]:
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return None
+
+    image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
+
+    body = json.dumps({
+        "model": "claude-sonnet-4-6",
+        "max_tokens": 1000,
+        "messages": [{"role": "user", "content": [
+            {"type": "image", "source": {
+                "type": "base64", "media_type": media_type, "data": image_data}},
+            {"type": "text", "text": SINGLE_HAND_PROMPT},
+        ]}],
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=body,
+        headers={
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        result = json.loads(resp.read())
+
+    text = result["content"][0]["text"]
+    lines = text.strip().split("\n")
+    hand_line = lines[-1]
+    for line in reversed(lines):
+        if re.search(r"HAND\s*:", line, re.IGNORECASE) or re.search(r"[AKQJT2-9]+\.[AKQJT2-9]*\.[AKQJT2-9]*\.[AKQJT2-9]*", line):
+            hand_line = line
+            break
+    hand = hand_line.replace("10", "T")
+    hand = re.sub(r"^.*HAND\s*:\s*", "", hand, flags=re.IGNORECASE)
+    hand = re.sub(r"^[NESW]\s*:\s*", "", hand)
+    hand = re.sub(r"[^AKQJT2-9.]", "", hand)
+    parts = hand.split(".")
+    if len(parts) >= 4:
+        hand = ".".join(parts[:4])
+    return {direction: hand} if hand else None
 
 
 # ---------------------------------------------------------------------------
@@ -428,6 +506,17 @@ def extract_image():
                       "  set ANTHROPIC_API_KEY=sk-ant-your-key\n"
                       "  python webapp/app.py"]
         }), 400
+
+    direction = request.form.get("direction")
+
+    if direction and direction in "NESW":
+        try:
+            hands = _extract_single_hand(image_bytes, media_type, direction)
+        except Exception as e:
+            return jsonify({"error": [f"Claude API error: {e}"]}), 400
+        if not hands:
+            return jsonify({"error": ["Could not extract hand from image."]}), 400
+        return jsonify({"hands": hands, "method": "claude-vision"})
 
     try:
         hands = extract_hands_via_claude(image_bytes, media_type)

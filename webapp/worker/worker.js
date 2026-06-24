@@ -34,6 +34,38 @@ E: <spades>.<hearts>.<diamonds>.<clubs>
 S: <spades>.<hearts>.<diamonds>.<clubs>
 W: <spades>.<hearts>.<diamonds>.<clubs>`;
 
+const SINGLE_HAND_PROMPT = `This image shows a SINGLE bridge hand (13 cards for one player).
+It could be from a bridge app screenshot, printed diagram, or physical cards.
+
+STEP 1 — IDENTIFY EACH CARD:
+Look at each card's CORNER INDEX (top-left corner) which shows a RANK and a SUIT SYMBOL printed together.
+- Read the rank: A, K, Q, J, 10, 9, 8, 7, 6, 5, 4, 3, or 2
+- Read the suit symbol right next to it on the SAME card:
+  Spade = black, pointed top like an upside-down heart with a stem
+  Heart = red, classic heart shape
+  Diamond = red, rotated square / rhombus shape
+  Club = black, three round lobes like a clover with a stem
+- Cards may be fanned/overlapping — check EVERY visible corner
+- Face cards (K, Q, J) have artwork but the rank+suit is always in the corner
+- Do NOT guess suit from color alone — always read the actual symbol
+
+List each card you find, one per line, as: <rank> of <suit>
+Example:
+5 of hearts
+K of spades
+A of clubs
+...
+
+STEP 2 — COUNT AND VERIFY:
+Count your list. A bridge hand has exactly 13 cards. If you have more or fewer, re-examine.
+
+STEP 3 — FORMAT OUTPUT:
+On your FINAL line, group by suit (spades.hearts.diamonds.clubs), ranks high-to-low, convert 10 to T.
+Empty suit = nothing between dots.
+
+Your final line must be exactly:
+HAND: <spades>.<hearts>.<diamonds>.<clubs>`;
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -98,14 +130,18 @@ async function handleExtractImage(request, env) {
   const mediaTypes = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif", webp: "image/webp" };
   const mediaType = mediaTypes[ext] || "image/jpeg";
 
+  const direction = formData.get("direction");
+  const isSingle = direction && ['N','E','S','W'].includes(direction);
+  const prompt = isSingle ? SINGLE_HAND_PROMPT : VISION_PROMPT;
+
   const body = JSON.stringify({
     model: "claude-sonnet-4-6",
-    max_tokens: 500,
+    max_tokens: isSingle ? 1000 : 500,
     messages: [{
       role: "user",
       content: [
         { type: "image", source: { type: "base64", media_type: mediaType, data: base64 } },
-        { type: "text", text: VISION_PROMPT },
+        { type: "text", text: prompt },
       ],
     }],
   });
@@ -127,6 +163,27 @@ async function handleExtractImage(request, env) {
 
   const result = await resp.json();
   const text = result.content[0].text;
+
+  if (isSingle) {
+    const lines = text.trim().split("\n");
+    let handLine = lines[lines.length - 1];
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (lines[i].match(/HAND\s*:|[AKQJT2-9]+\.[AKQJT2-9]*\.[AKQJT2-9]*\.[AKQJT2-9]*/)) {
+        handLine = lines[i];
+        break;
+      }
+    }
+    let hand = handLine.replace(/10/g, "T");
+    hand = hand.replace(/^.*HAND\s*:\s*/i, "");
+    hand = hand.replace(/^[NESW]\s*:\s*/, "");
+    hand = hand.replace(/[^AKQJT2-9.]/g, "");
+    const parts = hand.split(".");
+    if (parts.length >= 4) {
+      hand = parts.slice(0, 4).join(".");
+    }
+    return jsonResponse({ hands: { [direction]: hand }, method: "claude-vision" });
+  }
+
   const hands = parseHands(text);
 
   if (!hands) {
@@ -316,7 +373,17 @@ const HTML = `<!DOCTYPE html>
       font-size: 0.82rem;
       color: #2a6496;
       margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
     }
+    .btn-hand-img {
+      background: none; border: 1px solid #a0c4d8; border-radius: 4px;
+      padding: 1px 4px; font-size: 0.7rem; cursor: pointer; color: #2a6496;
+      line-height: 1; flex-shrink: 0;
+    }
+    .btn-hand-img:hover { background: #e0f0fa; }
     .suit-row {
       display: flex;
       align-items: center;
@@ -611,7 +678,7 @@ const HTML = `<!DOCTYPE html>
     <div id="tab-dds" class="tab-content active" style="display:flex; flex-direction:column; align-items:center;">
       <div class="compass">
         <div class="hand-box north" id="box-north">
-          <div class="hand-title">North</div>
+          <div class="hand-title"><span>North</span><button class="btn-hand-img" onclick="loadSingleHand('N')">&#128247;</button></div>
           <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="N" data-suit="0" placeholder="AKQ" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="N" data-suit="1" placeholder="JT9" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="N" data-suit="2" placeholder="876" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
@@ -619,7 +686,7 @@ const HTML = `<!DOCTYPE html>
         </div>
 
         <div class="hand-box west" id="box-west">
-          <div class="hand-title">West</div>
+          <div class="hand-title"><span>West</span><button class="btn-hand-img" onclick="loadSingleHand('W')">&#128247;</button></div>
           <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="W" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="W" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="W" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
@@ -636,7 +703,7 @@ const HTML = `<!DOCTYPE html>
         </div>
 
         <div class="hand-box east" id="box-east">
-          <div class="hand-title">East</div>
+          <div class="hand-title"><span>East</span><button class="btn-hand-img" onclick="loadSingleHand('E')">&#128247;</button></div>
           <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="E" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="E" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="E" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
@@ -644,7 +711,7 @@ const HTML = `<!DOCTYPE html>
         </div>
 
         <div class="hand-box south" id="box-south">
-          <div class="hand-title">South</div>
+          <div class="hand-title"><span>South</span><button class="btn-hand-img" onclick="loadSingleHand('S')">&#128247;</button></div>
           <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="S" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="S" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="S" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
@@ -676,6 +743,7 @@ const HTML = `<!DOCTYPE html>
           <button class="btn-clear" onclick="clearAll()">Clear</button>
           <button class="btn-upload" onclick="document.getElementById('imageInput').click()">Load Image</button>
           <input type="file" id="imageInput" accept="image/*" onchange="uploadImage(this)" />
+          <input type="file" id="singleHandInput" accept="image/*" onchange="handleSingleHandFile(this)" style="display:none;" />
         </div>
         <div class="swap-row">
           <button class="btn-swap" onclick="swapHands('N','S')">N&#8596;S</button>
@@ -931,6 +999,7 @@ const HTML = `<!DOCTYPE html>
       document.getElementById('resultsPanel').style.display = 'none';
       document.getElementById('parResult').style.display = 'none';
       document.getElementById('autoStatus').textContent = '';
+      if (typeof imageLoadedDirs !== 'undefined') imageLoadedDirs.clear();
       showError(null);
     }
 
@@ -1122,6 +1191,7 @@ const HTML = `<!DOCTYPE html>
       document.getElementById('cropOverlay').classList.remove('active');
       cropImg = null; cropRect = null;
       document.getElementById('imageInput').value = '';
+      document.getElementById('singleHandInput').value = '';
     }
 
     document.getElementById('cropCancelBtn').addEventListener('click', closeCropModal);
@@ -1148,10 +1218,13 @@ const HTML = `<!DOCTYPE html>
     async function sendImageForExtraction(blob) {
       showError(null);
       showSpinner(true);
-      document.getElementById('autoStatus').textContent = 'Extracting hands from image...';
+      var targetDir = singleHandDir;
+      var label = targetDir ? DIR_NAMES[targetDir] + ' hand' : 'hands';
+      document.getElementById('autoStatus').textContent = 'Extracting ' + label + ' from image...';
 
       var formData = new FormData();
       formData.append('image', blob, 'hand.png');
+      if (targetDir) formData.append('direction', targetDir);
 
       try {
         var resp = await fetch('/extract-image', { method: 'POST', body: formData });
@@ -1165,26 +1238,61 @@ const HTML = `<!DOCTYPE html>
         }
 
         if (data.hands) {
-          DIRS.forEach(function(dir) {
+          var dirsToFill = targetDir ? [targetDir] : DIRS;
+          dirsToFill.forEach(function(dir) {
             var hand = data.hands[dir] || '';
             var suits = hand.split('.');
             var inputs = getInputs(dir);
             suits.forEach(function(s, i) { if (inputs[i]) inputs[i].value = s; });
           });
-          tryAutoPopulate();
 
-          var statusMsg = 'Image loaded via ' + (data.method || 'OCR');
+          if (targetDir) {
+            imageLoadedDirs.add(targetDir);
+            if (imageLoadedDirs.size >= 3) {
+              var missing = DIRS.filter(function(d) { return !imageLoadedDirs.has(d); });
+              if (missing.length === 1) {
+                var emptyDir = missing[0];
+                var remaining = [0,1,2,3].map(function(suit) {
+                  var allOfSuit = new Set(ALL_RANKS.split(''));
+                  DIRS.forEach(function(dir) {
+                    if (dir === emptyDir) return;
+                    var cards = getHand(dir)[suit].toUpperCase();
+                    for (var ci = 0; ci < cards.length; ci++) allOfSuit.delete(cards[ci]);
+                  });
+                  return Array.from(allOfSuit).sort(function(a,b) {
+                    return ALL_RANKS.indexOf(a) - ALL_RANKS.indexOf(b);
+                  }).join('');
+                });
+                var total = remaining.reduce(function(s, r) { return s + r.length; }, 0);
+                if (total === 13) {
+                  setHand(emptyDir, remaining);
+                  document.getElementById('autoStatus').textContent =
+                    DIR_NAMES[emptyDir] + ' auto-filled with remaining cards';
+                }
+              }
+            }
+          } else {
+            tryAutoPopulate();
+          }
+
+          var statusMsg = label + ' loaded via ' + (data.method || 'OCR');
           if (data.warnings && data.warnings.length > 0) {
             statusMsg += ' — check for OCR errors';
             showError(data.warnings);
           }
-          document.getElementById('autoStatus').textContent = statusMsg;
+          var autoStatus = document.getElementById('autoStatus');
+          var autoMsg = autoStatus.textContent;
+          if (autoMsg && autoMsg.indexOf('auto-filled') !== -1) {
+            statusMsg += ' | ' + autoMsg;
+          }
+          autoStatus.textContent = statusMsg;
         }
       } catch (err) {
         showError([err.message]);
         document.getElementById('autoStatus').textContent = '';
       }
       showSpinner(false);
+      singleHandDir = null;
     }
 
     document.getElementById('cropUseBtn').addEventListener('click', async function() {
@@ -1200,7 +1308,21 @@ const HTML = `<!DOCTYPE html>
       if (blob) await sendImageForExtraction(blob);
     });
 
+    var singleHandDir = null;
+    var imageLoadedDirs = new Set();
+
     function uploadImage(input) {
+      if (!input.files || !input.files[0]) return;
+      singleHandDir = null;
+      openCropModal(input.files[0]);
+    }
+
+    function loadSingleHand(dir) {
+      singleHandDir = dir;
+      document.getElementById('singleHandInput').click();
+    }
+
+    function handleSingleHandFile(input) {
       if (!input.files || !input.files[0]) return;
       openCropModal(input.files[0]);
     }

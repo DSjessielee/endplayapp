@@ -1410,7 +1410,10 @@ const HTML = `<!DOCTYPE html>
         const curIdx = playerOrder.indexOf(data.curplayer);
         const leaderIdx = (curIdx - data.curtrick.length + 4) % 4;
         const whoPlayed = playerOrder[(leaderIdx + i) % 4];
-        document.getElementById('tc-' + whoPlayed).textContent = cardStr;
+        const el = document.getElementById('tc-' + whoPlayed);
+        el.textContent = cardStr;
+        const isRed = cardStr[0] === '♥' || cardStr[0] === '♦';
+        el.style.color = isRed ? '#d22' : '#111';
       });
 
       // Update trick count from play history

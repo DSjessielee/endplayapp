@@ -706,13 +706,17 @@ const HTML = `<!DOCTYPE html>
 <body>
   <!-- Auth bar -->
   <div class="auth-bar" id="authBar">
-    <span id="authStatus"></span>
+    <span id="authStatus"><button class="btn-auth" onclick="showAuthModal()">Log In / Sign Up</button></span>
   </div>
 
   <!-- Login/Signup Modal -->
   <div class="modal-overlay" id="authModal">
     <div class="modal">
       <h2 id="authTitle">Log In</h2>
+      <button class="btn-auth" style="background:#fff;color:#333;border:1px solid #ccc;" onclick="googleSignIn()">
+        <span style="font-size:1.1em;vertical-align:middle;">G</span> Sign in with Google
+      </button>
+      <div class="divider">or use email</div>
       <input type="email" id="authEmail" placeholder="Email" />
       <input type="password" id="authPassword" placeholder="Password" />
       <div id="promoRow" style="display:none;">
@@ -720,8 +724,9 @@ const HTML = `<!DOCTYPE html>
       </div>
       <button class="btn-auth" id="authSubmit" onclick="authSubmit()">Log In</button>
       <div class="switch-link" id="authSwitch" onclick="toggleAuthMode()">Don't have an account? Sign Up</div>
+      <div class="switch-link" id="forgotLink" onclick="forgotPassword()">Forgot password?</div>
       <div class="auth-msg" id="authMsg"></div>
-      <div class="divider">or</div>
+      <div style="height:8px;"></div>
       <button class="btn-auth" style="background:#8899aa;" onclick="closeAuthModal()">Cancel</button>
     </div>
   </div>
@@ -1877,11 +1882,13 @@ const HTML = `<!DOCTYPE html>
         document.getElementById('authSubmit').textContent = 'Sign Up';
         document.getElementById('authSwitch').textContent = 'Already have an account? Log In';
         document.getElementById('promoRow').style.display = 'block';
+        document.getElementById('forgotLink').style.display = 'none';
       } else {
         document.getElementById('authTitle').textContent = 'Log In';
         document.getElementById('authSubmit').textContent = 'Log In';
         document.getElementById('authSwitch').textContent = "Don't have an account? Sign Up";
         document.getElementById('promoRow').style.display = 'none';
+        document.getElementById('forgotLink').style.display = 'block';
       }
       document.getElementById('authMsg').textContent = '';
     }
@@ -1900,20 +1907,19 @@ const HTML = `<!DOCTYPE html>
         const { data, error } = await sb.auth.signUp({ email, password });
         if (error) { msgEl.textContent = error.message; msgEl.className = 'auth-msg err'; return; }
 
-        // Apply promo code if provided
+        // Save promo code for after login
         const promoCode = document.getElementById('authPromo').value.trim().toUpperCase();
-        if (promoCode && data.user) {
-          await applyPromoCode(data.user.id, promoCode, msgEl);
-        }
+        if (promoCode) localStorage.setItem('pendingPromo', promoCode);
 
-        if (data.user && !data.user.confirmed_at) {
-          msgEl.textContent = 'Check your email to confirm your account!';
-          msgEl.className = 'auth-msg ok';
-        } else {
+        if (data.session) {
           currentUser = data.user;
+          if (promoCode) await applyPromoCode(data.user.id, promoCode, msgEl);
           await loadSubscription();
           updateAuthUI();
           closeAuthModal();
+        } else {
+          msgEl.textContent = 'Check your email to confirm your account!';
+          msgEl.className = 'auth-msg ok';
         }
       } else {
         const { data, error } = await sb.auth.signInWithPassword({ email, password });
@@ -1992,6 +1998,29 @@ const HTML = `<!DOCTYPE html>
       }
     }
 
+    async function googleSignIn() {
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+      if (error) {
+        document.getElementById('authMsg').textContent = error.message;
+        document.getElementById('authMsg').className = 'auth-msg err';
+      }
+    }
+
+    async function forgotPassword() {
+      const email = document.getElementById('authEmail').value.trim();
+      const msgEl = document.getElementById('authMsg');
+      if (!email) { msgEl.textContent = 'Enter your email first'; msgEl.className = 'auth-msg err'; return; }
+      msgEl.textContent = 'Sending reset link...'; msgEl.className = 'auth-msg';
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://funbridge.cc',
+      });
+      if (error) { msgEl.textContent = error.message; msgEl.className = 'auth-msg err'; }
+      else { msgEl.textContent = 'Check your email for the reset link!'; msgEl.className = 'auth-msg ok'; }
+    }
+
     function gatedLoadSingleHand(dir) {
       if (!currentUser) { showAuthModal(); return; }
       if (!isPaid()) { showPromoModal(); return; }
@@ -2005,8 +2034,21 @@ const HTML = `<!DOCTYPE html>
       updateAuthUI();
     }
 
-    // Check session on page load
+    // Check session on page load (handles OAuth redirect too)
     (async () => {
+      // Handle OAuth callback tokens in URL hash
+      if (window.location.hash && window.location.hash.includes('access_token')) {
+        const { data, error } = await sb.auth.getSession();
+        if (data.session) {
+          currentUser = data.session.user;
+          await loadSubscription();
+          updateAuthUI();
+          closeAuthModal();
+          // Clean up URL
+          window.history.replaceState({}, '', window.location.pathname);
+          return;
+        }
+      }
       const { data: { session } } = await sb.auth.getSession();
       if (session) {
         currentUser = session.user;
@@ -2018,8 +2060,17 @@ const HTML = `<!DOCTYPE html>
     // Listen for auth changes
     sb.auth.onAuthStateChange(async (event, session) => {
       currentUser = session?.user || null;
-      if (currentUser) await loadSubscription();
-      else currentSub = null;
+      if (currentUser) {
+        // Apply pending promo code from signup
+        const pendingPromo = localStorage.getItem('pendingPromo');
+        if (pendingPromo) {
+          localStorage.removeItem('pendingPromo');
+          await applyPromoCode(currentUser.id, pendingPromo, null);
+        }
+        await loadSubscription();
+      } else {
+        currentSub = null;
+      }
       updateAuthUI();
     });
   </script>

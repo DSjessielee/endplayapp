@@ -284,8 +284,36 @@ const HTML = `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Bridge Double Dummy Analyzer</title>
+  <title>FunBridge</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+  <meta name="theme-color" content="#2a82bd">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
+    /* Auth UI */
+    .auth-bar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; width: 100%; max-width: 900px; margin-bottom: 8px; font-size: 0.8rem; }
+    .auth-bar .user-email { color: #2a6496; }
+    .btn-auth { background: #3498db; color: #1a1a2e; border: none; border-radius: 6px; padding: 6px 14px; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+    .btn-auth:hover { background: #2980b9; }
+    .btn-auth.logout { background: #8899aa; }
+    .btn-auth.upgrade { background: #e67e22; color: #fff; }
+    .btn-auth.upgrade:hover { background: #d35400; }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 24px; width: 90%; max-width: 360px; }
+    .modal h2 { color: #1a3a5c; font-size: 1.1rem; margin-bottom: 16px; text-align: center; }
+    .modal input { width: 100%; padding: 10px; border: 1px solid #a0c4d8; border-radius: 6px; font-size: 0.9rem; margin-bottom: 10px; outline: none; }
+    .modal input:focus { border-color: #2a82bd; }
+    .modal .btn-auth { width: 100%; padding: 10px; font-size: 0.9rem; margin-bottom: 8px; }
+    .modal .switch-link { text-align: center; font-size: 0.78rem; color: #2a6496; cursor: pointer; }
+    .modal .switch-link:hover { text-decoration: underline; }
+    .modal .auth-msg { text-align: center; font-size: 0.78rem; margin-top: 8px; min-height: 1.2em; }
+    .modal .auth-msg.err { color: #c0392b; }
+    .modal .auth-msg.ok { color: #1a8040; }
+    .modal .divider { text-align: center; color: #889; font-size: 0.78rem; margin: 10px 0; }
+    .sub-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; }
+    .sub-badge.free { background: #e8e8e8; color: #555; }
+    .sub-badge.pro { background: #e8f8e8; color: #1a8040; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { -webkit-text-size-adjust: 100%; }
     body {
@@ -676,7 +704,41 @@ const HTML = `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <h1>Bridge Double Dummy Analyzer</h1>
+  <!-- Auth bar -->
+  <div class="auth-bar" id="authBar">
+    <span id="authStatus"></span>
+  </div>
+
+  <!-- Login/Signup Modal -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal">
+      <h2 id="authTitle">Log In</h2>
+      <input type="email" id="authEmail" placeholder="Email" />
+      <input type="password" id="authPassword" placeholder="Password" />
+      <div id="promoRow" style="display:none;">
+        <input type="text" id="authPromo" placeholder="Promo code (optional)" style="text-transform:uppercase;" />
+      </div>
+      <button class="btn-auth" id="authSubmit" onclick="authSubmit()">Log In</button>
+      <div class="switch-link" id="authSwitch" onclick="toggleAuthMode()">Don't have an account? Sign Up</div>
+      <div class="auth-msg" id="authMsg"></div>
+      <div class="divider">or</div>
+      <button class="btn-auth" style="background:#8899aa;" onclick="closeAuthModal()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Promo Code Modal (for logged-in users) -->
+  <div class="modal-overlay" id="promoModal">
+    <div class="modal">
+      <h2>Enter Promo Code</h2>
+      <input type="text" id="promoInput" placeholder="PROMO CODE" style="text-transform:uppercase;" />
+      <button class="btn-auth" onclick="redeemPromo()">Redeem</button>
+      <div class="auth-msg" id="promoMsg"></div>
+      <div class="divider">or</div>
+      <button class="btn-auth" style="background:#8899aa;" onclick="closePromoModal()">Cancel</button>
+    </div>
+  </div>
+
+  <h1>FunBridge</h1>
   <p class="subtitle">Enter cards by suit, or upload a screenshot</p>
   <div class="tabs">
     <div class="tab active" onclick="switchTab('dds')">DD Analyzer</div>
@@ -688,7 +750,7 @@ const HTML = `<!DOCTYPE html>
     <div id="tab-dds" class="tab-content active" style="display:flex; flex-direction:column; align-items:center;">
       <div class="compass">
         <div class="hand-box north" id="box-north">
-          <div class="hand-title"><span>North</span><button class="btn-hand-img" onclick="loadSingleHand('N')">&#128247;</button></div>
+          <div class="hand-title"><span>North</span><button class="btn-hand-img" onclick="gatedLoadSingleHand('N')">&#128247;</button></div>
           <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="N" data-suit="0" placeholder="AKQ" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="N" data-suit="1" placeholder="JT9" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="N" data-suit="2" placeholder="876" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
@@ -696,7 +758,7 @@ const HTML = `<!DOCTYPE html>
         </div>
 
         <div class="hand-box west" id="box-west">
-          <div class="hand-title"><span>West</span><button class="btn-hand-img" onclick="loadSingleHand('W')">&#128247;</button></div>
+          <div class="hand-title"><span>West</span><button class="btn-hand-img" onclick="gatedLoadSingleHand('W')">&#128247;</button></div>
           <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="W" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="W" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="W" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
@@ -713,7 +775,7 @@ const HTML = `<!DOCTYPE html>
         </div>
 
         <div class="hand-box east" id="box-east">
-          <div class="hand-title"><span>East</span><button class="btn-hand-img" onclick="loadSingleHand('E')">&#128247;</button></div>
+          <div class="hand-title"><span>East</span><button class="btn-hand-img" onclick="gatedLoadSingleHand('E')">&#128247;</button></div>
           <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="E" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="E" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="E" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
@@ -721,7 +783,7 @@ const HTML = `<!DOCTYPE html>
         </div>
 
         <div class="hand-box south" id="box-south">
-          <div class="hand-title"><span>South</span><button class="btn-hand-img" onclick="loadSingleHand('S')">&#128247;</button></div>
+          <div class="hand-title"><span>South</span><button class="btn-hand-img" onclick="gatedLoadSingleHand('S')">&#128247;</button></div>
           <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="S" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="S" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
           <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="S" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
@@ -881,6 +943,7 @@ const HTML = `<!DOCTYPE html>
       <button class="btn-crop-cancel" id="cropCancelBtn">Cancel</button>
     </div>
   </div>
+
   <div class="crop-overlay" id="exportOverlay">
     <div style="background:#fff;border-radius:10px;padding:20px;max-width:340px;width:90%;color:#1a1a2e;">
       <div style="font-weight:600;font-size:1rem;margin-bottom:12px;color:#2a6496;" id="exportTitle">Export</div>
@@ -893,7 +956,7 @@ const HTML = `<!DOCTYPE html>
       </div>
       <div style="display:flex;gap:10px;margin-top:14px;justify-content:center;">
         <button class="btn-analyze" id="exportConfirmBtn" style="font-size:0.85rem;padding:8px 20px;">Save</button>
-        <button class="btn-crop-cancel" onclick="document.getElementById('exportOverlay').classList.remove('active')" style="font-size:0.85rem;padding:8px 20px;">Cancel</button>
+        <button class="btn-clear" onclick="document.getElementById('exportOverlay').classList.remove('active')" style="font-size:0.85rem;padding:8px 20px;">Cancel</button>
       </div>
     </div>
   </div>
@@ -1081,7 +1144,6 @@ const HTML = `<!DOCTYPE html>
         data.results.forEach(r => {
           const li = document.createElement('li');
           li.className = 'result-item';
-          li.style.cursor = 'pointer';
           li.innerHTML = \`
             <div><span class="strain \${colorMap[r.symbol] || 'black'}">\${r.symbol} \${r.name}</span></div>
             <div class="tricks">
@@ -1145,24 +1207,24 @@ const HTML = `<!DOCTYPE html>
     }
 
     // ---- CROP LOGIC ----
-    var cropImg = null;
-    var cropRect = null;
-    var cropDragging = false;
-    var cropStart = null;
-    var cropScale = 1;
+    let cropImg = null;
+    let cropRect = null;
+    let cropDragging = false;
+    let cropStart = null;
+    let cropScale = 1;
 
     function openCropModal(file) {
-      var overlay = document.getElementById('cropOverlay');
-      var canvas = document.getElementById('cropCanvas');
-      var ctx = canvas.getContext('2d');
+      const overlay = document.getElementById('cropOverlay');
+      const canvas = document.getElementById('cropCanvas');
+      const ctx = canvas.getContext('2d');
       cropRect = null;
       document.getElementById('cropUseBtn').disabled = true;
 
-      var img = new Image();
-      img.onload = function() {
+      const img = new Image();
+      img.onload = () => {
         cropImg = img;
-        var maxW = Math.min(window.innerWidth * 0.88, 800);
-        var maxH = window.innerHeight * 0.58;
+        const maxW = Math.min(window.innerWidth * 0.88, 800);
+        const maxH = window.innerHeight * 0.58;
         cropScale = Math.min(maxW / img.width, maxH / img.height, 1);
         canvas.width = Math.round(img.width * cropScale);
         canvas.height = Math.round(img.height * cropScale);
@@ -1173,8 +1235,8 @@ const HTML = `<!DOCTYPE html>
     }
 
     function drawCrop() {
-      var canvas = document.getElementById('cropCanvas');
-      var ctx = canvas.getContext('2d');
+      const canvas = document.getElementById('cropCanvas');
+      const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(cropImg, 0, 0, canvas.width, canvas.height);
       if (cropRect) {
@@ -1192,13 +1254,13 @@ const HTML = `<!DOCTYPE html>
     }
 
     function getCanvasPos(e, canvas) {
-      var rect = canvas.getBoundingClientRect();
-      var t = e.touches ? e.touches[0] : e;
+      const rect = canvas.getBoundingClientRect();
+      const t = e.touches ? e.touches[0] : e;
       return { x: t.clientX - rect.left, y: t.clientY - rect.top };
     }
 
     (function() {
-      var canvas = document.getElementById('cropCanvas');
+      const canvas = document.getElementById('cropCanvas');
       function onStart(e) {
         e.preventDefault();
         cropDragging = true;
@@ -1208,18 +1270,16 @@ const HTML = `<!DOCTYPE html>
       function onMove(e) {
         if (!cropDragging || !cropStart) return;
         e.preventDefault();
-        var pos = getCanvasPos(e, canvas);
-        var x = Math.min(cropStart.x, pos.x);
-        var y = Math.min(cropStart.y, pos.y);
-        var w = Math.abs(pos.x - cropStart.x);
-        var h = Math.abs(pos.y - cropStart.y);
-        cropRect = { x: x, y: y, w: w, h: h };
+        const pos = getCanvasPos(e, canvas);
+        const x = Math.min(cropStart.x, pos.x);
+        const y = Math.min(cropStart.y, pos.y);
+        const w = Math.abs(pos.x - cropStart.x);
+        const h = Math.abs(pos.y - cropStart.y);
+        cropRect = { x, y, w, h };
         document.getElementById('cropUseBtn').disabled = (w < 10 || h < 10);
         drawCrop();
       }
-      function onEnd() {
-        cropDragging = false;
-      }
+      function onEnd() { cropDragging = false; }
       canvas.addEventListener('mousedown', onStart);
       canvas.addEventListener('mousemove', onMove);
       canvas.addEventListener('mouseup', onEnd);
@@ -1238,23 +1298,26 @@ const HTML = `<!DOCTYPE html>
     document.getElementById('cropCancelBtn').addEventListener('click', closeCropModal);
 
     function getCroppedBlob() {
-      return new Promise(function(resolve) {
+      return new Promise(resolve => {
         if (!cropImg) { resolve(null); return; }
-        var c = document.createElement('canvas');
-        var sx, sy, sw, sh;
+        const c = document.createElement('canvas');
+        let sx, sy, sw, sh;
         if (cropRect && cropRect.w > 10 && cropRect.h > 10) {
           sx = cropRect.x / cropScale; sy = cropRect.y / cropScale;
           sw = cropRect.w / cropScale; sh = cropRect.h / cropScale;
         } else {
           sx = 0; sy = 0; sw = cropImg.width; sh = cropImg.height;
         }
-        var maxW = 1200;
-        var scale = Math.min(maxW / sw, 1);
+        const maxW = 1200;
+        const scale = Math.min(maxW / sw, 1);
         c.width = Math.round(sw * scale); c.height = Math.round(sh * scale);
         c.getContext('2d').drawImage(cropImg, sx, sy, sw, sh, 0, 0, c.width, c.height);
-        c.toBlob(function(blob) { resolve(blob); }, 'image/png');
+        c.toBlob(blob => resolve(blob), 'image/png');
       });
     }
+
+    var singleHandDir = null;
+    var imageLoadedDirs = new Set();
 
     async function sendImageForExtraction(blob) {
       showError(null);
@@ -1263,13 +1326,13 @@ const HTML = `<!DOCTYPE html>
       var label = targetDir ? DIR_NAMES[targetDir] + ' hand' : 'hands';
       document.getElementById('autoStatus').textContent = 'Extracting ' + label + ' from image...';
 
-      var formData = new FormData();
+      const formData = new FormData();
       formData.append('image', blob, 'hand.png');
       if (targetDir) formData.append('direction', targetDir);
 
       try {
-        var resp = await fetch('/extract-image', { method: 'POST', body: formData });
-        var data = await resp.json();
+        const resp = await fetch('/extract-image', { method: 'POST', body: formData });
+        const data = await resp.json();
 
         if (!resp.ok) {
           showError(data.error || ['Image extraction failed']);
@@ -1281,58 +1344,49 @@ const HTML = `<!DOCTYPE html>
         if (data.hands) {
           var dirsToFill = targetDir ? [targetDir] : DIRS;
           dirsToFill.forEach(function(dir) {
-            var hand = data.hands[dir] || '';
-            var suits = hand.split('.');
-            var inputs = getInputs(dir);
-            suits.forEach(function(s, i) { if (inputs[i]) inputs[i].value = s; });
+            const hand = data.hands[dir] || '';
+            const suits = hand.split('.');
+            const inputs = getInputs(dir);
+            suits.forEach((s, i) => { if (inputs[i]) inputs[i].value = s; });
           });
 
           if (targetDir) {
             imageLoadedDirs.add(targetDir);
-            var loadedCount = imageLoadedDirs.size;
-            var missing = DIRS.filter(function(d) { return !imageLoadedDirs.has(d); });
-            if (loadedCount >= 3 && missing.length === 1) {
-              var emptyDir = missing[0];
-              var remaining = [0,1,2,3].map(function(suit) {
-                var allOfSuit = new Set(ALL_RANKS.split(''));
-                DIRS.forEach(function(dir) {
-                  if (dir === emptyDir) return;
-                  var cards = getHand(dir)[suit].toUpperCase();
-                  for (var ci = 0; ci < cards.length; ci++) allOfSuit.delete(cards[ci]);
+            if (imageLoadedDirs.size >= 3) {
+              var missing = DIRS.filter(d => !imageLoadedDirs.has(d));
+              if (missing.length === 1) {
+                var emptyDir = missing[0];
+                var remaining = [0,1,2,3].map(function(suit) {
+                  var allOfSuit = new Set(ALL_RANKS.split(''));
+                  DIRS.forEach(function(dir) {
+                    if (dir === emptyDir) return;
+                    var cards = getHand(dir)[suit].toUpperCase();
+                    for (var ci = 0; ci < cards.length; ci++) allOfSuit.delete(cards[ci]);
+                  });
+                  return Array.from(allOfSuit).sort(function(a,b) {
+                    return ALL_RANKS.indexOf(a) - ALL_RANKS.indexOf(b);
+                  }).join('');
                 });
-                return Array.from(allOfSuit).sort(function(a,b) {
-                  return ALL_RANKS.indexOf(a) - ALL_RANKS.indexOf(b);
-                }).join('');
-              });
-              var total = remaining.reduce(function(s, r) { return s + r.length; }, 0);
-              if (total === 13) {
-                setHand(emptyDir, remaining);
-                document.getElementById('autoStatus').textContent =
-                  DIR_NAMES[emptyDir] + ' auto-filled with remaining cards';
-              } else if (total > 0 && total <= 13) {
-                setHand(emptyDir, remaining);
-                document.getElementById('autoStatus').textContent =
-                  DIR_NAMES[emptyDir] + ' auto-filled (' + total + ' cards — verify, expected 13)';
-              } else {
-                document.getElementById('autoStatus').textContent =
-                  DIR_NAMES[emptyDir] + ': ' + total + ' cards remaining — check other hands for errors';
+                var total = remaining.reduce(function(s, r) { return s + r.length; }, 0);
+                if (total === 13) {
+                  setHand(emptyDir, remaining);
+                  document.getElementById('autoStatus').textContent =
+                    DIR_NAMES[emptyDir] + ' auto-filled with remaining cards';
+                }
               }
-            } else if (loadedCount < 3) {
-              document.getElementById('autoStatus').textContent =
-                loadedCount + ' of 3 hands loaded — ' + DIR_NAMES[missing[0]] + ' will auto-fill after one more';
             }
           } else {
             tryAutoPopulate();
           }
 
-          var statusMsg = label + ' loaded via ' + (data.method || 'OCR');
+          let statusMsg = label + ' loaded via ' + (data.method || 'OCR');
           if (data.warnings && data.warnings.length > 0) {
             statusMsg += ' — check for OCR errors';
             showError(data.warnings);
           }
           var autoStatus = document.getElementById('autoStatus');
           var autoMsg = autoStatus.textContent;
-          if (autoMsg && (autoMsg.indexOf('auto-fill') !== -1 || autoMsg.indexOf('hands loaded') !== -1)) {
+          if (autoMsg && autoMsg.indexOf('auto-filled') !== -1) {
             statusMsg += ' | ' + autoMsg;
           }
           autoStatus.textContent = statusMsg;
@@ -1345,21 +1399,18 @@ const HTML = `<!DOCTYPE html>
       singleHandDir = null;
     }
 
-    document.getElementById('cropUseBtn').addEventListener('click', async function() {
-      var blob = await getCroppedBlob();
+    document.getElementById('cropUseBtn').addEventListener('click', async () => {
+      const blob = await getCroppedBlob();
       closeCropModal();
       if (blob) await sendImageForExtraction(blob);
     });
 
-    document.getElementById('cropFullBtn').addEventListener('click', async function() {
+    document.getElementById('cropFullBtn').addEventListener('click', async () => {
       cropRect = null;
-      var blob = await getCroppedBlob();
+      const blob = await getCroppedBlob();
       closeCropModal();
       if (blob) await sendImageForExtraction(blob);
     });
-
-    var singleHandDir = null;
-    var imageLoadedDirs = new Set();
 
     function uploadImage(input) {
       if (!input.files || !input.files[0]) return;
@@ -1637,14 +1688,14 @@ const HTML = `<!DOCTYPE html>
 
     // ---- EXPORT ----
     function getExportHands() {
-      var hands = {};
-      DIRS.forEach(function(d) { hands[d] = buildPbnHand(d); });
+      const hands = {};
+      DIRS.forEach(d => { hands[d] = buildPbnHand(d); });
       return hands;
     }
 
     function downloadFile(filename, content) {
-      var blob = new Blob([content], { type: 'text/plain' });
-      var a = document.createElement('a');
+      const blob = new Blob([content], { type: 'text/plain' });
+      const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = filename;
       a.click();
@@ -1679,22 +1730,21 @@ const HTML = `<!DOCTYPE html>
     });
 
     function doExportPBN(names, boardNum) {
-      var h = getExportHands();
-      var dealer = document.getElementById('dealerSelect').value;
-      var vulSel = document.getElementById('vulSelect').value;
-      var vulMap = { none: 'None', ns: 'NS', ew: 'EW', both: 'All' };
-      var vul = vulMap[vulSel] || 'None';
-      var pbn = 'N:' + h.N + ' ' + h.E + ' ' + h.S + ' ' + h.W;
-      var level = document.getElementById('play-level').value;
-      var trumpSel = document.getElementById('play-trump').value;
-      var trumpMap = { C: 'C', D: 'D', H: 'H', S: 'S', NT: 'NT' };
-      var trump = trumpMap[trumpSel] || 'NT';
-      var declarer = document.getElementById('play-declarer').value;
-      var contract = level + trump;
-      var today = new Date();
-      var dateStr = today.getFullYear() + '.' + String(today.getMonth()+1).padStart(2,'0') + '.' + String(today.getDate()).padStart(2,'0');
+      const h = getExportHands();
+      const dealer = document.getElementById('dealerSelect').value;
+      const vulSel = document.getElementById('vulSelect').value;
+      const vulMap = { none: 'None', ns: 'NS', ew: 'EW', both: 'All' };
+      const vul = vulMap[vulSel] || 'None';
+      const pbn = 'N:' + h.N + ' ' + h.E + ' ' + h.S + ' ' + h.W;
+      const level = document.getElementById('play-level').value;
+      const trumpSel = document.getElementById('play-trump').value;
+      const trump = trumpSel === 'NT' ? 'NT' : trumpSel;
+      const declarer = document.getElementById('play-declarer').value;
+      const contract = level + trump;
+      const today = new Date();
+      const dateStr = today.getFullYear() + '.' + String(today.getMonth()+1).padStart(2,'0') + '.' + String(today.getDate()).padStart(2,'0');
 
-      var lines = [
+      const lines = [
         '% PBN 2.1',
         '[Event ""]',
         '[Site "Bridge Double Dummy Analyzer"]',
@@ -1717,31 +1767,261 @@ const HTML = `<!DOCTYPE html>
     }
 
     function doExportLIN(names, boardNum) {
-      var h = getExportHands();
-      var dealer = document.getElementById('dealerSelect').value;
-      var dealerNum = { S: '1', W: '2', N: '3', E: '4' };
-      var vulSel = document.getElementById('vulSelect').value;
-      var svMap = { none: 'o', ns: 'n', ew: 'e', both: 'b' };
-      var sv = svMap[vulSel] || 'o';
+      const h = getExportHands();
+      const dealer = document.getElementById('dealerSelect').value;
+      const dealerNum = { S: '1', W: '2', N: '3', E: '4' };
+      const vulSel = document.getElementById('vulSelect').value;
+      const svMap = { none: 'o', ns: 'n', ew: 'e', both: 'b' };
+      const sv = svMap[vulSel] || 'o';
 
       function handToLIN(pbnHand) {
-        var parts = pbnHand.split('.');
+        const parts = pbnHand.split('.');
         return 'S' + parts[0] + 'H' + parts[1] + 'D' + parts[2] + 'C' + parts[3];
       }
 
-      var order = ['S','W','N','E'];
-      var dIdx = order.indexOf(dealer);
-      var hands = [];
-      for (var i = 0; i < 3; i++) {
+      const order = ['S','W','N','E'];
+      const dIdx = order.indexOf(dealer);
+      const hands = [];
+      for (let i = 0; i < 3; i++) {
         hands.push(handToLIN(h[order[(dIdx + i) % 4]]));
       }
 
-      var pn = names.S + ',' + names.W + ',' + names.N + ',' + names.E;
-      var lin = 'pn|' + pn + '|st||md|' + dealerNum[dealer] + hands.join(',') + ',|sv|' + sv + '|';
+      const pn = names.S + ',' + names.W + ',' + names.N + ',' + names.E;
+      const lin = 'pn|' + pn + '|st||md|' + dealerNum[dealer] + hands.join(',') + ',|sv|' + sv + '|';
       var today = new Date();
       var fdate = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
       downloadFile(fdate + 'Board' + boardNum + '.lin', lin);
     }
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    }
+  </script>
+  <script>
+    // ---- AUTH SYSTEM ----
+    const SUPABASE_URL = 'https://fmvkmzwksmcndknetocp.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable__ObAoCIk-3ARzwt4L8bnjw_A1sFQQMk';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser = null;
+    let currentSub = null;
+    let authMode = 'login';
+
+    function isPaid() {
+      if (!currentSub) return false;
+      return currentSub.status === 'active' && new Date(currentSub.expires_at) > new Date();
+    }
+
+    function updateAuthUI() {
+      const bar = document.getElementById('authStatus');
+      const uploadBtn = document.querySelector('.btn-upload');
+
+      if (currentUser) {
+        const badge = isPaid()
+          ? '<span class="sub-badge pro">PRO</span>'
+          : '<span class="sub-badge free">FREE</span>';
+        let btns = '<button class="btn-auth logout" onclick="logOut()">Log Out</button>';
+        if (!isPaid()) {
+          btns = '<button class="btn-auth upgrade" onclick="showPromoModal()">Upgrade</button>' + btns;
+        }
+        bar.innerHTML = '<span class="user-email">' + currentUser.email + '</span> ' + badge + ' ' + btns;
+
+        if (uploadBtn) {
+          if (isPaid()) {
+            uploadBtn.onclick = function() { document.getElementById('imageInput').click(); };
+            uploadBtn.textContent = 'Load Image';
+            uploadBtn.style.opacity = '1';
+          } else {
+            uploadBtn.onclick = function() { showPromoModal(); };
+            uploadBtn.textContent = 'Load Image (PRO)';
+            uploadBtn.style.opacity = '0.7';
+          }
+        }
+      } else {
+        bar.innerHTML = '<button class="btn-auth" onclick="showAuthModal()">Log In / Sign Up</button>';
+        if (uploadBtn) {
+          uploadBtn.onclick = function() { showAuthModal(); };
+          uploadBtn.textContent = 'Load Image (PRO)';
+          uploadBtn.style.opacity = '0.7';
+        }
+      }
+    }
+
+    async function loadSubscription() {
+      if (!currentUser) { currentSub = null; return; }
+      const { data } = await sb.from('subscriptions').select('*').eq('user_id', currentUser.id).single();
+      currentSub = data;
+    }
+
+    function showAuthModal() {
+      authMode = 'login';
+      document.getElementById('authTitle').textContent = 'Log In';
+      document.getElementById('authSubmit').textContent = 'Log In';
+      document.getElementById('authSwitch').textContent = "Don't have an account? Sign Up";
+      document.getElementById('promoRow').style.display = 'none';
+      document.getElementById('authMsg').textContent = '';
+      document.getElementById('authEmail').value = '';
+      document.getElementById('authPassword').value = '';
+      document.getElementById('authModal').classList.add('show');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.remove('show');
+    }
+
+    function toggleAuthMode() {
+      authMode = authMode === 'login' ? 'signup' : 'login';
+      if (authMode === 'signup') {
+        document.getElementById('authTitle').textContent = 'Sign Up';
+        document.getElementById('authSubmit').textContent = 'Sign Up';
+        document.getElementById('authSwitch').textContent = 'Already have an account? Log In';
+        document.getElementById('promoRow').style.display = 'block';
+      } else {
+        document.getElementById('authTitle').textContent = 'Log In';
+        document.getElementById('authSubmit').textContent = 'Log In';
+        document.getElementById('authSwitch').textContent = "Don't have an account? Sign Up";
+        document.getElementById('promoRow').style.display = 'none';
+      }
+      document.getElementById('authMsg').textContent = '';
+    }
+
+    async function authSubmit() {
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const msgEl = document.getElementById('authMsg');
+
+      if (!email || !password) { msgEl.textContent = 'Email and password required'; msgEl.className = 'auth-msg err'; return; }
+      if (password.length < 6) { msgEl.textContent = 'Password must be at least 6 characters'; msgEl.className = 'auth-msg err'; return; }
+
+      msgEl.textContent = 'Please wait...'; msgEl.className = 'auth-msg';
+
+      if (authMode === 'signup') {
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) { msgEl.textContent = error.message; msgEl.className = 'auth-msg err'; return; }
+
+        // Apply promo code if provided
+        const promoCode = document.getElementById('authPromo').value.trim().toUpperCase();
+        if (promoCode && data.user) {
+          await applyPromoCode(data.user.id, promoCode, msgEl);
+        }
+
+        if (data.user && !data.user.confirmed_at) {
+          msgEl.textContent = 'Check your email to confirm your account!';
+          msgEl.className = 'auth-msg ok';
+        } else {
+          currentUser = data.user;
+          await loadSubscription();
+          updateAuthUI();
+          closeAuthModal();
+        }
+      } else {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) { msgEl.textContent = error.message; msgEl.className = 'auth-msg err'; return; }
+        currentUser = data.user;
+        await loadSubscription();
+        updateAuthUI();
+        closeAuthModal();
+      }
+    }
+
+    async function applyPromoCode(userId, code, msgEl) {
+      // Check promo code
+      const { data: promo, error } = await sb.from('promo_codes')
+        .select('*').eq('code', code).single();
+
+      if (error || !promo) {
+        if (msgEl) { msgEl.textContent = 'Invalid promo code'; msgEl.className = 'auth-msg err'; }
+        return false;
+      }
+      if (promo.times_used >= promo.max_uses) {
+        if (msgEl) { msgEl.textContent = 'Promo code fully redeemed'; msgEl.className = 'auth-msg err'; }
+        return false;
+      }
+      if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+        if (msgEl) { msgEl.textContent = 'Promo code expired'; msgEl.className = 'auth-msg err'; }
+        return false;
+      }
+
+      // Create subscription
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + promo.duration_days);
+
+      const { error: subErr } = await sb.from('subscriptions').upsert({
+        user_id: userId,
+        type: 'promo',
+        status: 'active',
+        promo_code: code,
+        starts_at: new Date().toISOString(),
+        expires_at: expiresAt.toISOString(),
+      }, { onConflict: 'user_id' });
+
+      if (subErr) {
+        if (msgEl) { msgEl.textContent = 'Error applying promo: ' + subErr.message; msgEl.className = 'auth-msg err'; }
+        return false;
+      }
+
+      // Increment usage
+      await sb.from('promo_codes').update({ times_used: promo.times_used + 1 }).eq('id', promo.id);
+
+      if (msgEl) { msgEl.textContent = 'Promo applied! ' + promo.duration_days + ' days free.'; msgEl.className = 'auth-msg ok'; }
+      return true;
+    }
+
+    function showPromoModal() {
+      document.getElementById('promoInput').value = '';
+      document.getElementById('promoMsg').textContent = '';
+      document.getElementById('promoModal').classList.add('show');
+    }
+
+    function closePromoModal() {
+      document.getElementById('promoModal').classList.remove('show');
+    }
+
+    async function redeemPromo() {
+      const code = document.getElementById('promoInput').value.trim().toUpperCase();
+      const msgEl = document.getElementById('promoMsg');
+      if (!code) { msgEl.textContent = 'Enter a code'; msgEl.className = 'auth-msg err'; return; }
+      if (!currentUser) { msgEl.textContent = 'Please log in first'; msgEl.className = 'auth-msg err'; return; }
+
+      const ok = await applyPromoCode(currentUser.id, code, msgEl);
+      if (ok) {
+        await loadSubscription();
+        updateAuthUI();
+        setTimeout(closePromoModal, 1500);
+      }
+    }
+
+    function gatedLoadSingleHand(dir) {
+      if (!currentUser) { showAuthModal(); return; }
+      if (!isPaid()) { showPromoModal(); return; }
+      loadSingleHand(dir);
+    }
+
+    async function logOut() {
+      await sb.auth.signOut();
+      currentUser = null;
+      currentSub = null;
+      updateAuthUI();
+    }
+
+    // Check session on page load
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        await loadSubscription();
+      }
+      updateAuthUI();
+    })();
+
+    // Listen for auth changes
+    sb.auth.onAuthStateChange(async (event, session) => {
+      currentUser = session?.user || null;
+      if (currentUser) await loadSubscription();
+      else currentSub = null;
+      updateAuthUI();
+    });
   </script>
 </body>
 </html>

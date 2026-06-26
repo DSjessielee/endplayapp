@@ -9,7 +9,7 @@
   <link rel="manifest" href="/static/manifest.json">
   <link rel="apple-touch-icon" href="/static/icon-192.png">
   <meta name="theme-color" content="#2a82bd">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/static/supabase.min.js"></script>
   <style>
     /* Auth UI */
     .auth-bar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; width: 100%; max-width: 900px; margin-bottom: 8px; font-size: 0.8rem; }
@@ -149,24 +149,21 @@
     .suit-symbol.heart   { color: #d22; }
     .suit-symbol.diamond { color: #d22; }
     .suit-symbol.club    { color: #111; }
-    .suit-input {
+    .card-input {
       flex: 1;
-      min-width: 0;
-      padding: 6px 6px;
+      min-width: 40px;
+      padding: 6px;
       border: 1px solid #a0c4d8;
       border-radius: 4px;
       background: #f0f7fb;
       color: #1a1a2e;
-      font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+      font-family: monospace;
       font-size: 0.88rem;
-      outline: none;
       text-transform: uppercase;
-      -webkit-appearance: none;
-      appearance: none;
     }
-    .suit-input:focus { border-color: #2a82bd; background: #e8f4fc; }
-    .suit-input.error { border-color: #e55; }
-    .suit-input.auto-filled { color: #2a6496; border-color: #47b; }
+    .card-input:focus { border-color: #2a82bd; background: #e8f4fc; }
+    .card-input.error { border-color: #e55; }
+    .card-input.auto-filled { color: #2a6496; border-color: #47b; }
 
     /* Controls */
     .controls {
@@ -401,7 +398,7 @@
       }
       .hand-title { font-size: 0.75rem; margin-bottom: 3px; }
       .suit-symbol { width: 16px; font-size: 0.95rem; }
-      .suit-input { padding: 5px 4px; font-size: 0.82rem; }
+      .card-input { padding: 5px 4px; font-size: 0.82rem; }
       .compass-rose { width: 48px; height: 48px; font-size: 0.75rem; }
       button { padding: 10px 14px; font-size: 0.84rem; }
       .result-item { padding: 8px 10px; font-size: 0.84rem; }
@@ -467,6 +464,9 @@
     </div>
   </div>
 
+  <div style="width:100%;max-width:900px;display:flex;justify-content:flex-start;margin-bottom:4px;">
+    <button class="btn-hand-img" onclick="loadSampleHand()" style="padding:4px 10px;font-size:0.75rem;">🎲 Sample Hand</button>
+  </div>
   <h1>FunBridge</h1>
   <p class="subtitle">Enter cards by suit, or upload a screenshot</p>
   <div class="tabs">
@@ -479,19 +479,19 @@
     <div id="tab-dds" class="tab-content active" style="display:flex; flex-direction:column; align-items:center;">
       <div class="compass">
         <div class="hand-box north" id="box-north">
-          <div class="hand-title"><span>North</span><button class="btn-hand-img" onclick="gatedLoadSingleHand('N')">&#128247;</button></div>
-          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="N" data-suit="0" placeholder="AKQ" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="N" data-suit="1" placeholder="JT9" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="N" data-suit="2" placeholder="876" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="N" data-suit="3" placeholder="5432" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="hand-title"><span>North</span><button class="btn-hand-img" onclick="autoFillHand('N')" title="Auto-fill from remaining cards">↻</button><button class="btn-hand-img" onclick="gatedLoadSingleHand('N')">&#128247;</button></div>
+          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="card-input" data-dir="N" data-suit="0" placeholder="AKQ" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="card-input" data-dir="N" data-suit="1" placeholder="JT9" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="card-input" data-dir="N" data-suit="2" placeholder="876" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="card-input" data-dir="N" data-suit="3" placeholder="5432" autocomplete="off" spellcheck="false" /></div>
         </div>
 
         <div class="hand-box west" id="box-west">
-          <div class="hand-title"><span>West</span><button class="btn-hand-img" onclick="gatedLoadSingleHand('W')">&#128247;</button></div>
-          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="W" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="W" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="W" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="W" data-suit="3" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="hand-title"><span>West</span><button class="btn-hand-img" onclick="autoFillHand('W')" title="Auto-fill from remaining cards">↻</button><button class="btn-hand-img" onclick="gatedLoadSingleHand('W')">&#128247;</button></div>
+          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="card-input" data-dir="W" data-suit="0" placeholder="" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="card-input" data-dir="W" data-suit="1" placeholder="" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="card-input" data-dir="W" data-suit="2" placeholder="" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="card-input" data-dir="W" data-suit="3" placeholder="" autocomplete="off" spellcheck="false" /></div>
         </div>
 
         <div class="center-box">
@@ -504,19 +504,19 @@
         </div>
 
         <div class="hand-box east" id="box-east">
-          <div class="hand-title"><span>East</span><button class="btn-hand-img" onclick="gatedLoadSingleHand('E')">&#128247;</button></div>
-          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="E" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="E" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="E" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="E" data-suit="3" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="hand-title"><span>East</span><button class="btn-hand-img" onclick="autoFillHand('E')" title="Auto-fill from remaining cards">↻</button><button class="btn-hand-img" onclick="gatedLoadSingleHand('E')">&#128247;</button></div>
+          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="card-input" data-dir="E" data-suit="0" placeholder="" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="card-input" data-dir="E" data-suit="1" placeholder="" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="card-input" data-dir="E" data-suit="2" placeholder="" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="card-input" data-dir="E" data-suit="3" placeholder="" autocomplete="off" spellcheck="false" /></div>
         </div>
 
         <div class="hand-box south" id="box-south">
-          <div class="hand-title"><span>South</span><button class="btn-hand-img" onclick="gatedLoadSingleHand('S')">&#128247;</button></div>
-          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="suit-input" data-dir="S" data-suit="0" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="suit-input" data-dir="S" data-suit="1" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="suit-input" data-dir="S" data-suit="2" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
-          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="suit-input" data-dir="S" data-suit="3" placeholder="" inputmode="text" autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" /></div>
+          <div class="hand-title"><span>South</span><button class="btn-hand-img" onclick="autoFillHand('S')" title="Auto-fill from remaining cards">↻</button><button class="btn-hand-img" onclick="gatedLoadSingleHand('S')">&#128247;</button></div>
+          <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="card-input" data-dir="S" data-suit="0" placeholder="" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol heart">♥</span><input class="card-input" data-dir="S" data-suit="1" placeholder="" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol diamond">♦</span><input class="card-input" data-dir="S" data-suit="2" placeholder="" autocomplete="off" spellcheck="false" /></div>
+          <div class="suit-row"><span class="suit-symbol club">♣</span><input class="card-input" data-dir="S" data-suit="3" placeholder="" autocomplete="off" spellcheck="false" /></div>
         </div>
       </div>
 
@@ -730,7 +730,7 @@
 
     function getInputs(dir) {
       return [0,1,2,3].map(s =>
-        document.querySelector(`.suit-input[data-dir="${dir}"][data-suit="${s}"]`)
+        document.querySelector(`.card-input[data-dir="${dir}"][data-suit="${s}"]`)
       );
     }
 
@@ -756,7 +756,7 @@
     }
 
     function tryAutoPopulate() {
-      document.querySelectorAll('.suit-input.auto-filled').forEach(el => el.classList.remove('auto-filled'));
+      document.querySelectorAll('.card-input.auto-filled').forEach(el => el.classList.remove('auto-filled'));
       document.querySelectorAll('.hand-box.auto-filled').forEach(el => el.classList.remove('auto-filled'));
       const status = document.getElementById('autoStatus');
       status.textContent = '';
@@ -764,9 +764,11 @@
       const complete = DIRS.filter(d => isHandComplete(d));
       const incomplete = DIRS.filter(d => !isHandComplete(d));
 
-      if (complete.length < 3 || incomplete.length !== 1) return;
+      // Need exactly 3 complete hands and 1 incomplete
+      if (complete.length !== 3 || incomplete.length !== 1) return;
 
       const emptyDir = incomplete[0];
+      // Only auto-fill if the hand is completely empty
       if (handCardCount(emptyDir) > 0) return;
 
       const remaining = [0,1,2,3].map(suit => {
@@ -785,6 +787,30 @@
 
       setHand(emptyDir, remaining);
       status.textContent = `${DIR_NAMES[emptyDir]} auto-filled with remaining cards`;
+    }
+
+    function autoFillHand(dir) {
+      const others = DIRS.filter(d => d !== dir);
+      const allComplete = others.every(d => isHandComplete(d));
+      if (!allComplete) {
+        document.getElementById('autoStatus').textContent = 'Fill the other 3 hands first (13 cards each)';
+        return;
+      }
+      const remaining = [0,1,2,3].map(suit => {
+        const allOfSuit = new Set(ALL_RANKS.split(''));
+        others.forEach(d => {
+          const cards = getHand(d)[suit].toUpperCase();
+          for (const c of cards) allOfSuit.delete(c);
+        });
+        return Array.from(allOfSuit).sort((a,b) => ALL_RANKS.indexOf(a) - ALL_RANKS.indexOf(b)).join('');
+      });
+      const total = remaining.reduce((s, r) => s + r.length, 0);
+      if (total !== 13) {
+        document.getElementById('autoStatus').textContent = 'Cannot auto-fill — cards don\'t add up to 13';
+        return;
+      }
+      setHand(dir, remaining);
+      document.getElementById('autoStatus').textContent = DIR_NAMES[dir] + ' auto-filled with remaining cards';
     }
 
     function swapHands(a, b) {
@@ -809,7 +835,7 @@
     }
 
     function clearAll() {
-      document.querySelectorAll('.suit-input').forEach(el => {
+      document.querySelectorAll('.card-input').forEach(el => {
         el.value = '';
         el.classList.remove('error', 'auto-filled');
       });
@@ -828,7 +854,7 @@
     async function analyze() {
       showError(null);
       document.getElementById('resultsPanel').style.display = 'none';
-      document.querySelectorAll('.suit-input').forEach(el => el.classList.remove('error'));
+      document.querySelectorAll('.card-input').forEach(el => el.classList.remove('error'));
 
       const hands = {};
       let hasError = false;
@@ -1157,7 +1183,7 @@
       openCropModal(input.files[0]);
     }
 
-    document.querySelectorAll('.suit-input').forEach(el => {
+    document.querySelectorAll('.card-input').forEach(el => {
       el.addEventListener('input', () => {
         el.classList.remove('auto-filled');
         const dir = el.getAttribute('data-dir');
@@ -1172,12 +1198,44 @@
       });
     });
 
-    // ---- PREFILL SAMPLE HAND ----
-    const SAMPLE = {N:['AQ98','85','AQT754','J'], E:['74','AKQ6','KJ9','KQ97'], S:['T6','JT743','862','543'], W:['KJ532','92','3','AT862']};
-    DIRS.forEach(dir => {
-      const inputs = getInputs(dir);
-      SAMPLE[dir].forEach((s, i) => { inputs[i].value = s; });
-    });
+    // ---- SAMPLE HANDS ----
+    let sampleHands = [];
+
+    async function loadSampleHands() {
+      try {
+        const resp = await fetch('/static/sample_hands.txt');
+        const text = await resp.text();
+        sampleHands = text.trim().split('\n').filter(l => l.trim());
+      } catch (e) { sampleHands = []; }
+    }
+
+    function parsePBN(pbn) {
+      const m = pbn.match(/^([NESW]):(.*)/);
+      if (!m) return null;
+      const order = {N:['N','E','S','W'], E:['E','S','W','N'], S:['S','W','N','E'], W:['W','N','E','S']};
+      const hands = m[2].trim().split(/\s+/);
+      const result = {};
+      const dirs = order[m[1]];
+      hands.forEach((h, i) => { if (dirs[i]) result[dirs[i]] = h.split('.'); });
+      return result;
+    }
+
+    function loadSampleHand() {
+      if (sampleHands.length === 0) return;
+      const pbn = sampleHands[Math.floor(Math.random() * sampleHands.length)];
+      const hands = parsePBN(pbn);
+      if (!hands) return;
+      DIRS.forEach(dir => {
+        const inputs = getInputs(dir);
+        const suits = hands[dir] || ['','','',''];
+        suits.forEach((s, i) => { inputs[i].value = s; });
+        inputs.forEach(el => el.classList.remove('auto-filled'));
+      });
+      document.getElementById('autoStatus').textContent = 'Sample hand loaded';
+    }
+
+    // Load samples and prefill on startup
+    loadSampleHands().then(() => { if (sampleHands.length > 0) loadSampleHand(); });
 
     // ---- EVALUATE TAB ----
     async function evaluateHands() {
@@ -1542,7 +1600,14 @@
     // ---- AUTH SYSTEM ----
     const SUPABASE_URL = 'https://fmvkmzwksmcndknetocp.supabase.co';
     const SUPABASE_KEY = 'sb_publishable__ObAoCIk-3ARzwt4L8bnjw_A1sFQQMk';
-    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let sb = null;
+    try {
+      if (typeof supabase !== 'undefined') {
+        sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      }
+    } catch (e) {
+      console.error('Supabase init failed:', e);
+    }
 
     let currentUser = null;
     let currentSub = null;
@@ -1589,9 +1654,11 @@
     }
 
     async function loadSubscription() {
-      if (!currentUser) { currentSub = null; return; }
-      const { data } = await sb.from('subscriptions').select('*').eq('user_id', currentUser.id).single();
-      currentSub = data;
+      if (!currentUser || !sb) { currentSub = null; return; }
+      try {
+        const { data } = await sb.from('subscriptions').select('*').eq('user_id', currentUser.id).single();
+        currentSub = data;
+      } catch (e) { currentSub = null; }
     }
 
     function showAuthModal() {
@@ -1824,6 +1891,7 @@
 
     // Check session on page load (handles OAuth redirect too)
     (async () => {
+      if (!sb) { updateAuthUI(); return; }
       // Handle OAuth callback tokens in URL hash
       if (window.location.hash && window.location.hash.includes('access_token')) {
         const { data, error } = await sb.auth.getSession();
@@ -1847,7 +1915,7 @@
     })();
 
     // Listen for auth changes
-    sb.auth.onAuthStateChange(async (event, session) => {
+    if (sb) sb.auth.onAuthStateChange(async (event, session) => {
       currentUser = session?.user || null;
       if (currentUser) {
         // Apply pending promo code from signup

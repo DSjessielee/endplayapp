@@ -51,3 +51,9 @@ src/dump.txt
 
 # macos file
 .DS_STORE
+
+# Webapp
+webapp/worker/.wrangler/
+dump.txt
+*.dds.txt
+.wrangler/

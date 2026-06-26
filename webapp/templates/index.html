@@ -66,9 +66,9 @@
     .compass {
       display: grid;
       grid-template-areas:
-        ".     north ."
-        "west  center east"
-        ".     south .";
+        "sample north ."
+        "west   center east"
+        ".      south .";
       grid-template-columns: 1fr auto 1fr;
       grid-template-rows: auto auto auto;
       gap: 6px;
@@ -464,9 +464,6 @@
     </div>
   </div>
 
-  <div style="width:100%;max-width:900px;display:flex;justify-content:flex-start;margin-bottom:4px;">
-    <button class="btn-hand-img" onclick="loadSampleHand()" style="padding:4px 10px;font-size:0.75rem;">🎲 Sample Hand</button>
-  </div>
   <h1>FunBridge</h1>
   <p class="subtitle">Enter cards by suit, or upload a screenshot</p>
   <div class="tabs">
@@ -478,6 +475,10 @@
   <div class="main-container">
     <div id="tab-dds" class="tab-content active" style="display:flex; flex-direction:column; align-items:center;">
       <div class="compass">
+        <div style="grid-area:sample;align-self:end;justify-self:start;">
+          <button class="btn-hand-img" onclick="loadSampleHand()" style="padding:6px 10px;font-size:0.72rem;">🎲 Sample</button>
+          <button class="btn-hand-img" onclick="clearAll()" style="padding:6px 10px;font-size:0.72rem;">✕ Clear</button>
+        </div>
         <div class="hand-box north" id="box-north">
           <div class="hand-title"><span>North</span><button class="btn-hand-img" onclick="autoFillHand('N')" title="Auto-fill from remaining cards">↻</button><button class="btn-hand-img" onclick="gatedLoadSingleHand('N')">&#128247;</button></div>
           <div class="suit-row"><span class="suit-symbol spade">♠</span><input class="card-input" data-dir="N" data-suit="0" placeholder="AKQ" autocomplete="off" spellcheck="false" /></div>

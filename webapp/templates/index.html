@@ -253,7 +253,7 @@
     .par-result .par-score { color: #1a1a2e; font-weight: 700; font-size: 1.05rem; }
     .par-result .par-contracts { color: #556; font-size: 0.82rem; margin-top: 2px; }
     .tabs { display: flex; gap: 0; margin-bottom: 16px; }
-    .tab { padding: 10px 24px; background: #fff; color: #2a6496; border: 2px solid #85b8d0; border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; font-size: 0.9rem; -webkit-tap-highlight-color: transparent; }
+    .tab { padding: 8px 12px; background: #fff; color: #2a6496; border: 2px solid #85b8d0; border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; font-size: 0.75rem; -webkit-tap-highlight-color: transparent; text-align: center; }
     .tab.active { background: #d6eaf8; color: #1a3a5c; border-color: #2a82bd; font-weight: 700; }
     .tab-content { display: none; width: 100%; }
     .tab-content.active { display: flex; flex-direction: column; align-items: center; }
@@ -452,14 +452,17 @@
     </div>
   </div>
 
-  <!-- Promo Code Modal (for logged-in users) -->
+  <!-- Upgrade Modal (for logged-in users) -->
   <div class="modal-overlay" id="promoModal">
     <div class="modal">
-      <h2>Enter Promo Code</h2>
+      <h2>Upgrade to PRO</h2>
+      <p style="text-align:center;font-size:0.85rem;color:#556;margin-bottom:12px;">Unlock image upload for hand recognition</p>
+      <button class="btn-auth upgrade" onclick="startCheckout()">Pay $4.99/year</button>
+      <div class="divider">or use a promo code</div>
       <input type="text" id="promoInput" placeholder="PROMO CODE" style="text-transform:uppercase;" />
-      <button class="btn-auth" onclick="redeemPromo()">Redeem</button>
+      <button class="btn-auth" onclick="redeemPromo()">Redeem Code</button>
       <div class="auth-msg" id="promoMsg"></div>
-      <div class="divider">or</div>
+      <div style="height:8px;"></div>
       <button class="btn-auth" style="background:#8899aa;" onclick="closePromoModal()">Cancel</button>
     </div>
   </div>
@@ -467,10 +470,10 @@
   <h1>FunBridge</h1>
   <p class="subtitle">Enter cards by suit, or upload a screenshot</p>
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('dds')">DD Analyzer</div>
-    <div class="tab" onclick="switchTab('play')">Play</div>
-    <div class="tab" onclick="switchTab('eval')">Evaluate</div>
-    <div class="tab" onclick="switchTab('score')">Scoring</div>
+    <div class="tab active" onclick="switchTab('dds')">Double Dummy Analyzer</div>
+    <div class="tab" onclick="switchTab('play')">Play the Board</div>
+    <div class="tab" onclick="switchTab('eval')">Evaluate Your Hands</div>
+    <div class="tab" onclick="switchTab('score')">Score Calculator</div>
   </div>
   <div class="main-container">
     <div id="tab-dds" class="tab-content active" style="display:flex; flex-direction:column; align-items:center;">
@@ -1234,6 +1237,11 @@
       playState.nsTricks = 0;
       playState.ewTricks = 0;
       document.getElementById('playBoard').style.display = 'block';
+      // Pre-fill Score Calculator with contract info
+      document.getElementById('sc-level').value = playState.level;
+      document.getElementById('sc-suit').value = playState.trump;
+      document.getElementById('sc-declarer').value = playState.declarer;
+      document.getElementById('sc-result').value = '0';
       fetchSolve();
     }
 
@@ -1376,8 +1384,14 @@
       if (data.moves.length === 0) {
         const needed = playState.level + 6;
         const decSide = (playState.declarer === 'N' || playState.declarer === 'S') ? playState.nsTricks : playState.ewTricks;
-        const made = decSide >= needed ? 'Made!' : 'Down ' + (needed - decSide);
+        const resultDiff = decSide - needed;
+        const made = resultDiff >= 0 ? 'Made!' + (resultDiff > 0 ? ' +' + resultDiff : '') : 'Down ' + Math.abs(resultDiff);
         status.textContent = contractStr + ' — ' + made;
+        // Auto-populate Score Calculator
+        document.getElementById('sc-level').value = playState.level;
+        document.getElementById('sc-suit').value = playState.trump;
+        document.getElementById('sc-declarer').value = playState.declarer;
+        document.getElementById('sc-result').value = resultDiff;
       } else {
         status.textContent = contractStr + ' | ' + data.curplayer + ' to play';
       }
@@ -1742,6 +1756,59 @@
       else { msgEl.textContent = 'Check your email for the reset link!'; msgEl.className = 'auth-msg ok'; }
     }
 
+    const WORKER_URL = 'https://bridge-dds-worker.jessie-lee-tx.workers.dev';
+
+    async function startCheckout() {
+      if (!currentUser) { showAuthModal(); return; }
+      const msgEl = document.getElementById('promoMsg');
+      msgEl.textContent = 'Redirecting to payment...'; msgEl.className = 'auth-msg';
+      try {
+        const resp = await fetch(WORKER_URL + '/create-checkout', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            user_id: currentUser.id,
+            email: currentUser.email,
+            return_url: window.location.origin,
+          }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { msgEl.textContent = data.error?.[0] || 'Payment error'; msgEl.className = 'auth-msg err'; return; }
+        window.location.href = data.url;
+      } catch (err) { msgEl.textContent = err.message; msgEl.className = 'auth-msg err'; }
+    }
+
+    async function checkPaymentReturn() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('payment') !== 'success') return;
+      const sessionId = params.get('session_id');
+      if (!sessionId || !currentUser) return;
+
+      try {
+        const resp = await fetch(WORKER_URL + '/verify-payment', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+        const data = await resp.json();
+        if (data.paid) {
+          const expiresAt = new Date();
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+          await sb.from('subscriptions').upsert({
+            user_id: currentUser.id,
+            type: 'paid',
+            status: 'active',
+            stripe_subscription_id: data.subscription_id,
+            starts_at: new Date().toISOString(),
+            expires_at: expiresAt.toISOString(),
+          }, { onConflict: 'user_id' });
+          await loadSubscription();
+          updateAuthUI();
+        }
+      } catch (err) { console.error('Payment verification failed:', err); }
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     function gatedLoadSingleHand(dir) {
       if (!currentUser) { showAuthModal(); return; }
       if (!isPaid()) { showPromoModal(); return; }
@@ -1776,6 +1843,7 @@
         await loadSubscription();
       }
       updateAuthUI();
+      checkPaymentReturn();
     })();
 
     // Listen for auth changes

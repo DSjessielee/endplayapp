@@ -63,6 +63,14 @@ export default {
       return handleExtractImage(request, env);
     }
 
+    if (url.pathname === "/create-checkout" && request.method === "POST") {
+      return handleCreateCheckout(request, env);
+    }
+
+    if (url.pathname === "/verify-payment" && request.method === "POST") {
+      return handleVerifyPayment(request, env);
+    }
+
     return jsonResponse({ error: "Not found" }, 404);
   },
 };
@@ -147,6 +155,75 @@ async function handleExtractImage(request, env) {
     return jsonResponse({ error: ["Could not parse hands from Claude response:", text] }, 400);
   }
   return jsonResponse({ hands, method: "claude-vision" });
+}
+
+// --- Stripe Checkout ---
+
+const STRIPE_PRICE_ID = 'price_1TmO8BB5l2QZ4Vn4QpMsM1LC';
+
+async function handleCreateCheckout(request, env) {
+  if (!env.STRIPE_SECRET_KEY) {
+    return jsonResponse({ error: ["Stripe not configured"] }, 500);
+  }
+
+  const data = await request.json();
+  const userId = data.user_id;
+  const userEmail = data.email;
+  const returnUrl = data.return_url || 'https://funbridge.pages.dev';
+
+  const params = new URLSearchParams({
+    'mode': 'subscription',
+    'line_items[0][price]': STRIPE_PRICE_ID,
+    'line_items[0][quantity]': '1',
+    'success_url': returnUrl + '?payment=success&session_id={CHECKOUT_SESSION_ID}',
+    'cancel_url': returnUrl + '?payment=cancelled',
+    'client_reference_id': userId,
+  });
+  if (userEmail) params.append('customer_email', userEmail);
+
+  const resp = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+
+  const session = await resp.json();
+  if (!resp.ok) {
+    return jsonResponse({ error: [session.error?.message || 'Stripe error'] }, 400);
+  }
+
+  return jsonResponse({ url: session.url, session_id: session.id });
+}
+
+async function handleVerifyPayment(request, env) {
+  if (!env.STRIPE_SECRET_KEY) {
+    return jsonResponse({ error: ["Stripe not configured"] }, 500);
+  }
+
+  const data = await request.json();
+  const sessionId = data.session_id;
+  if (!sessionId) {
+    return jsonResponse({ error: ["Missing session_id"] }, 400);
+  }
+
+  const resp = await fetch('https://api.stripe.com/v1/checkout/sessions/' + sessionId, {
+    headers: { 'Authorization': 'Bearer ' + env.STRIPE_SECRET_KEY },
+  });
+
+  const session = await resp.json();
+  if (!resp.ok || session.payment_status !== 'paid') {
+    return jsonResponse({ error: ["Payment not completed"], paid: false }, 400);
+  }
+
+  return jsonResponse({
+    paid: true,
+    user_id: session.client_reference_id,
+    subscription_id: session.subscription,
+    customer_email: session.customer_details?.email,
+  });
 }
 
 function parseHands(text) {

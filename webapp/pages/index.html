@@ -452,14 +452,17 @@
     </div>
   </div>
 
-  <!-- Promo Code Modal (for logged-in users) -->
+  <!-- Upgrade Modal (for logged-in users) -->
   <div class="modal-overlay" id="promoModal">
     <div class="modal">
-      <h2>Enter Promo Code</h2>
+      <h2>Upgrade to PRO</h2>
+      <p style="text-align:center;font-size:0.85rem;color:#556;margin-bottom:12px;">Unlock image upload for hand recognition</p>
+      <button class="btn-auth upgrade" onclick="startCheckout()">Pay $4.99/year</button>
+      <div class="divider">or use a promo code</div>
       <input type="text" id="promoInput" placeholder="PROMO CODE" style="text-transform:uppercase;" />
-      <button class="btn-auth" onclick="redeemPromo()">Redeem</button>
+      <button class="btn-auth" onclick="redeemPromo()">Redeem Code</button>
       <div class="auth-msg" id="promoMsg"></div>
-      <div class="divider">or</div>
+      <div style="height:8px;"></div>
       <button class="btn-auth" style="background:#8899aa;" onclick="closePromoModal()">Cancel</button>
     </div>
   </div>
@@ -1753,6 +1756,59 @@
       else { msgEl.textContent = 'Check your email for the reset link!'; msgEl.className = 'auth-msg ok'; }
     }
 
+    const WORKER_URL = 'https://bridge-dds-worker.jessie-lee-tx.workers.dev';
+
+    async function startCheckout() {
+      if (!currentUser) { showAuthModal(); return; }
+      const msgEl = document.getElementById('promoMsg');
+      msgEl.textContent = 'Redirecting to payment...'; msgEl.className = 'auth-msg';
+      try {
+        const resp = await fetch(WORKER_URL + '/create-checkout', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            user_id: currentUser.id,
+            email: currentUser.email,
+            return_url: window.location.origin,
+          }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) { msgEl.textContent = data.error?.[0] || 'Payment error'; msgEl.className = 'auth-msg err'; return; }
+        window.location.href = data.url;
+      } catch (err) { msgEl.textContent = err.message; msgEl.className = 'auth-msg err'; }
+    }
+
+    async function checkPaymentReturn() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('payment') !== 'success') return;
+      const sessionId = params.get('session_id');
+      if (!sessionId || !currentUser) return;
+
+      try {
+        const resp = await fetch(WORKER_URL + '/verify-payment', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+        const data = await resp.json();
+        if (data.paid) {
+          const expiresAt = new Date();
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+          await sb.from('subscriptions').upsert({
+            user_id: currentUser.id,
+            type: 'paid',
+            status: 'active',
+            stripe_subscription_id: data.subscription_id,
+            starts_at: new Date().toISOString(),
+            expires_at: expiresAt.toISOString(),
+          }, { onConflict: 'user_id' });
+          await loadSubscription();
+          updateAuthUI();
+        }
+      } catch (err) { console.error('Payment verification failed:', err); }
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
     function gatedLoadSingleHand(dir) {
       if (!currentUser) { showAuthModal(); return; }
       if (!isPaid()) { showPromoModal(); return; }
@@ -1787,6 +1843,7 @@
         await loadSubscription();
       }
       updateAuthUI();
+      checkPaymentReturn();
     })();
 
     // Listen for auth changes

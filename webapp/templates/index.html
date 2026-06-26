@@ -1175,6 +1175,12 @@
     }
 
     function loadSingleHand(dir) {
+      // Clear all inputs before capture
+      DIRS.forEach(d => {
+        getInputs(d).forEach(el => { el.value = ''; el.classList.remove('auto-filled', 'error'); });
+      });
+      document.querySelectorAll('.hand-box').forEach(el => el.classList.remove('auto-filled'));
+      document.getElementById('autoStatus').textContent = '';
       singleHandDir = dir;
       document.getElementById('singleHandInput').click();
     }

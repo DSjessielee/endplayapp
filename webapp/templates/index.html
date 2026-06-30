@@ -464,7 +464,7 @@
     </div>
   </div>
 
-  <h1>FunBridge</h1>
+  <img src="/static/logo.jpg" alt="FunBridge" style="max-width:280px; width:80%; height:auto; margin-bottom:4px;" />
   <p class="subtitle">Enter cards by suit, or upload a screenshot</p>
   <div class="tabs">
     <div class="tab active" onclick="switchTab('dds')">Double Dummy Analyzer</div>
@@ -1175,12 +1175,6 @@
     }
 
     function loadSingleHand(dir) {
-      // Clear all inputs before capture
-      DIRS.forEach(d => {
-        getInputs(d).forEach(el => { el.value = ''; el.classList.remove('auto-filled', 'error'); });
-      });
-      document.querySelectorAll('.hand-box').forEach(el => el.classList.remove('auto-filled'));
-      document.getElementById('autoStatus').textContent = '';
       singleHandDir = dir;
       document.getElementById('singleHandInput').click();
     }

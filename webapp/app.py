@@ -32,11 +32,40 @@ from endplay.evaluate import (hcp, dist_points, total_points, losers, controls,
 app = Flask(__name__)
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
+THUMBS_FILE = Path(__file__).parent / 'thumbsup.json'
+
+
+def _get_thumbs():
+    try:
+        return json.loads(THUMBS_FILE.read_text())['count']
+    except Exception:
+        return 0
+
+
+def _set_thumbs(count):
+    THUMBS_FILE.write_text(json.dumps({'count': count}))
+
 
 @app.after_request
-def add_no_cache(response):
+def add_headers(response):
     response.headers["Cache-Control"] = "no-store"
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return response
+
+
+@app.route('/thumbsup/count')
+def thumbsup_count():
+    return jsonify({'count': _get_thumbs()})
+
+
+@app.route('/thumbsup', methods=['POST'])
+def thumbsup():
+    count = _get_thumbs() + 1
+    _set_thumbs(count)
+    return jsonify({'count': count})
+
 
 VALID_RANKS = set("AKQJT98765432")
 ALL_RANKS = "AKQJT98765432"

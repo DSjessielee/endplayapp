@@ -1251,10 +1251,10 @@
     loadSampleHands().then(() => { if (sampleHands.length > 0) loadSampleHand(); });
 
     // ---- THUMBS UP ----
-    const DDS_API = 'https://bridge-dds-api.onrender.com';
+    const WORKER_THUMBS = 'https://bridge-dds-worker.jessie-lee-tx.workers.dev';
     async function loadThumbsCount() {
       try {
-        const resp = await fetch(DDS_API + '/thumbsup/count');
+        const resp = await fetch(WORKER_THUMBS + '/thumbsup/count');
         const data = await resp.json();
         document.getElementById('thumbsCount').textContent = data.count;
       } catch (e) {}
@@ -1268,7 +1268,7 @@
       localStorage.setItem('thumbsed', '1');
       document.getElementById('thumbsBtn').classList.add('liked');
       try {
-        const resp = await fetch(DDS_API + '/thumbsup', { method: 'POST' });
+        const resp = await fetch(WORKER_THUMBS + '/thumbsup', { method: 'POST' });
         const data = await resp.json();
         document.getElementById('thumbsCount').textContent = data.count;
       } catch (e) {}

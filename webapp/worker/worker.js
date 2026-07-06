@@ -71,6 +71,18 @@ export default {
       return handleVerifyPayment(request, env);
     }
 
+    if (url.pathname === "/thumbsup/count" && request.method === "GET") {
+      const val = await env.THUMBSUP.get("count");
+      return jsonResponse({ count: parseInt(val || "0") });
+    }
+
+    if (url.pathname === "/thumbsup" && request.method === "POST") {
+      const val = await env.THUMBSUP.get("count");
+      const next = parseInt(val || "0") + 1;
+      await env.THUMBSUP.put("count", String(next));
+      return jsonResponse({ count: next });
+    }
+
     return jsonResponse({ error: "Not found" }, 404);
   },
 };

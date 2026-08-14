@@ -319,6 +319,8 @@
     .play-container { width: 100%; max-width: 500px; }
     .play-setup { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; align-items: center; }
     .play-setup select { padding: 6px 8px; border: 1px solid #a0c4d8; border-radius: 4px; background: #f0f7fb; color: #1a1a2e; font-size: 0.85rem; -webkit-appearance: none; }
+    #play-trump.suit-red { color: #d22; font-weight: 700; }
+    #play-trump.suit-black { color: #1a1a2e; font-weight: 700; }
     .play-setup button { padding: 8px 16px; }
     .play-board { display: grid; grid-template-areas: ". north ." "west trick east" ". south ."; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; justify-items: center; }
     .play-hand { background: #fff; border: 2px solid #85b8d0; border-radius: 8px; padding: 6px 8px; min-width: 100px; max-width: 160px; width: 100%; }
@@ -928,6 +930,7 @@
             var level = Math.max(1, Math.min(7, bestTricks - 6));
             document.getElementById('play-level').value = level;
             document.getElementById('play-trump').value = trumpMap[r.symbol] || 'NT';
+            updateTrumpColor();
             document.getElementById('play-declarer').value = best;
             switchTab('play');
             startPlay();
@@ -960,6 +963,7 @@
           if (pm) {
             document.getElementById('play-level').value = pm[1];
             document.getElementById('play-trump').value = pm[2];
+            updateTrumpColor();
             document.getElementById('play-declarer').value = pm[3];
           }
         }
@@ -1275,6 +1279,16 @@
     }
 
     loadThumbsCount();
+
+    // ---- TRUMP SUIT COLOR ----
+    function updateTrumpColor() {
+      const sel = document.getElementById('play-trump');
+      const red = ['H', 'D'];
+      sel.classList.toggle('suit-red', red.includes(sel.value));
+      sel.classList.toggle('suit-black', !red.includes(sel.value));
+    }
+    document.getElementById('play-trump').addEventListener('change', updateTrumpColor);
+    updateTrumpColor();
 
     // ---- EVALUATE TAB ----
     async function evaluateHands() {

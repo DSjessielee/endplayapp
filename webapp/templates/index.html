@@ -318,8 +318,17 @@
     .play-container { width: 100%; max-width: 500px; }
     .play-setup { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; align-items: center; }
     .play-setup select { padding: 6px 8px; border: 1px solid #a0c4d8; border-radius: 4px; background: #f0f7fb; color: #1a1a2e; font-size: 0.85rem; -webkit-appearance: none; }
-    #play-trump.suit-red { color: #d22; font-weight: 700; }
-    #play-trump.suit-black { color: #1a1a2e; font-weight: 700; }
+    .trump-picker { position: relative; display: inline-block; }
+    .trump-btn { padding: 6px 10px; border: 1px solid #a0c4d8; border-radius: 4px; background: #f0f7fb; font-size: 1rem; font-weight: 700; cursor: pointer; min-width: 46px; text-align: center; line-height: 1.2; }
+    .trump-btn:focus { outline: none; border-color: #2a82bd; }
+    .trump-btn.red { color: #d22; }
+    .trump-btn.black { color: #1a1a2e; }
+    .trump-list { display: none; position: absolute; top: 110%; left: 0; background: #fff; border: 1px solid #a0c4d8; border-radius: 6px; z-index: 100; min-width: 46px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .trump-list.open { display: block; }
+    .trump-opt { padding: 7px 10px; cursor: pointer; font-size: 1rem; font-weight: 700; text-align: center; -webkit-tap-highlight-color: transparent; }
+    .trump-opt:hover { background: #e8f4fc; }
+    .trump-opt.red { color: #d22; }
+    .trump-opt.black { color: #1a1a2e; }
     .play-setup button { padding: 8px 16px; }
     .play-board { display: grid; grid-template-areas: ". north ." "west trick east" ". south ."; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; justify-items: center; }
     .play-hand { background: #fff; border: 2px solid #85b8d0; border-radius: 8px; padding: 6px 8px; min-width: 100px; max-width: 160px; width: 100%; }
@@ -583,9 +592,17 @@
         <label>Contract: <select id="play-level">
           <option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option><option>7</option>
         </select>
-        <select id="play-trump">
-          <option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S" selected>♠</option><option value="NT">NT</option>
-        </select></label>
+        <div class="trump-picker">
+          <button class="trump-btn black" id="trumpBtn" type="button" onclick="toggleTrump(event)">♠</button>
+          <div class="trump-list" id="trumpList">
+            <div class="trump-opt black" onclick="pickTrump('C','♣')">♣</div>
+            <div class="trump-opt red"   onclick="pickTrump('D','♦')">♦</div>
+            <div class="trump-opt red"   onclick="pickTrump('H','♥')">♥</div>
+            <div class="trump-opt black" onclick="pickTrump('S','♠')">♠</div>
+            <div class="trump-opt black" onclick="pickTrump('NT','NT')">NT</div>
+          </div>
+        </div>
+        <input type="hidden" id="play-trump" value="S"></label>
         <label>Declarer: <select id="play-declarer">
           <option value="N">North</option><option value="E">East</option><option value="S" selected>South</option><option value="W">West</option>
         </select></label>
@@ -1278,15 +1295,30 @@
 
     loadThumbsCount();
 
-    // ---- TRUMP SUIT COLOR ----
-    function updateTrumpColor() {
-      const sel = document.getElementById('play-trump');
-      const red = ['H', 'D'];
-      sel.classList.toggle('suit-red', red.includes(sel.value));
-      sel.classList.toggle('suit-black', !red.includes(sel.value));
+    // ---- TRUMP SUIT PICKER ----
+    const TRUMP_SYM = {C:'♣', D:'♦', H:'♥', S:'♠', NT:'NT'};
+    const RED_SUITS = ['H','D'];
+    function updateTrumpColor(val) {
+      val = val || document.getElementById('play-trump').value;
+      const btn = document.getElementById('trumpBtn');
+      if (!btn) return;
+      btn.textContent = TRUMP_SYM[val] || val;
+      btn.className = 'trump-btn ' + (RED_SUITS.includes(val) ? 'red' : 'black');
     }
-    document.getElementById('play-trump').addEventListener('change', updateTrumpColor);
-    updateTrumpColor();
+    function toggleTrump(e) {
+      e.stopPropagation();
+      document.getElementById('trumpList').classList.toggle('open');
+    }
+    function pickTrump(val) {
+      document.getElementById('play-trump').value = val;
+      updateTrumpColor(val);
+      document.getElementById('trumpList').classList.remove('open');
+    }
+    document.addEventListener('click', () => {
+      const l = document.getElementById('trumpList');
+      if (l) l.classList.remove('open');
+    });
+    updateTrumpColor('S');
 
     // ---- EVALUATE TAB ----
     async function evaluateHands() {

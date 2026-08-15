@@ -255,8 +255,8 @@
     .par-result .par-label { color: #fa0; font-weight: 700; }
     .par-result .par-score { color: #1a1a2e; font-weight: 700; font-size: 1.05rem; }
     .par-result .par-contracts { color: #556; font-size: 0.82rem; margin-top: 2px; }
-    .tabs { display: flex; gap: 0; margin-bottom: 16px; }
-    .tab { padding: 8px 12px; background: #fff; color: #2a6496; border: 2px solid #85b8d0; border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; font-size: 0.75rem; -webkit-tap-highlight-color: transparent; text-align: center; }
+    .tabs { display: flex; gap: 0; margin-bottom: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tab { padding: 8px 12px; background: #fff; color: #2a6496; border: 2px solid #85b8d0; border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; font-size: 0.75rem; -webkit-tap-highlight-color: transparent; text-align: center; flex-shrink: 0; }
     .tab.active { background: #d6eaf8; color: #1a3a5c; border-color: #2a82bd; font-weight: 700; }
     .tab-content { display: none; width: 100%; }
     .tab-content.active { display: flex; flex-direction: column; align-items: center; }
@@ -436,6 +436,40 @@
       .play-card { padding: 2px 3px 9px 3px; font-size: 0.75rem; }
       .play-suit { gap: 1px; }
     }
+    /* Match Score tab */
+    .match-container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 16px; }
+    .match-type-toggle { display: flex; border: 2px solid #2a82bd; border-radius: 8px; overflow: hidden; }
+    .match-type-btn { flex: 1; padding: 10px; background: #fff; color: #2a6496; border: none; font-weight: 600; font-size: 0.88rem; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .match-type-btn.active { background: #2a82bd; color: #fff; }
+    .match-section { display: none; flex-direction: column; gap: 12px; }
+    .match-section.active { display: flex; }
+    .match-sel-row { display: flex; align-items: center; gap: 10px; }
+    .match-sel-row label { font-size: 0.85rem; color: #2a6496; font-weight: 600; white-space: nowrap; }
+    .match-sel { flex: 1; padding: 8px 10px; border: 1px solid #a0c4d8; border-radius: 6px; background: #f0f7fb; color: #1a1a2e; font-size: 0.88rem; -webkit-appearance: none; appearance: none; }
+    .match-desc { font-size: 0.8rem; color: #1a5276; background: #e8f4fc; border-radius: 6px; padding: 8px 12px; line-height: 1.5; }
+    .match-card { background: #fff; border: 2px solid #85b8d0; border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .match-card-title { font-weight: 700; font-size: 0.9rem; color: #2a6496; }
+    .match-input-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .match-input-row label { font-size: 0.82rem; color: #667; }
+    .match-num { width: 90px; padding: 8px; border: 1px solid #a0c4d8; border-radius: 6px; background: #f0f7fb; color: #1a1a2e; font-size: 0.9rem; text-align: center; }
+    .match-result-box { padding: 14px; background: #e8f4fc; border-radius: 8px; border-left: 4px solid #2a82bd; text-align: center; }
+    .match-big { font-size: 2rem; font-weight: 700; color: #1a3a5c; }
+    .match-sub { font-size: 0.8rem; color: #667; margin-top: 4px; }
+    .mp-list { display: flex; flex-direction: column; gap: 6px; }
+    .mp-row { display: flex; gap: 6px; align-items: center; }
+    .mp-row input { flex: 1; padding: 7px 8px; border: 1px solid #a0c4d8; border-radius: 4px; font-size: 0.85rem; background: #f0f7fb; color: #1a1a2e; text-align: center; }
+    .btn-remove { padding: 4px 9px; background: #e55; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.82rem; font-weight: 700; }
+    .imp-list { display: flex; flex-direction: column; gap: 6px; }
+    .imp-row { display: flex; gap: 6px; align-items: center; }
+    .imp-row input { width: 76px; padding: 6px; border: 1px solid #a0c4d8; border-radius: 4px; background: #f0f7fb; color: #1a1a2e; text-align: center; font-size: 0.85rem; flex-shrink: 0; }
+    .imp-chip { min-width: 50px; text-align: center; font-weight: 700; font-size: 0.88rem; flex-shrink: 0; color: #667; }
+    .vp-sides { display: flex; justify-content: center; gap: 40px; margin: 6px 0; }
+    .vp-side { text-align: center; }
+    .vp-num { font-size: 2.2rem; font-weight: 700; }
+    .vp-side.win .vp-num { color: #1a8040; }
+    .vp-side.loss .vp-num { color: #c0392b; }
+    .vp-side.tie .vp-num { color: #e67e22; }
+    .vp-label { font-size: 0.75rem; color: #667; }
   </style>
 </head>
 <body>
@@ -493,6 +527,7 @@
     <div class="tab" onclick="switchTab('play')">Play the Board</div>
     <div class="tab" onclick="switchTab('eval')">Evaluate Your Hands</div>
     <div class="tab" onclick="switchTab('score')">Score Calculator</div>
+    <div class="tab" onclick="switchTab('match')">Match Score</div>
   </div>
   <div class="main-container">
     <div id="tab-dds" class="tab-content active" style="display:flex; flex-direction:column; align-items:center;">
@@ -691,6 +726,92 @@
     </div>
   </div>
   </div>
+  <div id="tab-match" class="tab-content">
+    <div class="match-container">
+      <div class="match-type-toggle">
+        <button class="match-type-btn active" id="mtBtn-pair" onclick="selectMatchType('pair')">Pair Game</button>
+        <button class="match-type-btn" id="mtBtn-team" onclick="selectMatchType('team')">Team Game</button>
+      </div>
+
+      <!-- Pair Game -->
+      <div id="match-pair" class="match-section active">
+        <div class="match-sel-row">
+          <label>Movement:</label>
+          <select class="match-sel" id="pair-movement" onchange="updatePairDesc()">
+            <option value="mitchell">Standard Mitchell</option>
+            <option value="byestand">Bye-stand Mitchell</option>
+            <option value="howell">Howell</option>
+          </select>
+        </div>
+        <div class="match-desc" id="pair-desc">Boards move up one table, E/W pairs move down, N/S pairs stay. Produces two winners (N/S and E/W). Best for 7+ tables with an even number.</div>
+        <div class="match-card">
+          <div class="match-card-title">Matchpoint Calculator</div>
+          <div class="match-input-row">
+            <label>Your N/S score:</label>
+            <input class="match-num" type="number" id="mp-your" placeholder="e.g. 420" />
+          </div>
+          <div style="font-size:0.8rem;color:#667;">Other N/S scores at this board:</div>
+          <div class="mp-list" id="mp-list">
+            <div class="mp-row"><input type="number" placeholder="e.g. 450" /><button class="btn-remove" onclick="removeMpRow(this)">&#10005;</button></div>
+            <div class="mp-row"><input type="number" placeholder="e.g. 170" /><button class="btn-remove" onclick="removeMpRow(this)">&#10005;</button></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="addMpRow()">+ Add Table</button>
+            <button class="btn-analyze" style="font-size:0.82rem;padding:8px 16px;" onclick="calcMatchpoints()">Calculate</button>
+          </div>
+          <div class="match-result-box" id="mp-result" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Team Game -->
+      <div id="match-team" class="match-section">
+        <div class="match-sel-row">
+          <label>Format:</label>
+          <select class="match-sel" id="team-format" onchange="updateTeamDesc()">
+            <option value="swiss">Swiss Teams</option>
+            <option value="rr">Round Robin</option>
+            <option value="ko">KO / Duplicate</option>
+          </select>
+        </div>
+        <div class="match-desc" id="team-desc">Teams paired by similar standing each round. Score by VPs over all rounds. Best for 8+ teams over 5&#8211;7 rounds.</div>
+        <div class="match-card">
+          <div class="match-card-title">IMP Calculator</div>
+          <div style="display:flex;gap:4px;font-size:0.75rem;color:#667;text-align:center;">
+            <span style="flex:1;">Your table (N/S)</span>
+            <span style="flex:1;">Other table (N/S)</span>
+            <span style="width:50px;">IMPs</span>
+            <span style="width:28px;"></span>
+          </div>
+          <div class="imp-list" id="imp-list">
+            <div class="imp-row">
+              <input type="number" placeholder="420" oninput="recalcImps()" />
+              <input type="number" placeholder="450" oninput="recalcImps()" />
+              <div class="imp-chip">&#8212;</div>
+              <button class="btn-remove" onclick="removeImpRow(this)">&#10005;</button>
+            </div>
+            <div class="imp-row">
+              <input type="number" placeholder="-100" oninput="recalcImps()" />
+              <input type="number" placeholder="-50" oninput="recalcImps()" />
+              <div class="imp-chip">&#8212;</div>
+              <button class="btn-remove" onclick="removeImpRow(this)">&#10005;</button>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="addImpRow()">+ Add Board</button>
+          </div>
+          <div class="match-result-box" id="imp-total" style="display:none;"></div>
+        </div>
+        <div class="match-card">
+          <div class="match-card-title">VP Calculator (WBF 20-pt scale)</div>
+          <div class="match-input-row">
+            <label>Net IMPs (+ = you won):</label>
+            <input class="match-num" type="number" id="vp-imps" placeholder="e.g. 17" oninput="calcVPs()" />
+          </div>
+          <div class="match-result-box" id="vp-result" style="display:none;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="crop-overlay" id="cropOverlay">
     <div class="crop-title">Drag to crop the hand diagram, or use full image</div>
@@ -723,7 +844,7 @@
   <div id="errorBox" class="error-msg" style="display:none;"></div>
 
   <script>
-    const TABS = ['dds', 'play', 'eval', 'score'];
+    const TABS = ['dds', 'play', 'eval', 'score', 'match'];
     function switchTab(tab) {
       document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', TABS[i] === tab));
       TABS.forEach(t => {
@@ -1998,6 +2119,120 @@
       updateAuthUI();
       checkPaymentReturn();
     })();
+
+    // ---- Match Score Tab ----
+
+    function selectMatchType(type) {
+      ['pair', 'team'].forEach(t => {
+        document.getElementById('mtBtn-' + t).classList.toggle('active', t === type);
+        document.getElementById('match-' + t).classList.toggle('active', t === type);
+      });
+    }
+
+    const PAIR_DESCS = {
+      mitchell: 'Boards move up one table, E/W pairs move down, N/S pairs stay. Produces two winners (N/S and E/W). Best for 7+ tables with an even number.',
+      byestand: 'Like Standard Mitchell but for an odd number of tables — one table is a "bye stand" where boards rest for one round. Can be scored for one overall winner with a relay or skip.',
+      howell: 'All pairs move so every pair meets every other pair. One overall winner. Best for smaller games (3–7 tables).',
+    };
+    function updatePairDesc() {
+      document.getElementById('pair-desc').textContent = PAIR_DESCS[document.getElementById('pair-movement').value];
+    }
+
+    const TEAM_DESCS = {
+      swiss: 'Teams paired by similar standing each round. Score by VPs over all rounds. Best for 8+ teams over 5–7 rounds.',
+      rr: 'Every team plays every other team. Final rank by total VPs. Used in smaller events or league play.',
+      ko: 'Knockout format — loser is eliminated each round. Play a fixed set of boards; team with more IMPs advances.',
+    };
+    function updateTeamDesc() {
+      document.getElementById('team-desc').textContent = TEAM_DESCS[document.getElementById('team-format').value];
+    }
+
+    function addMpRow() {
+      const list = document.getElementById('mp-list');
+      const row = document.createElement('div');
+      row.className = 'mp-row';
+      row.innerHTML = '<input type="number" placeholder="Score" /><button class="btn-remove" onclick="removeMpRow(this)">&#10005;</button>';
+      list.appendChild(row);
+    }
+    function removeMpRow(btn) {
+      if (document.getElementById('mp-list').children.length > 1) btn.parentElement.remove();
+    }
+    function calcMatchpoints() {
+      const yourScore = parseFloat(document.getElementById('mp-your').value);
+      if (isNaN(yourScore)) return;
+      const others = [...document.querySelectorAll('#mp-list input')].map(i => parseFloat(i.value)).filter(v => !isNaN(v));
+      if (!others.length) return;
+      let mps = 0;
+      for (const s of others) {
+        if (yourScore > s) mps += 2;
+        else if (yourScore === s) mps += 1;
+      }
+      const top = others.length * 2;
+      const pct = Math.round(mps / top * 100);
+      const label = mps === top ? 'Top board!' : mps === 0 ? 'Bottom board' : pct >= 60 ? 'Above average' : 'Below average';
+      const res = document.getElementById('mp-result');
+      res.style.display = '';
+      res.innerHTML = `<div class="match-big">${mps}&thinsp;/&thinsp;${top}</div><div class="match-sub">${pct}% &mdash; ${label}</div>`;
+    }
+
+    const IMP_SCALE = [20,50,90,130,170,220,270,320,370,430,500,600,750,900,1100,1300,1500,1750,2000,2250,2500,3000,3500,4000];
+    function scoreToImps(diff) {
+      diff = Math.abs(diff);
+      for (let i = 0; i < IMP_SCALE.length; i++) { if (diff < IMP_SCALE[i]) return i; }
+      return 24;
+    }
+
+    function addImpRow() {
+      const list = document.getElementById('imp-list');
+      const row = document.createElement('div');
+      row.className = 'imp-row';
+      row.innerHTML = '<input type="number" placeholder="" oninput="recalcImps()" /><input type="number" placeholder="" oninput="recalcImps()" /><div class="imp-chip">&#8212;</div><button class="btn-remove" onclick="removeImpRow(this)">&#10005;</button>';
+      list.appendChild(row);
+    }
+    function removeImpRow(btn) {
+      if (document.getElementById('imp-list').children.length > 1) { btn.parentElement.remove(); recalcImps(); }
+    }
+    function recalcImps() {
+      let total = 0;
+      document.querySelectorAll('#imp-list .imp-row').forEach(row => {
+        const inputs = row.querySelectorAll('input');
+        const chip = row.querySelector('.imp-chip');
+        const a = parseFloat(inputs[0].value), b = parseFloat(inputs[1].value);
+        if (!isNaN(a) && !isNaN(b)) {
+          const signed = a >= b ? scoreToImps(a - b) : -scoreToImps(b - a);
+          total += signed;
+          chip.textContent = (signed > 0 ? '+' : '') + signed;
+          chip.style.color = signed > 0 ? '#1a8040' : signed < 0 ? '#c0392b' : '#667';
+        } else { chip.textContent = '—'; chip.style.color = '#667'; }
+      });
+      const box = document.getElementById('imp-total');
+      box.style.display = '';
+      const col = total > 0 ? '#1a8040' : total < 0 ? '#c0392b' : '#667';
+      const lbl = total > 0 ? 'IMPs won' : total < 0 ? 'IMPs lost' : 'Tied';
+      box.innerHTML = `<div class="match-big" style="color:${col}">${total > 0 ? '+' : ''}${total}</div><div class="match-sub">${lbl}</div>`;
+      document.getElementById('vp-imps').value = total;
+      calcVPs();
+    }
+
+    const VP_SCALE = [0,2,4,7,10,14,18,23,28,34,41];
+    function calcVPs() {
+      const imp = parseInt(document.getElementById('vp-imps').value);
+      const res = document.getElementById('vp-result');
+      if (isNaN(imp)) { res.style.display = 'none'; return; }
+      const abs = Math.abs(imp);
+      let vpDiff = 0;
+      for (let i = VP_SCALE.length - 1; i >= 0; i--) { if (abs >= VP_SCALE[i]) { vpDiff = i; break; } }
+      res.style.display = '';
+      if (imp === 0) {
+        res.innerHTML = '<div class="vp-sides"><div class="vp-side tie"><div class="vp-num">10</div><div class="vp-label">Your VPs</div></div><div class="vp-side tie"><div class="vp-num">10</div><div class="vp-label">Their VPs</div></div></div><div class="match-sub">Tied — 10/10</div>';
+      } else {
+        const myVp = imp > 0 ? 10 + vpDiff : 10 - vpDiff;
+        const theirVp = imp > 0 ? 10 - vpDiff : 10 + vpDiff;
+        const myClass = imp > 0 ? 'win' : 'loss';
+        const theirClass = imp > 0 ? 'loss' : 'win';
+        res.innerHTML = `<div class="vp-sides"><div class="vp-side ${myClass}"><div class="vp-num">${myVp}</div><div class="vp-label">Your VPs</div></div><div class="vp-side ${theirClass}"><div class="vp-num">${theirVp}</div><div class="vp-label">Their VPs</div></div></div><div class="match-sub">${abs} IMP${abs !== 1 ? 's' : ''} &rarr; ${myVp}&ndash;${theirVp} VPs</div>`;
+      }
+    }
 
     // Listen for auth changes
     if (sb) sb.auth.onAuthStateChange(async (event, session) => {

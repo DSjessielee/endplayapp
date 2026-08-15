@@ -767,13 +767,21 @@
       <div id="match-team" class="match-section">
         <div class="match-sel-row">
           <label>Format:</label>
-          <select class="match-sel" id="team-format" onchange="updateTeamDesc()">
+          <select class="match-sel" id="team-format" onchange="updateTeamFormat()">
             <option value="swiss">Swiss Teams</option>
             <option value="rr">Round Robin</option>
             <option value="ko">KO / Duplicate</option>
           </select>
         </div>
-        <div class="match-desc" id="team-desc">Teams paired by similar standing each round. Score by VPs over all rounds. Best for 8+ teams over 5&#8211;7 rounds.</div>
+        <div class="match-sel-row">
+          <label>Movement:</label>
+          <select class="match-sel" id="team-movement" onchange="updateTeamDesc()">
+            <option value="standard">Standard Swiss</option>
+            <option value="compact">Compact Swiss</option>
+            <option value="barometer">Barometer Swiss</option>
+          </select>
+        </div>
+        <div class="match-desc" id="team-desc">Teams paired by similar VP standing each round. Best for 8+ teams over 5&#8211;7 rounds.</div>
         <div class="match-card">
           <div class="match-card-title">IMP Calculator</div>
           <div style="display:flex;gap:4px;font-size:0.75rem;color:#667;text-align:center;">
@@ -2138,13 +2146,33 @@
       document.getElementById('pair-desc').textContent = PAIR_DESCS[document.getElementById('pair-movement').value];
     }
 
-    const TEAM_DESCS = {
-      swiss: 'Teams paired by similar standing each round. Score by VPs over all rounds. Best for 8+ teams over 5–7 rounds.',
-      rr: 'Every team plays every other team. Final rank by total VPs. Used in smaller events or league play.',
-      ko: 'Knockout format — loser is eliminated each round. Play a fixed set of boards; team with more IMPs advances.',
+    const TEAM_MOVEMENTS = {
+      swiss: [['standard','Standard Swiss'],['compact','Compact Swiss'],['barometer','Barometer Swiss']],
+      rr:    [['full','Full Round Robin']],
+      ko:    [['single','Single KO'],['double','Double KO']],
     };
+    const TEAM_DESCS = {
+      swiss: {
+        standard:  'Teams paired by similar VP standing each round. Best for 8+ teams over 5–7 rounds.',
+        compact:   'Shortened Swiss with fewer rounds — good for one-session events or when time is limited.',
+        barometer: 'All tables play the same boards simultaneously; standings update live after each round.',
+      },
+      rr: { full: 'Every team plays every other team. Final rank by total VPs. Used in smaller events or league play.' },
+      ko: {
+        single: 'Lose once and you are eliminated. Play a fixed set of boards; team with more IMPs advances.',
+        double: 'Teams need two losses to be eliminated — a second chance after the first loss.',
+      },
+    };
+    function updateTeamFormat() {
+      const fmt = document.getElementById('team-format').value;
+      const sel = document.getElementById('team-movement');
+      sel.innerHTML = TEAM_MOVEMENTS[fmt].map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+      updateTeamDesc();
+    }
     function updateTeamDesc() {
-      document.getElementById('team-desc').textContent = TEAM_DESCS[document.getElementById('team-format').value];
+      const fmt = document.getElementById('team-format').value;
+      const mov = document.getElementById('team-movement').value;
+      document.getElementById('team-desc').textContent = (TEAM_DESCS[fmt] || {})[mov] || '';
     }
 
     function addMpRow() {

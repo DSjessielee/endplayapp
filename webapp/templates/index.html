@@ -40,6 +40,10 @@
     .sub-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 600; }
     .sub-badge.free { background: #e8e8e8; color: #555; }
     .sub-badge.pro { background: #e8f8e8; color: #1a8040; }
+    #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px); background:#1a3a5c; color:#fff; padding:11px 22px; border-radius:8px; font-size:0.88rem; font-weight:600; box-shadow:0 4px 16px rgba(0,0,0,0.25); opacity:0; transition:opacity 0.25s, transform 0.25s; pointer-events:none; z-index:999; white-space:nowrap; }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    #toast.ok { background:#1a6640; }
+    #toast.err { background:#8b1a1a; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { -webkit-text-size-adjust: 100%; }
     body {
@@ -448,6 +452,9 @@
     .matrix-table th { background: #e8f4fc; font-weight: 600; color: #2a6496; }
     .matrix-table td.self { background: #d6eaf8; }
     .matrix-table td.win { color: #1a8040; font-weight: 700; }
+    .db-history-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #e8f0f8; gap:8px; }
+    .db-history-row:last-child { border-bottom:none; }
+    .db-history-section { max-height:200px; overflow-y:auto; }
     .matrix-table td.loss { color: #c0392b; font-weight: 700; }
     .pairing-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 7px 0; border-bottom: 1px solid #d6eaf8; font-size: 0.83rem; }
     .pairing-row:last-child { border-bottom: none; }
@@ -534,6 +541,19 @@
       <div class="auth-msg" id="promoMsg"></div>
       <div style="height:8px;"></div>
       <button class="btn-auth" style="background:#8899aa;" onclick="closePromoModal()">Cancel</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <!-- Finish Game Modal -->
+  <div class="modal-overlay" id="finishModal">
+    <div class="modal" style="text-align:center;">
+      <div style="font-size:2rem;margin-bottom:8px;">&#127881;</div>
+      <h2 id="finishModalTitle">Tournament Complete!</h2>
+      <p id="finishModalMsg" style="font-size:0.85rem;color:#556;margin:10px 0 18px;"></p>
+      <button class="btn-auth" id="finishSaveBtn" style="background:#27ae60;width:100%;margin-bottom:8px;" onclick="finishModalSave()">Save Game</button>
+      <button class="btn-auth" style="background:#8899aa;width:100%;" onclick="finishModalClose()">Close without saving</button>
     </div>
   </div>
 
@@ -787,58 +807,31 @@
       <!-- Team Game -->
       <div id="match-team" class="match-section">
         <div class="match-sel-row">
-          <label>Format:</label>
+          <label>Movement:</label>
           <select class="match-sel" id="team-format" onchange="updateTeamFormat()">
             <option value="swiss">Swiss Teams</option>
+            <option value="swiss-triple">Swiss Triple</option>
             <option value="rr">Round Robin</option>
             <option value="ko">KO / Duplicate</option>
           </select>
         </div>
         <div class="match-sel-row">
-          <label>Movement:</label>
+          <label>Score Type:</label>
           <select class="match-sel" id="team-movement" onchange="updateTeamDesc()">
-            <option value="standard">Standard Swiss</option>
-            <option value="compact">Compact Swiss</option>
-            <option value="barometer">Barometer Swiss</option>
+            <option value="vp">VP</option>
+            <option value="imp">IMP</option>
+            <option value="bam">BAM</option>
           </select>
         </div>
         <div class="match-desc" id="team-desc">Teams paired by similar VP standing each round. Best for 8+ teams over 5&#8211;7 rounds.</div>
-        <div class="match-card">
-          <div class="match-card-title">IMP Calculator</div>
-          <div style="display:flex;gap:4px;font-size:0.75rem;color:#667;text-align:center;">
-            <span style="flex:1;">Your table (N/S)</span>
-            <span style="flex:1;">Other table (N/S)</span>
-            <span style="width:50px;">IMPs</span>
-            <span style="width:28px;"></span>
+        <!-- Saved games (shown when logged in and games exist) -->
+        <div id="db-history-card" class="match-card" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div class="match-card-title">My Saved Games</div>
+            <button class="btn-clear" style="font-size:0.75rem;padding:4px 10px;" onclick="dbRefreshHistory()">&#8635; Refresh</button>
           </div>
-          <div class="imp-list" id="imp-list">
-            <div class="imp-row">
-              <input type="number" placeholder="420" oninput="recalcImps()" />
-              <input type="number" placeholder="450" oninput="recalcImps()" />
-              <div class="imp-chip">&#8212;</div>
-              <button class="btn-remove" onclick="removeImpRow(this)">&#10005;</button>
-            </div>
-            <div class="imp-row">
-              <input type="number" placeholder="-100" oninput="recalcImps()" />
-              <input type="number" placeholder="-50" oninput="recalcImps()" />
-              <div class="imp-chip">&#8212;</div>
-              <button class="btn-remove" onclick="removeImpRow(this)">&#10005;</button>
-            </div>
-          </div>
-          <div class="btn-row">
-            <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="addImpRow()">+ Add Board</button>
-          </div>
-          <div class="match-result-box" id="imp-total" style="display:none;"></div>
+          <div class="db-history-section" id="db-history-list"></div>
         </div>
-        <div class="match-card">
-          <div class="match-card-title">VP Calculator (WBF 20-pt scale)</div>
-          <div class="match-input-row">
-            <label>Net IMPs (+ = you won):</label>
-            <input class="match-num" type="number" id="vp-imps" placeholder="e.g. 17" oninput="calcVPs()" />
-          </div>
-          <div class="match-result-box" id="vp-result" style="display:none;"></div>
-        </div>
-
         <!-- Swiss Standard Tournament Manager -->
         <div id="swiss-panel" style="display:none;" class="swiss-section">
           <div id="swiss-setup-card" class="match-card">
@@ -849,15 +842,28 @@
             </div>
             <div class="match-input-row">
               <label># of teams:</label>
-              <input type="number" id="sw-count" class="match-num" min="4" max="32" step="2" value="8" />
+              <input type="number" id="sw-count" class="match-num" min="2" max="32" value="8" />
               <button class="btn-analyze" style="font-size:0.82rem;padding:7px 14px;" onclick="swSetupTeams()">Set Up Teams</button>
             </div>
+            <div id="sw-preset-row" style="display:none;margin-top:8px;border-top:1px solid #e8f0f8;padding-top:8px;">
+              <div style="font-size:0.78rem;color:#667;margin-bottom:4px;">Load Team Preset:</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <select id="sw-preset-sel" class="match-sel" style="flex:1;font-size:0.78rem;min-width:100px;"></select>
+                <button class="btn-clear" style="font-size:0.75rem;padding:5px 10px;" onclick="dbLoadPreset('sw')">Load</button>
+                <button class="btn-clear" style="font-size:0.75rem;padding:5px 10px;" onclick="dbSavePreset('sw')">Save Preset</button>
+              </div>
+            </div>
             <div id="sw-team-list" style="display:none;">
-              <div style="font-size:0.8rem;color:#667;margin-bottom:6px;">Team names (editable):</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-size:0.8rem;color:#667;">Team names (editable):</div>
+                <button onclick="swAddTeam()" style="font-size:0.75rem;padding:3px 10px;border:1px solid #a0c4d8;border-radius:4px;background:#e8f4fb;cursor:pointer;">+ Add Team</button>
+              </div>
               <div id="sw-team-inputs"></div>
               <div class="match-input-row" style="margin-top:8px;">
                 <label>Boards / round:</label>
                 <input type="number" id="sw-boards" class="match-num" min="4" max="28" value="8" />
+                <label style="margin-left:10px;white-space:nowrap;">Total rounds:</label>
+                <input type="number" id="sw-rounds" class="match-num" min="1" max="20" value="5" />
               </div>
               <button class="btn-analyze" style="margin-top:8px;width:100%;font-size:0.88rem;padding:10px;" onclick="swStartTournament()">Start Tournament</button>
             </div>
@@ -877,19 +883,147 @@
               <div style="display:flex;gap:4px;font-size:0.75rem;color:#889;margin-bottom:4px;flex-wrap:wrap;">
                 <span style="flex:1;">Team (NS)</span><span style="flex-shrink:0;width:20px;"></span>
                 <span style="flex:1;">Team (EW)</span>
-                <span style="width:68px;text-align:center;">NS IMPs</span>
-                <span style="width:68px;text-align:center;">EW IMPs</span>
-                <span style="width:58px;text-align:center;">VPs</span>
+                <span id="sw-col-ns" style="width:68px;text-align:center;">NS IMPs</span>
+                <span id="sw-col-ew" style="width:68px;text-align:center;">EW IMPs</span>
+                <span id="sw-col-score" style="width:58px;text-align:center;">VPs</span>
               </div>
               <div id="sw-pairings"></div>
+              <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+                <button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" id="sw-complete-btn" onclick="swCompleteRound()">Complete Round</button>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" id="sw-save-btn" onclick="dbSave('swiss')">Save</button>
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="swEdit()">Edit</button>
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="swScoreEditOpen()">Scores</button>
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;color:#27ae60;border-color:#27ae60;" id="sw-finish-btn" onclick="swFinish()">Finish</button>
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="swNewGame()">New</button>
+                </div>
+              </div>
+            </div>
+            <div id="sw-completed-banner" class="match-card" style="display:none;background:#e8f5e9;border-color:#27ae60;padding:12px;text-align:center;">
+              <div style="color:#27ae60;font-weight:700;font-size:0.95rem;">Tournament Complete</div>
+            </div>
+            <div id="sw-edit-section" class="match-card" style="display:none;">
+              <div class="match-card-title" style="margin-bottom:8px;">Edit Game</div>
+              <div class="match-input-row" style="flex-wrap:nowrap;">
+                <label style="white-space:nowrap;">Game name:</label>
+                <input type="text" id="sw-edit-name" style="flex:1;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;" />
+              </div>
+              <div style="display:flex;gap:10px;">
+                <div class="match-input-row" style="flex-wrap:nowrap;flex:1;">
+                  <label style="white-space:nowrap;">Total rounds:</label>
+                  <input type="number" id="sw-edit-rounds" min="1" max="20" style="width:60px;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;text-align:center;" />
+                </div>
+                <div class="match-input-row" style="flex-wrap:nowrap;flex:1;">
+                  <label style="white-space:nowrap;">Boards / round:</label>
+                  <input type="number" id="sw-edit-boards" min="1" max="40" style="width:60px;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;text-align:center;" />
+                </div>
+              </div>
+              <div style="font-size:0.8rem;color:#667;margin:8px 0 4px;">Team names:</div>
+              <div id="sw-edit-teams"></div>
               <div class="btn-row" style="margin-top:10px;">
-                <button class="btn-analyze" style="flex:1;font-size:0.88rem;" onclick="swCompleteRound()">Complete Round</button>
-                <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="swNewGame()">New Game</button>
+                <button class="btn-analyze" style="flex:1;font-size:0.85rem;" onclick="swSaveEdit()">Save Changes</button>
+                <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="swCancelEdit()">Cancel</button>
+              </div>
+            </div>
+            <div id="sw-score-edit-section" class="match-card" style="display:none;">
+              <div class="match-card-title" style="margin-bottom:8px;">Edit Round Scores</div>
+              <div class="match-input-row" style="flex-wrap:nowrap;margin-bottom:10px;">
+                <label style="white-space:nowrap;">Round:</label>
+                <select id="sw-score-edit-round" style="flex:1;padding:7px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.85rem;" onchange="swScoreEditLoadRound()"></select>
+              </div>
+              <div style="display:flex;gap:4px;font-size:0.72rem;color:#889;margin-bottom:4px;flex-wrap:wrap;">
+                <span style="flex:0 0 22px;"></span>
+                <span style="flex:1;">Team (NS)</span><span style="flex-shrink:0;width:16px;"></span>
+                <span style="flex:1;">Team (EW)</span>
+                <span style="width:68px;text-align:center;">NS IMPs</span>
+                <span style="width:68px;text-align:center;">EW IMPs</span>
+                <span style="width:54px;text-align:center;">VPs</span>
+              </div>
+              <div id="sw-score-edit-pairings"></div>
+              <div class="btn-row" style="margin-top:10px;">
+                <button class="btn-analyze" style="flex:1;font-size:0.85rem;" onclick="swScoreSaveEdit()">Save Changes</button>
+                <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="swScoreEditClose()">Cancel</button>
               </div>
             </div>
             <div class="match-card">
               <div class="match-card-title" style="margin-bottom:8px;">Opponent Matrix</div>
               <div class="matrix-wrap" id="sw-matrix"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- General Team Game Setup (all formats except Swiss Standard) -->
+        <div id="general-team-panel" style="display:none;" class="swiss-section">
+          <div id="gt-setup-card" class="match-card">
+            <div class="match-card-title">Game Setup</div>
+            <div class="match-input-row" style="flex-wrap:nowrap;">
+              <label style="white-space:nowrap;">Game name:</label>
+              <input type="text" id="gt-name" style="flex:1;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;" />
+            </div>
+            <div class="match-input-row">
+              <label># of teams:</label>
+              <input type="number" id="gt-teams" class="match-num" min="2" max="64" step="2" value="8" />
+            </div>
+            <div class="match-input-row">
+              <label># of rounds:</label>
+              <input type="number" id="gt-rounds" class="match-num" min="1" max="20" value="5" />
+            </div>
+            <div class="match-input-row">
+              <label>Boards / round:</label>
+              <input type="number" id="gt-boards" class="match-num" min="4" max="28" value="8" />
+            </div>
+            <button class="btn-analyze" style="width:100%;margin-top:4px;font-size:0.88rem;padding:10px;" onclick="gtSetupTeams()">Set Up Teams</button>
+          </div>
+          <div id="gt-teams-card" class="match-card" style="display:none;">
+            <div class="match-card-title">Team Names</div>
+            <div style="font-size:0.8rem;color:#667;margin-bottom:6px;">Edit team names:</div>
+            <div id="gt-team-inputs"></div>
+            <div id="gt-preset-row" style="display:none;margin-top:8px;border-top:1px solid #e8f0f8;padding-top:8px;">
+              <div style="font-size:0.78rem;color:#667;margin-bottom:4px;">Team Presets:</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <select id="gt-preset-sel" class="match-sel" style="flex:1;font-size:0.78rem;min-width:100px;"></select>
+                <button class="btn-clear" style="font-size:0.75rem;padding:5px 10px;" onclick="dbLoadPreset('gt')">Load</button>
+                <button class="btn-clear" style="font-size:0.75rem;padding:5px 10px;" onclick="dbSavePreset('gt')">Save Preset</button>
+              </div>
+            </div>
+            <button class="btn-analyze" style="margin-top:8px;width:100%;font-size:0.88rem;padding:10px;" onclick="gtStartGame()">Start Game</button>
+          </div>
+          <div id="gt-active" class="match-card" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
+              <div class="match-card-title" id="gt-game-title" style="flex:1;min-width:0;"></div>
+              <div style="display:flex;gap:5px;flex-shrink:0;">
+                <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" id="gt-save-btn" onclick="dbSave('gt')">Save</button>
+                <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="gtEdit()">Edit</button>
+                <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;color:#27ae60;border-color:#27ae60;" id="gt-finish-btn" onclick="gtFinish()">Finish</button>
+                <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="gtNewGame()">New</button>
+              </div>
+            </div>
+            <div id="gt-summary"></div>
+            <div id="gt-completed-banner" style="display:none;margin-top:8px;padding:10px;background:#e8f5e9;border:1px solid #27ae60;border-radius:6px;text-align:center;">
+              <div style="color:#27ae60;font-weight:700;font-size:0.9rem;">Game Complete</div>
+            </div>
+            <div id="gt-edit-section" style="display:none;margin-top:8px;padding:12px;border:1px solid #a0c4d8;border-radius:6px;background:#f8fcff;">
+              <div class="match-card-title" style="margin-bottom:8px;">Edit Game</div>
+              <div class="match-input-row" style="flex-wrap:nowrap;">
+                <label style="white-space:nowrap;">Game name:</label>
+                <input type="text" id="gt-edit-name" style="flex:1;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;" />
+              </div>
+              <div style="display:flex;gap:10px;">
+                <div class="match-input-row" style="flex-wrap:nowrap;flex:1;">
+                  <label style="white-space:nowrap;">Rounds:</label>
+                  <input type="number" id="gt-edit-rounds" min="1" max="20" style="width:60px;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;text-align:center;" />
+                </div>
+                <div class="match-input-row" style="flex-wrap:nowrap;flex:1;">
+                  <label style="white-space:nowrap;">Boards / round:</label>
+                  <input type="number" id="gt-edit-boards" min="1" max="40" style="width:60px;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;text-align:center;" />
+                </div>
+              </div>
+              <div style="font-size:0.8rem;color:#667;margin:8px 0 4px;">Team names:</div>
+              <div id="gt-edit-teams"></div>
+              <div class="btn-row" style="margin-top:10px;">
+                <button class="btn-analyze" style="flex:1;font-size:0.85rem;" onclick="gtSaveEdit()">Save Changes</button>
+                <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="gtCancelEdit()">Cancel</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1919,6 +2053,7 @@
         if (!isPaid()) {
           btns = '<button class="btn-auth upgrade" onclick="showPromoModal()">Upgrade</button>' + btns;
         }
+        btns = '<button class="btn-auth" style="background:#2a6496;" onclick="openLoadGame()">Load Game</button>' + btns;
         bar.innerHTML = '<span class="user-email">' + currentUser.email + '</span> ' + badge + ' ' + btns;
 
         if (uploadBtn) {
@@ -2198,6 +2333,7 @@
       if (session) {
         currentUser = session.user;
         await loadSubscription();
+        dbRefreshHistory();
       }
       updateAuthUI();
       checkPaymentReturn();
@@ -2209,37 +2345,116 @@
     function swShowPanel() {
       const fmt = document.getElementById('team-format');
       const mov = document.getElementById('team-movement');
-      const panel = document.getElementById('swiss-panel');
-      if (!panel || !fmt || !mov) return;
-      panel.style.display = (fmt.value === 'swiss' && mov.value === 'standard') ? '' : 'none';
+      if (!fmt || !mov) return;
+      const isSwissStd = fmt.value === 'swiss';
+      const isTriple = fmt.value === 'swiss-triple';
+      const swPanel = document.getElementById('swiss-panel');
+      const gtPanel = document.getElementById('general-team-panel');
+      if (swPanel) swPanel.style.display = (isSwissStd || isTriple) ? '' : 'none';
+      if (gtPanel) gtPanel.style.display = (isSwissStd || isTriple) ? 'none' : '';
+      const countEl = document.getElementById('sw-count');
+      if (countEl) {
+        if (isTriple) {
+          countEl.min = 3; countEl.step = 2;
+          if (parseInt(countEl.value) % 2 === 0) countEl.value = 7;
+        } else {
+          countEl.min = 4; countEl.step = 2;
+          if (parseInt(countEl.value) % 2 !== 0) countEl.value = parseInt(countEl.value) + 1;
+        }
+      }
+      const boardsEl = document.getElementById('sw-boards');
+      if (boardsEl) {
+        if (isTriple) {
+          boardsEl.step = 2;
+          if (parseInt(boardsEl.value) % 2 !== 0) boardsEl.value = parseInt(boardsEl.value) + 1;
+        } else {
+          boardsEl.step = 1;
+        }
+      }
+      if (isSwissStd || isTriple) dbRefreshPresets('sw');
+    }
+
+    function swBuildTeamRows(count, names) {
+      const c = document.getElementById('sw-team-inputs');
+      c.innerHTML = '';
+      for (let i = 1; i <= count; i++) {
+        const name = (names && names[i-1]) ? names[i-1] : `Team ${i}`;
+        const row = document.createElement('div');
+        row.className = 'sw-team-row';
+        row.innerHTML =
+          `<span class="sw-num">${i}</span>` +
+          `<input type="text" id="sw-t${i}" value="${name}" style="flex:1;" />` +
+          `<button onclick="swMoveTeam(${i},-1)" style="padding:2px 6px;font-size:0.8rem;border:1px solid #ccc;border-radius:3px;cursor:pointer;background:#f5f5f5;" title="Move up">↑</button>` +
+          `<button onclick="swMoveTeam(${i},1)" style="padding:2px 6px;font-size:0.8rem;border:1px solid #ccc;border-radius:3px;cursor:pointer;background:#f5f5f5;" title="Move down">↓</button>` +
+          `<button onclick="swRemoveTeam(${i})" style="padding:2px 6px;font-size:0.8rem;border:1px solid #e0a0a0;border-radius:3px;cursor:pointer;background:#fdf0f0;color:#c0392b;" title="Remove team">✕</button>`;
+        c.appendChild(row);
+      }
+      document.getElementById('sw-count').value = count;
+    }
+
+    function swCollectNames() {
+      const c = document.getElementById('sw-team-inputs');
+      const names = [];
+      for (let i = 1; i <= c.children.length; i++) {
+        const el = document.getElementById(`sw-t${i}`);
+        names.push(el ? el.value : `Team ${i}`);
+      }
+      return names;
+    }
+
+    function swMoveTeam(i, dir) {
+      const a = document.getElementById(`sw-t${i}`);
+      const b = document.getElementById(`sw-t${i+dir}`);
+      if (!a || !b) return;
+      const tmp = a.value; a.value = b.value; b.value = tmp;
+    }
+
+    function swRemoveTeam(i) {
+      const c = document.getElementById('sw-team-inputs');
+      if (c.children.length <= 1) return;
+      const names = swCollectNames().filter((_, idx) => idx !== i - 1);
+      swBuildTeamRows(names.length, names);
+    }
+
+    function swAddTeam() {
+      const names = swCollectNames();
+      names.push(`Team ${names.length + 1}`);
+      swBuildTeamRows(names.length, names);
     }
 
     function swSetupTeams() {
       const count = parseInt(document.getElementById('sw-count').value) || 8;
-      if (count < 4 || count % 2 !== 0) { alert('Please enter an even number of teams (minimum 4).'); return; }
-      const c = document.getElementById('sw-team-inputs');
-      c.innerHTML = '';
-      for (let i = 1; i <= count; i++) {
-        const row = document.createElement('div');
-        row.className = 'sw-team-row';
-        row.innerHTML = `<span class="sw-num">${i}</span><input type="text" id="sw-t${i}" value="Team ${i}" />`;
-        c.appendChild(row);
+      const isTriple = document.getElementById('team-format')?.value === 'swiss-triple';
+      if (isTriple) {
+        if (count < 3 || count % 2 === 0) { alert('Swiss Triple requires an odd number of teams (3, 5, 7 …).'); return; }
+      } else {
+        if (count < 4 || count % 2 !== 0) { alert('Standard Swiss requires an even number of teams (4, 6, 8 …).'); return; }
       }
+      swBuildTeamRows(count);
       document.getElementById('sw-team-list').style.display = '';
+      dbRefreshPresets('sw');
     }
 
     function swStartTournament() {
       const count = parseInt(document.getElementById('sw-count').value) || 8;
-      if (count % 2 !== 0) { alert('Even number of teams required.'); return; }
+      const isTriple = document.getElementById('team-format')?.value === 'swiss-triple';
+      if (isTriple) {
+        if (count < 3 || count % 2 === 0) { alert('Mixed / Triple Swiss requires an odd number of teams (3, 5, 7 …).'); return; }
+      } else {
+        if (count < 4 || count % 2 !== 0) { alert('Standard Swiss requires an even number of teams (4, 6, 8 …).'); return; }
+      }
       const nameEl = document.getElementById('sw-name');
       const name = nameEl.value.trim() || nameEl.placeholder;
       const boards = parseInt(document.getElementById('sw-boards').value) || 8;
+      if (isTriple && boards % 2 !== 0) { alert('Boards per round must be even for Swiss Triple (triangle matches play half the boards each).'); return; }
+      const targetRounds = parseInt(document.getElementById('sw-rounds').value) || 0;
       const teams = [];
       for (let i = 1; i <= count; i++) {
         const el = document.getElementById(`sw-t${i}`);
         teams.push({ id: i, name: (el ? el.value.trim() : '') || `Team ${i}` });
       }
-      swissState = { name, teams, boards, rounds: [] };
+      const scoreType = document.getElementById('team-movement')?.value || 'vp';
+      swissState = { name, teams, boards, targetRounds, rounds: [], completed: false, tripleMode: isTriple, scoreType };
       document.getElementById('swiss-setup-card').style.display = 'none';
       document.getElementById('swiss-active').style.display = '';
       document.getElementById('sw-game-title').textContent = name;
@@ -2249,16 +2464,26 @@
     function swNewGame() {
       if (swissState && !confirm('Start a new game? Current tournament data will be lost.')) return;
       swissState = null;
+      localClearState('swiss');
       document.getElementById('swiss-active').style.display = 'none';
       document.getElementById('swiss-setup-card').style.display = '';
       document.getElementById('sw-team-list').style.display = 'none';
+      document.getElementById('sw-completed-banner').style.display = 'none';
+      document.getElementById('sw-edit-section').style.display = 'none';
+      document.getElementById('sw-complete-btn').style.display = '';
+      document.getElementById('sw-finish-btn').style.display = '';
+      dbRefreshHistory();
     }
 
-    function swGetVPs(impDiff) {
-      const sc = [0,2,4,7,10,14,18,23,28,34,41];
-      let d = 0;
-      for (let i = sc.length - 1; i >= 0; i--) { if (Math.abs(impDiff) >= sc[i]) { d = i; break; } }
-      return impDiff >= 0 ? [10+d, 10-d] : [10-d, 10+d];
+    function swGetVPs(impDiff, boards) {
+      // WBF Continuous VP (20-0 scale)
+      const tau = 0.618034;
+      const B = 15 * Math.sqrt(boards || 20);
+      const d = Math.abs(impDiff);
+      let winnerVp = Math.min(20, 10 + 10 * (1 - Math.pow(tau, 3 * d / B)) / (1 - Math.pow(tau, 3)));
+      winnerVp = Math.round(winnerVp * 100) / 100;
+      const loserVp = Math.round((20 - winnerVp) * 100) / 100;
+      return impDiff >= 0 ? [winnerVp, loserVp] : [loserVp, winnerVp];
     }
 
     function swTotalVPs(id) {
@@ -2266,12 +2491,22 @@
       let t = 0;
       for (const r of swissState.rounds) {
         if (!r.completed) continue;
-        for (const p of r.pairings) {
-          if (p.nsId === id) t += p.nsVps;
-          else if (p.ewId === id) t += p.ewVps;
+        if (r.threeWayIds && r.threeWayIds.includes(id)) {
+          const vps = [];
+          for (const p of r.pairings) {
+            if (!p.tw) continue;
+            if (p.nsId === id) vps.push(p.nsVps);
+            else if (p.ewId === id) vps.push(p.ewVps);
+          }
+          if (vps.length === 2) t += vps[0] + vps[1];
+        } else {
+          for (const p of r.pairings) {
+            if (p.nsId === id) t += p.nsVps;
+            else if (p.ewId === id) t += p.ewVps;
+          }
         }
       }
-      return t;
+      return Math.round(t * 10) / 10;
     }
 
     function swHasPlayed(a, b) {
@@ -2284,30 +2519,68 @@
     }
 
     function swPair() {
+      const N = swissState.teams.length;
       const sorted = [...swissState.teams].sort((a,b) => swTotalVPs(b.id) - swTotalVPs(a.id));
-      const used = new Set(), pairs = [];
-      for (let i = 0; i < sorted.length; i++) {
-        if (used.has(sorted[i].id)) continue;
-        let matched = false;
-        for (let j = i+1; j < sorted.length; j++) {
-          if (used.has(sorted[j].id) || swHasPlayed(sorted[i].id, sorted[j].id)) continue;
-          pairs.push({nsId:sorted[i].id, ewId:sorted[j].id, nsVps:0, ewVps:0});
-          used.add(sorted[i].id); used.add(sorted[j].id); matched = true; break;
+
+      let mainTeams = sorted, threeWayIds = null;
+      if (N % 2 === 1 && N >= 3) {
+        // Bottom 3 (by standing) form the triangle; rest pair normally
+        threeWayIds = [sorted[N-3].id, sorted[N-2].id, sorted[N-1].id];
+        mainTeams = sorted.slice(0, N-3);
+      }
+
+      function bt(idx, used, acc) {
+        if (idx >= mainTeams.length) return acc;
+        if (used.has(mainTeams[idx].id)) return bt(idx+1, used, acc);
+        for (let j = idx+1; j < mainTeams.length; j++) {
+          if (used.has(mainTeams[j].id) || swHasPlayed(mainTeams[idx].id, mainTeams[j].id)) continue;
+          used.add(mainTeams[idx].id); used.add(mainTeams[j].id);
+          const res = bt(idx+1, used, [...acc, {nsId:mainTeams[idx].id, ewId:mainTeams[j].id, nsVps:0, ewVps:0}]);
+          if (res) return res;
+          used.delete(mainTeams[idx].id); used.delete(mainTeams[j].id);
         }
-        if (!matched) {
-          for (let j = i+1; j < sorted.length; j++) {
-            if (!used.has(sorted[j].id)) {
-              pairs.push({nsId:sorted[i].id, ewId:sorted[j].id, nsVps:0, ewVps:0});
-              used.add(sorted[i].id); used.add(sorted[j].id); break;
+        return null;
+      }
+
+      let pairings = bt(0, new Set(), []);
+      if (!pairings) {
+        // Greedy fallback when rematches are unavoidable
+        const used = new Set();
+        pairings = [];
+        for (let i = 0; i < mainTeams.length; i++) {
+          if (used.has(mainTeams[i].id)) continue;
+          for (let j = i+1; j < mainTeams.length; j++) {
+            if (!used.has(mainTeams[j].id)) {
+              pairings.push({nsId:mainTeams[i].id, ewId:mainTeams[j].id, nsVps:0, ewVps:0});
+              used.add(mainTeams[i].id); used.add(mainTeams[j].id); break;
             }
           }
         }
       }
-      return pairs;
+
+      if (threeWayIds) {
+        const [a,b,c] = threeWayIds;
+        pairings.push({nsId:a, ewId:b, nsVps:0, ewVps:0, tw:true});
+        pairings.push({nsId:b, ewId:c, nsVps:0, ewVps:0, tw:true});
+        pairings.push({nsId:c, ewId:a, nsVps:0, ewVps:0, tw:true});
+      }
+
+      return { pairings, threeWayIds };
     }
 
     function swNextRound() {
-      swissState.rounds.push({ pairings: swPair(), completed: false });
+      const doneCount = swissState.rounds.filter(r => r.completed).length;
+      const target = swissState.targetRounds || 0;
+      if (target > 0 && doneCount >= target) {
+        swissState.completed = true;
+        document.getElementById('sw-completed-banner').style.display = '';
+        swRender();
+        return;
+      }
+      const { pairings, threeWayIds } = swPair();
+      const round = { pairings, completed: false };
+      if (threeWayIds) round.threeWayIds = threeWayIds;
+      swissState.rounds.push(round);
       swRender();
     }
 
@@ -2316,38 +2589,146 @@
     function swRenderStandings() {
       const doneRounds = swissState.rounds.filter(r=>r.completed).length;
       const sorted = [...swissState.teams].sort((a,b)=>swTotalVPs(b.id)-swTotalVPs(a.id));
+      const curRound = swissState.rounds.length > 0 ? swissState.rounds[swissState.rounds.length-1] : null;
+      // assignMap[teamId] = { tNS, tEW } — physical table numbers for each team
+      const assignMap = {};
+      const tripleTeamIds = new Set();
+      if (curRound) {
+        const normalPairings = curRound.pairings.filter(p=>!p.tw);
+        const numNormal = normalPairings.length;
+        normalPairings.forEach((p, i) => {
+          const tA = i + 1, tB = i + 1 + numNormal;
+          assignMap[p.nsId] = { tNS: tA, tEW: tB };
+          assignMap[p.ewId] = { tNS: tB, tEW: tA };
+        });
+        if (curRound.threeWayIds) {
+          const twp = curRound.pairings.filter(p=>p.tw);
+          const base = 2 * numNormal + 1;
+          // p0: A(NS)vsB(EW) @base, p1: B(NS)vsC(EW) @base+1, p2: C(NS)vsA(EW) @base+2
+          if (twp.length === 3) {
+            assignMap[twp[0].nsId] = { tNS: base,   tEW: base+2 }; // A: NS @base, EW @base+2
+            assignMap[twp[0].ewId] = { tNS: base+1, tEW: base   }; // B: NS @base+1, EW @base
+            assignMap[twp[1].ewId] = { tNS: base+2, tEW: base+1 }; // C: NS @base+2, EW @base+1
+            curRound.threeWayIds.forEach(id => tripleTeamIds.add(id));
+          }
+        }
+      }
+      const st = swissState?.scoreType || 'vp';
+      const scoreLabel = st === 'imp' ? 'IMPs' : st === 'bam' ? 'BAM' : 'VPs';
       document.getElementById('sw-standings').innerHTML =
-        '<table class="swiss-table"><thead><tr><th>#</th><th>Team</th><th style="text-align:right;">VPs</th></tr></thead><tbody>' +
-        sorted.map((t,i)=>`<tr${i===0&&doneRounds>0?' class="rank-1"':''}><td>${i+1}</td><td>${t.name}</td><td style="text-align:right;">${swTotalVPs(t.id)}</td></tr>`).join('') +
+        `<table class="swiss-table"><thead><tr><th>#</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th><th style="text-align:center;padding:4px 2px;">Tbl NS</th><th style="text-align:center;padding:4px 2px;">Tbl EW</th></tr></thead><tbody>` +
+        sorted.map((t,i)=>{
+          const a = assignMap[t.id];
+          const isTriple = tripleTeamIds.has(t.id);
+          let nsCell, ewCell;
+          if (a) {
+            nsCell = `<b style="color:#1565c0;">T${a.tNS}</b>`;
+            ewCell = isTriple
+              ? `<b style="color:#6a1a60;">T${a.tEW}/T${a.tNS}</b>`
+              : `<b style="color:#6a1a60;">T${a.tEW}</b>`;
+          } else {
+            nsCell = '<span style="color:#aaa;">—</span>';
+            ewCell = '<span style="color:#aaa;">—</span>';
+          }
+          return `<tr${i===0&&doneRounds>0?' class="rank-1"':''}><td>${i+1}</td><td>${t.name}</td><td style="text-align:right;">${swTotalVPs(t.id)}</td><td style="text-align:center;padding:4px 2px;">${nsCell}</td><td style="text-align:center;padding:4px 2px;">${ewCell}</td></tr>`;
+        }).join('') +
         '</tbody></table>';
     }
 
     function swRenderPairings() {
+      const completeBtn = document.getElementById('sw-complete-btn');
+      if (swissState.completed) {
+        const doneRounds = swissState.rounds.filter(r=>r.completed).length;
+        completeBtn.style.display = 'none';
+        document.getElementById('sw-round-label').textContent = `${doneRounds} rounds completed`;
+        document.getElementById('sw-pairing-label').textContent = 'Tournament Complete';
+        document.getElementById('sw-pairings').innerHTML =
+          `<div style="text-align:center;padding:18px 8px;color:#27ae60;font-weight:600;font-size:0.9rem;">
+            All ${doneRounds} rounds complete!<br>
+            <span style="font-size:0.8rem;font-weight:400;color:#666;">Use <b>Scores</b> to review or edit any round.</span>
+          </div>`;
+        return;
+      }
+      completeBtn.style.display = '';
       const rNum = swissState.rounds.length;
-      document.getElementById('sw-round-label').textContent = `Round ${rNum}`;
-      document.getElementById('sw-pairing-label').textContent = `Round ${rNum} — Enter IMPs`;
+      const tR = swissState.targetRounds || 0;
+      const roundLabel = tR > 0 ? `Round ${rNum} of ${tR}` : `Round ${rNum}`;
+      document.getElementById('sw-round-label').textContent = roundLabel;
+      document.getElementById('sw-pairing-label').textContent = `${roundLabel} — Enter IMPs`;
+      const round = swissState.rounds[rNum-1];
+      const st = swissState.scoreType || 'vp';
+      const phNS = st === 'bam' ? 'NS Boards' : 'NS IMPs';
+      const phEW = st === 'bam' ? 'EW Boards' : 'EW IMPs';
+      const colScore = st === 'vp' ? 'VPs' : st === 'imp' ? 'Net IMP' : 'BAM';
+      const colEl = document.getElementById('sw-col-ns'); if (colEl) colEl.textContent = phNS;
+      const colEl2 = document.getElementById('sw-col-ew'); if (colEl2) colEl2.textContent = phEW;
+      const colEl3 = document.getElementById('sw-col-score'); if (colEl3) colEl3.textContent = colScore;
       const c = document.getElementById('sw-pairings');
       c.innerHTML = '';
-      swissState.rounds[rNum-1].pairings.forEach((p, idx) => {
+
+      const normalPairings = round.pairings.filter(p=>!p.tw);
+      const twPairings = round.pairings.filter(p=>p.tw);
+      const numNormal = normalPairings.length;
+      const stepAttr = st === 'bam' ? ' step="0.5"' : '';
+      const twLabel = st === 'bam' ? 'BAM total' : st === 'imp' ? 'IMP total' : 'VP total';
+
+      normalPairings.forEach((p, pairIdx) => {
+        const gIdx = pairIdx;
+        const tA = pairIdx + 1, tB = pairIdx + 1 + numNormal;
         const div = document.createElement('div');
         div.className = 'pairing-row';
         div.innerHTML =
+          `<span class="p-tbl" style="font-size:0.72rem;color:#2a6496;font-weight:700;white-space:nowrap;">T${tA}&amp;T${tB}</span>` +
           `<span class="p-team">${swName(p.nsId)}</span>` +
           `<span class="p-vs">vs</span>` +
           `<span class="p-team">${swName(p.ewId)}</span>` +
-          `<input class="p-imp" type="number" id="swi-ns-${idx}" placeholder="NS" oninput="swLive(${idx})">` +
-          `<input class="p-imp" type="number" id="swi-ew-${idx}" placeholder="EW" oninput="swLive(${idx})">` +
-          `<span class="p-vp" id="swv-${idx}"></span>`;
+          `<input class="p-imp" type="number" min="0"${stepAttr} id="swi-ns-${gIdx}" placeholder="${phNS}" oninput="swLive(${gIdx})">` +
+          `<input class="p-imp" type="number" min="0"${stepAttr} id="swi-ew-${gIdx}" placeholder="${phEW}" oninput="swLive(${gIdx})">` +
+          `<span class="p-vp" id="swv-${gIdx}"></span>`;
         c.appendChild(div);
       });
+
+      if (twPairings.length === 3) {
+        const hdr = document.createElement('div');
+        hdr.style.cssText = 'font-size:0.75rem;font-weight:700;color:#7b2d00;margin:10px 0 4px;padding:4px 6px;background:#fff3e0;border-radius:5px;';
+        hdr.textContent = swissState.tripleMode
+          ? `▲ 3-Way Triangle — ${swissState.boards/2} boards each · ${twLabel} of 2 matches`
+          : `▲ 3-Way Triangle Match — team score = ${twLabel} of 2 matches`;
+        c.appendChild(hdr);
+        const base = 2 * numNormal + 1;
+        twPairings.forEach((p, twIdx) => {
+          const gIdx = numNormal + twIdx;
+          const tbl = base + twIdx;
+          const div = document.createElement('div');
+          div.className = 'pairing-row';
+          div.innerHTML =
+            `<span class="p-tbl" style="font-size:0.72rem;color:#7b2d00;font-weight:700;white-space:nowrap;">T${tbl}</span>` +
+            `<span class="p-team">${swName(p.nsId)}</span>` +
+            `<span class="p-vs">vs</span>` +
+            `<span class="p-team">${swName(p.ewId)}</span>` +
+            `<input class="p-imp" type="number"${stepAttr} id="swi-ns-${gIdx}" placeholder="${phNS}" oninput="swLive(${gIdx})">` +
+            `<input class="p-imp" type="number"${stepAttr} id="swi-ew-${gIdx}" placeholder="${phEW}" oninput="swLive(${gIdx})">` +
+            `<span class="p-vp" id="swv-${gIdx}"></span>`;
+          c.appendChild(div);
+        });
+      }
     }
 
     function swLive(idx) {
-      const ns = parseInt(document.getElementById(`swi-ns-${idx}`).value);
-      const ew = parseInt(document.getElementById(`swi-ew-${idx}`).value);
+      const nsEl = document.getElementById(`swi-ns-${idx}`);
+      const ewEl = document.getElementById(`swi-ew-${idx}`);
+      if (nsEl.value !== '' && parseFloat(nsEl.value) < 0) nsEl.value = 0;
+      if (ewEl.value !== '' && parseFloat(ewEl.value) < 0) ewEl.value = 0;
+      const ns = parseFloat(nsEl.value);
+      const ew = parseFloat(ewEl.value);
       const el = document.getElementById(`swv-${idx}`);
       if (isNaN(ns)||isNaN(ew)) { el.textContent=''; return; }
-      const [nv,ev] = swGetVPs(ns-ew);
+      const st = swissState?.scoreType || 'vp';
+      if (st === 'bam') { el.textContent = `${ns}–${ew}`; return; }
+      if (st === 'imp') { const d = ns-ew; el.textContent = (d>=0?'+':'')+d; return; }
+      const round = swissState?.rounds[swissState.rounds.length-1];
+      const boards = (swissState?.tripleMode && round?.pairings[idx]?.tw) ? swissState.boards/2 : swissState?.boards;
+      const [nv,ev] = swGetVPs(ns-ew, boards);
       el.textContent = `${nv}–${ev}`;
     }
 
@@ -2355,13 +2736,19 @@
       const round = swissState.rounds[swissState.rounds.length-1];
       let ok = true;
       round.pairings.forEach((p,idx) => {
-        const ns = parseInt(document.getElementById(`swi-ns-${idx}`)?.value);
-        const ew = parseInt(document.getElementById(`swi-ew-${idx}`)?.value);
+        const ns = parseFloat(document.getElementById(`swi-ns-${idx}`)?.value);
+        const ew = parseFloat(document.getElementById(`swi-ew-${idx}`)?.value);
         if (isNaN(ns)||isNaN(ew)) { ok=false; return; }
-        const [nv,ev] = swGetVPs(ns-ew);
-        p.nsVps=nv; p.ewVps=ev;
+        const st = swissState.scoreType || 'vp';
+        if (st === 'imp' || st === 'bam') {
+          p.nsVps = ns; p.ewVps = ew;
+        } else {
+          const boards = (swissState.tripleMode && p.tw) ? swissState.boards/2 : swissState.boards;
+          const [nv,ev] = swGetVPs(ns-ew, boards);
+          p.nsVps=nv; p.ewVps=ev;
+        }
       });
-      if (!ok) { alert('Enter IMPs for all matches before completing the round.'); return; }
+      if (!ok) { alert(`Enter ${(swissState.scoreType==='bam'?'boards won':'IMPs')} for all matches before completing the round.`); return; }
       round.completed = true;
       swNextRound();
     }
@@ -2369,22 +2756,24 @@
     function swRenderMatrix() {
       const teams = swissState.teams;
       const done = swissState.rounds.filter(r=>r.completed);
+      const st = swissState?.scoreType || 'vp';
+      const matrixLabel = st === 'imp' ? 'IMPs' : st === 'bam' ? 'BAM' : 'VPs';
       let h = '<table class="matrix-table"><thead><tr><th></th>';
       teams.forEach(t => { h += `<th title="${t.name}">${t.name.length>7?t.name.slice(0,6)+'…':t.name}</th>`; });
-      h += '<th style="background:#d6eaf8;">VPs</th></tr></thead><tbody>';
+      h += `<th style="background:#d6eaf8;">${matrixLabel}</th></tr></thead><tbody>`;
       teams.forEach(a => {
         h += `<tr><th style="text-align:left;">${a.name.length>7?a.name.slice(0,6)+'…':a.name}</th>`;
         teams.forEach(b => {
           if (a.id===b.id) { h+='<td class="self">—</td>'; return; }
-          let vp=null;
+          let vp=null, opp=null;
           for (const r of done) {
             for (const p of r.pairings) {
-              if (p.nsId===a.id&&p.ewId===b.id) { vp=p.nsVps; break; }
-              if (p.ewId===a.id&&p.nsId===b.id) { vp=p.ewVps; break; }
+              if (p.nsId===a.id&&p.ewId===b.id) { vp=p.nsVps; opp=p.ewVps; break; }
+              if (p.ewId===a.id&&p.nsId===b.id) { vp=p.ewVps; opp=p.nsVps; break; }
             }
             if (vp!==null) break;
           }
-          const cls = vp!==null ? (vp>10?' class="win"':vp<10?' class="loss"':'') : '';
+          const cls = (vp!==null&&opp!==null) ? (vp>opp?' class="win"':vp<opp?' class="loss"':'') : '';
           h += `<td${cls}>${vp!==null?vp:''}</td>`;
         });
         h += `<td style="font-weight:700;background:#f0f7fb;">${swTotalVPs(a.id)}</td></tr>`;
@@ -2393,7 +2782,7 @@
       document.getElementById('sw-matrix').innerHTML = h;
     }
 
-    function swRender() { swRenderStandings(); swRenderPairings(); swRenderMatrix(); }
+    function swRender() { swRenderStandings(); swRenderPairings(); swRenderMatrix(); localSaveState(); }
 
     (function swInitName() {
       const el = document.getElementById('sw-name');
@@ -2403,6 +2792,528 @@
       el.value = `${d} ${now.getHours()<12?'AM':'PM'}`;
     })();
 
+    // ---- General Team Game Setup ----
+    let gtState = null;
+
+    function gtSetupTeams() {
+      const count = parseInt(document.getElementById('gt-teams').value) || 8;
+      if (count < 2) { alert('Need at least 2 teams.'); return; }
+      const c = document.getElementById('gt-team-inputs');
+      c.innerHTML = '';
+      for (let i = 1; i <= count; i++) {
+        const row = document.createElement('div');
+        row.className = 'sw-team-row';
+        row.innerHTML = `<span class="sw-num">${i}</span><input type="text" id="gt-t${i}" value="Team ${i}" />`;
+        c.appendChild(row);
+      }
+      document.getElementById('gt-teams-card').style.display = '';
+      dbRefreshPresets('gt');
+    }
+
+    function gtStartGame() {
+      const count = parseInt(document.getElementById('gt-teams').value) || 8;
+      const rounds = parseInt(document.getElementById('gt-rounds').value) || 5;
+      const boards = parseInt(document.getElementById('gt-boards').value) || 8;
+      const nameEl = document.getElementById('gt-name');
+      const name = nameEl.value.trim() || nameEl.placeholder;
+      const teams = [];
+      for (let i = 1; i <= count; i++) {
+        const el = document.getElementById(`gt-t${i}`);
+        teams.push({ id: i, name: (el ? el.value.trim() : '') || `Team ${i}` });
+      }
+      const fmtEl = document.getElementById('team-format');
+      const movEl = document.getElementById('team-movement');
+      gtState = { name, teams, rounds, boards, completed: false, format: fmtEl.value, movement: movEl.value };
+      const fmtLabel = {'swiss':'Swiss Teams','rr':'Round Robin','ko':'KO / Duplicate'}[fmtEl.value] || fmtEl.value;
+      const movLabel = movEl.options[movEl.selectedIndex].text;
+      document.getElementById('gt-setup-card').style.display = 'none';
+      document.getElementById('gt-teams-card').style.display = 'none';
+      document.getElementById('gt-active').style.display = '';
+      document.getElementById('gt-game-title').textContent = name;
+      document.getElementById('gt-summary').innerHTML =
+        `<div style="display:flex;flex-direction:column;gap:4px;font-size:0.82rem;margin-bottom:10px;">` +
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Format</span><span>${fmtLabel} &mdash; ${movLabel}</span></div>` +
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Teams</span><span>${count}</span></div>` +
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Rounds</span><span>${rounds}</span></div>` +
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:#667;">Boards / round</span><span>${boards}</span></div></div>` +
+        `<div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:4px;">Teams</div>` +
+        `<div style="font-size:0.82rem;line-height:1.8;">${teams.map((t,i)=>`${i+1}.&nbsp;${t.name}`).join('&emsp;')}</div>`;
+    }
+
+    function gtNewGame() {
+      if (!confirm('Start a new game? Current data will be lost.')) return;
+      gtState = null;
+      localClearState('gt');
+      document.getElementById('gt-active').style.display = 'none';
+      document.getElementById('gt-teams-card').style.display = 'none';
+      document.getElementById('gt-setup-card').style.display = '';
+      document.getElementById('gt-completed-banner').style.display = 'none';
+      document.getElementById('gt-edit-section').style.display = 'none';
+      document.getElementById('gt-finish-btn').style.display = '';
+      document.getElementById('gt-save-btn').style.display = '';
+      dbRefreshHistory();
+    }
+
+    (function gtInitName() {
+      const el = document.getElementById('gt-name');
+      if (!el) return;
+      const now = new Date();
+      const d = now.toISOString().slice(0,10);
+      el.value = `${d} ${now.getHours()<12?'AM':'PM'}`;
+    })();
+
+    // ---- Game History + Presets ----
+
+    async function dbSave(type) {
+      if (!currentUser || !sb) { localSaveState(); showAuthModal(); return; }
+      const btn = document.getElementById(type === 'swiss' ? 'sw-save-btn' : 'gt-save-btn');
+      if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+      let payload, stateRef;
+      if (type === 'swiss') {
+        if (!swissState) return;
+        stateRef = swissState;
+        payload = { user_id: currentUser.id, name: stateRef.name, format: 'swiss', movement: 'standard',
+          boards_per_round: stateRef.boards, round_count: stateRef.rounds.length,
+          teams: stateRef.teams, rounds: stateRef.rounds, status: stateRef.completed ? 'completed' : 'active' };
+      } else {
+        if (!gtState) return;
+        stateRef = gtState;
+        const fmt = document.getElementById('team-format')?.value || 'rr';
+        const mov = document.getElementById('team-movement')?.value || 'full';
+        payload = { user_id: currentUser.id, name: stateRef.name, format: fmt, movement: mov,
+          boards_per_round: stateRef.boards,
+          round_count: typeof stateRef.rounds === 'number' ? stateRef.rounds : 5,
+          teams: stateRef.teams, rounds: [], status: stateRef.completed ? 'completed' : 'active' };
+      }
+      try {
+        if (stateRef.dbId) {
+          const { error } = await sb.from('bridge_games').update(payload).eq('id', stateRef.dbId);
+          if (error) throw error;
+        } else {
+          const { data, error } = await sb.from('bridge_games').insert(payload).select('id').single();
+          if (error) throw error;
+          stateRef.dbId = data.id;
+        }
+        localClearState(type);
+        if (btn) { btn.textContent = 'Save'; btn.disabled = false; }
+        showToast('Game saved successfully!', 'ok');
+      } catch (e) {
+        if (btn) { btn.textContent = 'Save'; btn.disabled = false; }
+        showToast('Save failed: ' + e.message, 'err', 4000);
+      }
+    }
+
+    function openLoadGame() {
+      switchTab('match');
+      document.getElementById('db-history-card').style.display = '';
+      dbRefreshHistory();
+    }
+
+    async function dbRefreshHistory() {
+      const el = document.getElementById('db-history-list');
+      if (!el) return;
+      if (!currentUser || !sb) {
+        document.getElementById('db-history-card').style.display = 'none';
+        return;
+      }
+      el.innerHTML = '<div style="color:#889;font-size:0.8rem;text-align:center;padding:8px;">Loading…</div>';
+      document.getElementById('db-history-card').style.display = '';
+      try {
+        const { data, error } = await sb.from('bridge_games')
+          .select('id,name,format,movement,created_at,status')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (error) throw error;
+        if (!data || !data.length) {
+          document.getElementById('db-history-card').style.display = 'none';
+          return;
+        }
+        const fmtLabel = { swiss:'Swiss', rr:'Round Robin', ko:'KO' };
+        el.innerHTML = data.map(g => {
+          const d = new Date(g.created_at).toLocaleDateString();
+          const movText = g.movement.charAt(0).toUpperCase() + g.movement.slice(1);
+          const f = `${fmtLabel[g.format]||g.format} · ${movText}`;
+          const badge = g.status === 'completed'
+            ? `<span style="font-size:0.65rem;font-weight:600;padding:2px 7px;border-radius:10px;background:#e8f5e9;color:#27ae60;white-space:nowrap;">Completed</span>`
+            : `<span style="font-size:0.65rem;font-weight:600;padding:2px 7px;border-radius:10px;background:#fff3e0;color:#e67e22;white-space:nowrap;">In Progress</span>`;
+          return `<div class="db-history-row">
+            <div style="min-width:0;"><div style="font-weight:600;font-size:0.82rem;">${g.name}</div><div style="font-size:0.72rem;color:#889;margin-top:2px;">${f} · ${d}</div><div style="margin-top:3px;">${badge}</div></div>
+            <div style="display:flex;gap:6px;flex-shrink:0;align-items:flex-start;">
+              <button class="btn-clear" style="font-size:0.72rem;padding:4px 10px;" onclick="dbLoadGame('${g.id}')">Load</button>
+              <button class="btn-remove" style="padding:2px 8px;" onclick="dbDeleteGame('${g.id}')">&#10005;</button>
+            </div>
+          </div>`;
+        }).join('');
+      } catch (e) {
+        el.innerHTML = `<div style="color:#c0392b;font-size:0.8rem;padding:8px;">Error: ${e.message}</div>`;
+      }
+    }
+
+    async function dbLoadGame(id) {
+      if (!sb || !currentUser) return;
+      try {
+        const { data, error } = await sb.from('bridge_games').select('*').eq('id', id).single();
+        if (error) throw error;
+        selectMatchType('team');
+        if (data.format === 'swiss' && data.movement === 'standard') {
+          swissState = { dbId: data.id, name: data.name, boards: data.boards_per_round, teams: data.teams, rounds: data.rounds, completed: data.status === 'completed' };
+          document.getElementById('team-format').value = 'swiss';
+          updateTeamFormat();
+          document.getElementById('team-movement').value = 'standard';
+          swShowPanel();
+          document.getElementById('swiss-setup-card').style.display = 'none';
+          document.getElementById('swiss-active').style.display = '';
+          document.getElementById('sw-game-title').textContent = swissState.name;
+          document.getElementById('sw-round-label').textContent = swissState.targetRounds > 0 ? `Round ${swissState.rounds.length} of ${swissState.targetRounds}` : `Round ${swissState.rounds.length}`;
+          document.getElementById('sw-edit-section').style.display = 'none';
+          const done = swissState.completed;
+          document.getElementById('sw-complete-btn').style.display = done ? 'none' : '';
+          document.getElementById('sw-finish-btn').style.display = done ? 'none' : '';
+          document.getElementById('sw-completed-banner').style.display = done ? '' : 'none';
+          swRender();
+        } else {
+          gtState = { dbId: data.id, name: data.name, boards: data.boards_per_round, rounds: data.round_count, teams: data.teams, completed: data.status === 'completed' };
+          document.getElementById('team-format').value = data.format;
+          updateTeamFormat();
+          document.getElementById('team-movement').value = data.movement;
+          swShowPanel();
+          document.getElementById('gt-setup-card').style.display = 'none';
+          document.getElementById('gt-teams-card').style.display = 'none';
+          document.getElementById('gt-active').style.display = '';
+          document.getElementById('gt-game-title').textContent = gtState.name;
+          document.getElementById('gt-edit-section').style.display = 'none';
+          const gtDone = gtState.completed;
+          document.getElementById('gt-finish-btn').style.display = gtDone ? 'none' : '';
+          document.getElementById('gt-save-btn').style.display = gtDone ? 'none' : '';
+          document.getElementById('gt-completed-banner').style.display = gtDone ? '' : 'none';
+          const fmtLabel = { swiss:'Swiss Teams', rr:'Round Robin', ko:'KO / Duplicate' };
+          const movOpts = document.getElementById('team-movement').options;
+          const movLabel = movOpts[movOpts.selectedIndex]?.text || data.movement;
+          document.getElementById('gt-summary').innerHTML =
+            `<div style="display:flex;flex-direction:column;gap:4px;font-size:0.82rem;margin-bottom:10px;">` +
+            `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Format</span><span>${fmtLabel[data.format]||data.format} — ${movLabel}</span></div>` +
+            `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Teams</span><span>${data.teams.length}</span></div>` +
+            `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Rounds</span><span>${data.round_count}</span></div>` +
+            `<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:#667;">Boards / round</span><span>${data.boards_per_round}</span></div></div>` +
+            `<div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:4px;">Teams</div>` +
+            `<div style="font-size:0.82rem;line-height:1.8;">${data.teams.map((t,i)=>`${i+1}.&nbsp;${t.name}`).join('&emsp;')}</div>`;
+        }
+        document.getElementById('db-history-card').style.display = 'none';
+      } catch (e) { alert('Failed to load game: ' + e.message); }
+    }
+
+    async function dbDeleteGame(id) {
+      if (!confirm('Delete this saved game?')) return;
+      try {
+        const { error } = await sb.from('bridge_games').delete().eq('id', id);
+        if (error) throw error;
+        await dbRefreshHistory();
+      } catch (e) { alert('Delete failed: ' + e.message); }
+    }
+
+    async function dbRefreshPresets(forType) {
+      const selId = forType === 'sw' ? 'sw-preset-sel' : 'gt-preset-sel';
+      const rowId = forType === 'sw' ? 'sw-preset-row' : 'gt-preset-row';
+      const sel = document.getElementById(selId);
+      const row = document.getElementById(rowId);
+      if (!sel || !row) return;
+      if (!currentUser || !sb) { row.style.display = 'none'; return; }
+      try {
+        const { data } = await sb.from('bridge_preset_teams').select('id,name').eq('user_id', currentUser.id).order('name');
+        sel.innerHTML = '<option value="">— Select preset —</option>' + (data||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+        row.style.display = '';
+      } catch (e) { row.style.display = 'none'; }
+    }
+
+    async function dbLoadPreset(forType) {
+      const sel = document.getElementById(forType === 'sw' ? 'sw-preset-sel' : 'gt-preset-sel');
+      const id = sel?.value;
+      if (!id || !sb || !currentUser) return;
+      try {
+        const { data, error } = await sb.from('bridge_preset_teams').select('teams').eq('id', id).single();
+        if (error || !data) return;
+        if (forType === 'sw') {
+          const presetNames = data.teams.map(t => t.name);
+          const currentCount = parseInt(document.getElementById('sw-count').value) || 0;
+          const teamListShown = document.getElementById('sw-team-list').style.display !== 'none';
+          const finalCount = Math.max(presetNames.length, teamListShown ? currentCount : 0);
+          swBuildTeamRows(finalCount, presetNames);
+          document.getElementById('sw-team-list').style.display = '';
+        } else {
+          data.teams.forEach((t, i) => {
+            const el = document.getElementById(`gt-t${i+1}`);
+            if (el) el.value = t.name;
+          });
+        }
+      } catch (e) {}
+    }
+
+    async function dbSavePreset(forType) {
+      if (!currentUser || !sb) { alert('Log in to save presets.'); return; }
+      const name = prompt('Name for this preset:');
+      if (!name) return;
+      const prefix = forType === 'sw' ? 'sw-t' : 'gt-t';
+      const teams = [];
+      for (let i = 1; document.getElementById(prefix + i); i++) {
+        teams.push({ id: i, name: document.getElementById(prefix + i).value || `Team ${i}` });
+      }
+      try {
+        await sb.from('bridge_preset_teams').insert({ user_id: currentUser.id, name, teams });
+        await dbRefreshPresets(forType);
+      } catch (e) { alert('Save failed: ' + e.message); }
+    }
+
+    // ---- Swiss Score Edit ----
+
+    function swScoreEditOpen() {
+      const sec = document.getElementById('sw-score-edit-section');
+      if (sec.style.display !== 'none') { swScoreEditClose(); return; }
+      const sel = document.getElementById('sw-score-edit-round');
+      sel.innerHTML = '';
+      const completed = swissState.rounds.filter(r => r.completed);
+      if (!completed.length) { alert('No completed rounds to edit.'); return; }
+      swissState.rounds.forEach((r, idx) => {
+        if (!r.completed) return;
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = `Round ${idx + 1}`;
+        sel.appendChild(opt);
+      });
+      sec.style.display = '';
+      swScoreEditLoadRound();
+    }
+
+    function swScoreEditClose() {
+      document.getElementById('sw-score-edit-section').style.display = 'none';
+    }
+
+    function swScoreEditLoadRound() {
+      const idx = parseInt(document.getElementById('sw-score-edit-round').value);
+      const round = swissState.rounds[idx];
+      const c = document.getElementById('sw-score-edit-pairings');
+      const st = swissState?.scoreType || 'vp';
+      c.innerHTML = '';
+
+      const normalPairings = round.pairings.filter(p=>!p.tw);
+      const twPairings = round.pairings.filter(p=>p.tw);
+      const numNormal = normalPairings.length;
+
+      const editStep = st === 'bam' ? ' step="0.5"' : '';
+
+      function editVal(p, isNS, boards) {
+        if (p.nsVps === undefined) return '';
+        if (st === 'imp' || st === 'bam') return isNS ? p.nsVps : p.ewVps;
+        return swVPsToImpApprox(isNS ? p.nsVps : p.ewVps, isNS ? p.ewVps : p.nsVps, boards);
+      }
+
+      normalPairings.forEach((p, pairIdx) => {
+        const j = pairIdx;
+        const tA = pairIdx + 1, tB = pairIdx + 1 + numNormal;
+        const div = document.createElement('div');
+        div.className = 'pairing-row';
+        div.innerHTML =
+          `<span class="p-tbl" style="font-size:0.7rem;color:#2a6496;font-weight:700;white-space:nowrap;flex:0 0 auto;">T${tA}&amp;T${tB}</span>` +
+          `<span class="p-team">${swName(p.nsId)}</span>` +
+          `<span class="p-vs">vs</span>` +
+          `<span class="p-team">${swName(p.ewId)}</span>` +
+          `<input class="p-imp" type="number" min="0"${editStep} id="swe-ns-${j}" value="${editVal(p,true,swissState.boards)}" placeholder="NS" oninput="swScoreLive(${j})">` +
+          `<input class="p-imp" type="number" min="0"${editStep} id="swe-ew-${j}" value="${editVal(p,false,swissState.boards)}" placeholder="EW" oninput="swScoreLive(${j})">` +
+          `<span class="p-vp" id="swev-${j}">${p.nsVps}–${p.ewVps}</span>`;
+        c.appendChild(div);
+      });
+
+      if (twPairings.length === 3) {
+        const twLabel = st === 'bam' ? 'BAM total' : st === 'imp' ? 'IMP total' : 'VP total';
+        const hdr = document.createElement('div');
+        hdr.style.cssText = 'font-size:0.75rem;font-weight:700;color:#7b2d00;margin:10px 0 4px;padding:4px 6px;background:#fff3e0;border-radius:5px;';
+        hdr.textContent = swissState.tripleMode
+          ? `▲ 3-Way Triangle — ${swissState.boards/2} boards each · ${twLabel} of 2 matches`
+          : `▲ 3-Way Triangle Match — ${twLabel} of 2 matches`;
+        c.appendChild(hdr);
+        const base = 2 * numNormal + 1;
+        const twBoards = swissState.tripleMode ? swissState.boards/2 : swissState.boards;
+        twPairings.forEach((p, twIdx) => {
+          const j = numNormal + twIdx;
+          const tbl = base + twIdx;
+          const div = document.createElement('div');
+          div.className = 'pairing-row';
+          div.innerHTML =
+            `<span class="p-tbl" style="font-size:0.7rem;color:#7b2d00;font-weight:700;white-space:nowrap;flex:0 0 auto;">T${tbl}</span>` +
+            `<span class="p-team">${swName(p.nsId)}</span>` +
+            `<span class="p-vs">vs</span>` +
+            `<span class="p-team">${swName(p.ewId)}</span>` +
+            `<input class="p-imp" type="number" min="0"${editStep} id="swe-ns-${j}" value="${editVal(p,true,twBoards)}" placeholder="NS" oninput="swScoreLive(${j})">` +
+            `<input class="p-imp" type="number" min="0"${editStep} id="swe-ew-${j}" value="${editVal(p,false,twBoards)}" placeholder="EW" oninput="swScoreLive(${j})">` +
+            `<span class="p-vp" id="swev-${j}">${p.nsVps}–${p.ewVps}</span>`;
+          c.appendChild(div);
+        });
+      }
+    }
+
+    function swVPsToImpApprox(winnerVp, loserVp, boards) {
+      // Inverse of WBF continuous VP formula: solve for IMP margin
+      const tau = 0.618034;
+      const B = 15 * Math.sqrt(boards || 20);
+      const norm = 1 - Math.pow(tau, 3);
+      const inner = 1 - (winnerVp - 10) * norm / 10;
+      if (inner >= 1) return 0;
+      if (inner <= 0) return Math.round(B);
+      return Math.round(B / 3 * Math.log(inner) / Math.log(tau));
+    }
+
+    function swScoreLive(j) {
+      const nsEl = document.getElementById(`swe-ns-${j}`);
+      const ewEl = document.getElementById(`swe-ew-${j}`);
+      if (nsEl.value !== '' && parseFloat(nsEl.value) < 0) nsEl.value = 0;
+      if (ewEl.value !== '' && parseFloat(ewEl.value) < 0) ewEl.value = 0;
+      const ns = parseFloat(nsEl.value);
+      const ew = parseFloat(ewEl.value);
+      const el = document.getElementById(`swev-${j}`);
+      if (isNaN(ns) || isNaN(ew)) { el.textContent = ''; return; }
+      const st = swissState?.scoreType || 'vp';
+      if (st === 'bam') { el.textContent = `${ns}–${ew}`; return; }
+      if (st === 'imp') { const d = ns-ew; el.textContent = (d>=0?'+':'')+d; return; }
+      const rIdx = parseInt(document.getElementById('sw-score-edit-round').value);
+      const p = swissState.rounds[rIdx]?.pairings[j];
+      const boards = (swissState.tripleMode && p?.tw) ? swissState.boards/2 : swissState.boards;
+      const [nv, ev] = swGetVPs(ns - ew, boards);
+      el.textContent = `${nv}–${ev}`;
+    }
+
+    async function swScoreSaveEdit() {
+      const idx = parseInt(document.getElementById('sw-score-edit-round').value);
+      const round = swissState.rounds[idx];
+      const st = swissState?.scoreType || 'vp';
+      let ok = true;
+      round.pairings.forEach((p, j) => {
+        const ns = parseFloat(document.getElementById(`swe-ns-${j}`)?.value);
+        const ew = parseFloat(document.getElementById(`swe-ew-${j}`)?.value);
+        if (isNaN(ns) || isNaN(ew)) { ok = false; return; }
+        if (st === 'imp' || st === 'bam') {
+          p.nsVps = ns; p.ewVps = ew;
+        } else {
+          const boards = (swissState.tripleMode && p.tw) ? swissState.boards/2 : swissState.boards;
+          const [nv, ev] = swGetVPs(ns - ew, boards);
+          p.nsVps = nv; p.ewVps = ev;
+        }
+      });
+      if (!ok) { alert('Enter scores for all matches.'); return; }
+      swRender();
+      if (swissState.dbId && sb && currentUser) {
+        try { await sb.from('bridge_games').update({ rounds: swissState.rounds }).eq('id', swissState.dbId); } catch(e) {}
+      }
+      showToast('Round scores updated!', 'ok');
+      swScoreEditClose();
+    }
+
+    // ---- Swiss Edit + Finish ----
+
+    function swEdit() {
+      const sec = document.getElementById('sw-edit-section');
+      if (sec.style.display !== 'none') { swCancelEdit(); return; }
+      document.getElementById('sw-edit-name').value = swissState.name;
+      document.getElementById('sw-edit-rounds').value = swissState.targetRounds || '';
+      document.getElementById('sw-edit-boards').value = swissState.boards;
+      const tc = document.getElementById('sw-edit-teams');
+      tc.innerHTML = swissState.teams.map(t =>
+        `<div class="sw-team-row"><span class="sw-num">${t.id}</span><input type="text" id="sw-et${t.id}" value="${t.name}" style="flex:1;padding:6px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.85rem;background:#f0f7fb;color:#1a1a2e;" /></div>`
+      ).join('');
+      sec.style.display = '';
+    }
+
+    function swCancelEdit() {
+      document.getElementById('sw-edit-section').style.display = 'none';
+    }
+
+    async function swSaveEdit() {
+      const name = document.getElementById('sw-edit-name').value.trim() || swissState.name;
+      const targetRounds = parseInt(document.getElementById('sw-edit-rounds').value) || 0;
+      const boards = parseInt(document.getElementById('sw-edit-boards').value) || swissState.boards;
+      swissState.name = name;
+      swissState.targetRounds = targetRounds;
+      swissState.boards = boards;
+      swissState.teams.forEach(t => {
+        const el = document.getElementById(`sw-et${t.id}`);
+        if (el) t.name = el.value.trim() || t.name;
+      });
+      document.getElementById('sw-game-title').textContent = name;
+      swRenderStandings();
+      swRenderMatrix();
+      if (swissState.dbId && sb && currentUser) {
+        try { await sb.from('bridge_games').update({ name, teams: swissState.teams, boards_per_round: boards, round_count: targetRounds || swissState.rounds.length }).eq('id', swissState.dbId); } catch(e) {}
+      }
+      swCancelEdit();
+    }
+
+    async function swFinish() {
+      if (!swissState.rounds.filter(r=>r.completed).length) { alert('Complete at least one round before finishing.'); return; }
+      swissState.completed = true;
+      localSaveState();
+      document.getElementById('sw-complete-btn').style.display = 'none';
+      document.getElementById('sw-finish-btn').style.display = 'none';
+      document.getElementById('sw-completed-banner').style.display = '';
+      showFinishModal('swiss');
+    }
+
+    // ---- GT Edit + Finish ----
+
+    function gtEdit() {
+      const sec = document.getElementById('gt-edit-section');
+      if (sec.style.display !== 'none') { gtCancelEdit(); return; }
+      document.getElementById('gt-edit-name').value = gtState.name;
+      document.getElementById('gt-edit-rounds').value = gtState.rounds;
+      document.getElementById('gt-edit-boards').value = gtState.boards;
+      const tc = document.getElementById('gt-edit-teams');
+      tc.innerHTML = gtState.teams.map(t =>
+        `<div class="sw-team-row"><span class="sw-num">${t.id}</span><input type="text" id="gt-et${t.id}" value="${t.name}" style="flex:1;padding:6px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.85rem;background:#f0f7fb;color:#1a1a2e;" /></div>`
+      ).join('');
+      sec.style.display = '';
+    }
+
+    function gtCancelEdit() {
+      document.getElementById('gt-edit-section').style.display = 'none';
+    }
+
+    async function gtSaveEdit() {
+      const name = document.getElementById('gt-edit-name').value.trim() || gtState.name;
+      const rounds = parseInt(document.getElementById('gt-edit-rounds').value) || gtState.rounds;
+      const boards = parseInt(document.getElementById('gt-edit-boards').value) || gtState.boards;
+      gtState.name = name;
+      gtState.rounds = rounds;
+      gtState.boards = boards;
+      gtState.teams.forEach(t => {
+        const el = document.getElementById(`gt-et${t.id}`);
+        if (el) t.name = el.value.trim() || t.name;
+      });
+      document.getElementById('gt-game-title').textContent = name;
+      const fmtLabel = { swiss:'Swiss Teams', rr:'Round Robin', ko:'KO / Duplicate' };
+      const fmtEl = document.getElementById('team-format');
+      const movOpts = document.getElementById('team-movement')?.options;
+      const movLabel = movOpts ? movOpts[movOpts.selectedIndex]?.text : '';
+      document.getElementById('gt-summary').innerHTML =
+        `<div style="display:flex;flex-direction:column;gap:4px;font-size:0.82rem;margin-bottom:10px;">` +
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Format</span><span>${fmtLabel[fmtEl?.value]||fmtEl?.value}${movLabel?' — '+movLabel:''}</span></div>` +
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Teams</span><span>${gtState.teams.length}</span></div>` +
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Rounds</span><span>${rounds}</span></div>` +
+        `<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:#667;">Boards / round</span><span>${boards}</span></div></div>` +
+        `<div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:4px;">Teams</div>` +
+        `<div style="font-size:0.82rem;line-height:1.8;">${gtState.teams.map((t,i)=>`${i+1}.&nbsp;${t.name}`).join('&emsp;')}</div>`;
+      if (gtState.dbId && sb && currentUser) {
+        try { await sb.from('bridge_games').update({ name, teams: gtState.teams, round_count: rounds, boards_per_round: boards }).eq('id', gtState.dbId); } catch(e) {}
+      }
+      gtCancelEdit();
+    }
+
+    async function gtFinish() {
+      gtState.completed = true;
+      localSaveState();
+      document.getElementById('gt-finish-btn').style.display = 'none';
+      document.getElementById('gt-save-btn').style.display = 'none';
+      document.getElementById('gt-completed-banner').style.display = '';
+      showFinishModal('gt');
+    }
+
     // ---- Match Score Tab ----
 
     function selectMatchType(type) {
@@ -2410,6 +3321,7 @@
         document.getElementById('mtBtn-' + t).classList.toggle('active', t === type);
         document.getElementById('match-' + t).classList.toggle('active', t === type);
       });
+      if (type === 'team') swShowPanel();
     }
 
     const PAIR_DESCS = {
@@ -2422,15 +3334,24 @@
     }
 
     const TEAM_MOVEMENTS = {
-      swiss: [['standard','Standard Swiss'],['compact','Compact Swiss'],['barometer','Barometer Swiss']],
-      rr:    [['full','Full Round Robin']],
-      ko:    [['single','Single KO'],['double','Double KO']],
+      swiss:          [['vp','VP'],['imp','IMP'],['bam','BAM']],
+      'swiss-triple': [['vp','VP'],['imp','IMP'],['bam','BAM']],
+      rr:             [['full','Full Round Robin']],
+      ko:             [['single','Single KO'],['double','Double KO']],
     };
     const TEAM_DESCS = {
       swiss: {
-        standard:  'Teams paired by similar VP standing each round. Best for 8+ teams over 5–7 rounds.',
-        compact:   'Shortened Swiss with fewer rounds — good for one-session events or when time is limited.',
-        barometer: 'All tables play the same boards simultaneously; standings update live after each round.',
+        vp:  'Teams paired by VP standing each round. Enter IMPs after each match — converted to WBF Victory Points (0–20 scale, continuous formula).',
+        imp: 'Teams paired by IMP total each round. Enter IMPs won by each team — standings ranked by total IMPs.',
+        bam: 'Board-a-Match scoring. Enter boards won by each team per round — standings ranked by total boards won.',
+      },
+      'swiss-triple': {
+        vp:  'Odd teams — bottom 3 play triangle each round (half boards each). Enter IMPs, converted to VP, team VP = avg of 2 matches.',
+        imp: 'Odd teams — triangle scoring by IMP. Enter IMPs per match; team total = sum of both triangle IMPs.',
+        bam: 'Odd teams — triangle scoring by boards won. Enter boards per match; team total = sum of both triangle boards.',
+      },
+      'swiss-triple': {
+        standard: 'Odd number of teams only. Bottom 3 play a round-robin triangle each round — half boards per match, boards/round must be even. Team VP = average of their 2 triangle match VPs.',
       },
       rr: { full: 'Every team plays every other team. Final rank by total VPs. Used in smaller events or league play.' },
       ko: {
@@ -2538,6 +3459,122 @@
       }
     }
 
+    // ---- Toast Notification ----
+
+    let _toastTimer = null;
+    function showToast(msg, type='ok', ms=2800) {
+      const el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.className = 'show ' + type;
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => { el.className = type; }, ms);
+    }
+
+    // ---- localStorage State Persistence ----
+
+    function localSaveState() {
+      try {
+        if (swissState) localStorage.setItem('fb_swiss', JSON.stringify(swissState));
+        else localStorage.removeItem('fb_swiss');
+        if (gtState) localStorage.setItem('fb_gt', JSON.stringify(gtState));
+        else localStorage.removeItem('fb_gt');
+      } catch(e) {}
+    }
+
+    function localClearState(type) {
+      try {
+        if (!type || type === 'swiss') localStorage.removeItem('fb_swiss');
+        if (!type || type === 'gt') localStorage.removeItem('fb_gt');
+      } catch(e) {}
+    }
+
+    function localRestoreState() {
+      try {
+        const sw = localStorage.getItem('fb_swiss');
+        if (sw) {
+          swissState = JSON.parse(sw);
+          switchTab('match');
+          document.getElementById('team-format').value = 'swiss';
+          updateTeamFormat();
+          document.getElementById('team-movement').value = 'standard';
+          swShowPanel();
+          document.getElementById('swiss-setup-card').style.display = 'none';
+          document.getElementById('swiss-active').style.display = '';
+          document.getElementById('sw-game-title').textContent = swissState.name;
+          document.getElementById('sw-round-label').textContent = swissState.targetRounds > 0 ? `Round ${swissState.rounds.length} of ${swissState.targetRounds}` : `Round ${swissState.rounds.length}`;
+          document.getElementById('sw-edit-section').style.display = 'none';
+          const done = swissState.completed;
+          document.getElementById('sw-complete-btn').style.display = done ? 'none' : '';
+          document.getElementById('sw-finish-btn').style.display = done ? 'none' : '';
+          document.getElementById('sw-completed-banner').style.display = done ? '' : 'none';
+          swRender();
+          return;
+        }
+        const gt = localStorage.getItem('fb_gt');
+        if (gt) {
+          gtState = JSON.parse(gt);
+          switchTab('match');
+          document.getElementById('team-format').value = gtState.format || 'swiss';
+          updateTeamFormat();
+          document.getElementById('team-movement').value = gtState.movement || 'standard';
+          swShowPanel();
+          document.getElementById('gt-setup-card').style.display = 'none';
+          document.getElementById('gt-teams-card').style.display = 'none';
+          document.getElementById('gt-active').style.display = '';
+          document.getElementById('gt-game-title').textContent = gtState.name;
+          document.getElementById('gt-edit-section').style.display = 'none';
+          const gtDone = gtState.completed;
+          document.getElementById('gt-finish-btn').style.display = gtDone ? 'none' : '';
+          document.getElementById('gt-save-btn').style.display = gtDone ? 'none' : '';
+          document.getElementById('gt-completed-banner').style.display = gtDone ? '' : 'none';
+          const fmtLabel = { swiss:'Swiss Teams', rr:'Round Robin', ko:'KO / Duplicate' };
+          const movOpts = document.getElementById('team-movement')?.options;
+          const movLabel = movOpts ? movOpts[movOpts.selectedIndex]?.text : '';
+          document.getElementById('gt-summary').innerHTML =
+            `<div style="display:flex;flex-direction:column;gap:4px;font-size:0.82rem;margin-bottom:10px;">` +
+            `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Format</span><span>${fmtLabel[gtState.format]||gtState.format||''} — ${movLabel}</span></div>` +
+            `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Teams</span><span>${gtState.teams.length}</span></div>` +
+            `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #d6eaf8;"><span style="color:#667;">Rounds</span><span>${gtState.rounds}</span></div>` +
+            `<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:#667;">Boards / round</span><span>${gtState.boards}</span></div></div>` +
+            `<div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:4px;">Teams</div>` +
+            `<div style="font-size:0.82rem;line-height:1.8;">${gtState.teams.map((t,i)=>`${i+1}.&nbsp;${t.name}`).join('&emsp;')}</div>`;
+        }
+      } catch(e) {}
+    }
+
+    // ---- Finish Game Modal ----
+
+    let _finishType = null;
+
+    function showFinishModal(type) {
+      _finishType = type;
+      document.getElementById('finishModalTitle').textContent = type === 'swiss' ? 'Tournament Complete!' : 'Game Complete!';
+      const loggedIn = !!(sb && currentUser);
+      document.getElementById('finishModalMsg').textContent = loggedIn
+        ? 'Save this game to your account to view it later.'
+        : 'Log in to save this game to your account.';
+      document.getElementById('finishSaveBtn').textContent = loggedIn ? 'Save Game' : 'Log In & Save';
+      document.getElementById('finishModal').classList.add('show');
+    }
+
+    async function finishModalSave() {
+      if (!currentUser) {
+        document.getElementById('finishModal').classList.remove('show');
+        showAuthModal();
+        return;
+      }
+      document.getElementById('finishModal').classList.remove('show');
+      await dbSave(_finishType);
+    }
+
+    function finishModalClose() {
+      document.getElementById('finishModal').classList.remove('show');
+    }
+
+    // Restore any in-progress session from localStorage on page load
+    localRestoreState();
+
     // Listen for auth changes
     if (sb) sb.auth.onAuthStateChange(async (event, session) => {
       currentUser = session?.user || null;
@@ -2549,8 +3586,11 @@
           await applyPromoCode(currentUser.id, pendingPromo, null);
         }
         await loadSubscription();
+        dbRefreshHistory();
       } else {
         currentSub = null;
+        const card = document.getElementById('db-history-card');
+        if (card) card.style.display = 'none';
       }
       updateAuthUI();
     });

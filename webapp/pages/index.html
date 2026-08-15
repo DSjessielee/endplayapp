@@ -436,6 +436,29 @@
       .play-card { padding: 2px 3px 9px 3px; font-size: 0.75rem; }
       .play-suit { gap: 1px; }
     }
+    /* Swiss Teams Tournament */
+    .swiss-section { display: flex; flex-direction: column; gap: 10px; }
+    .swiss-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .swiss-table th { background: #2a82bd; color: #fff; padding: 6px 8px; text-align: left; font-weight: 600; }
+    .swiss-table td { padding: 6px 8px; border-bottom: 1px solid #d6eaf8; }
+    .swiss-table tr:last-child td { border-bottom: none; }
+    .swiss-table tr.rank-1 td { font-weight: 700; background: #fffbe6; }
+    .matrix-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .matrix-table { border-collapse: collapse; font-size: 0.78rem; }
+    .matrix-table th, .matrix-table td { padding: 4px 8px; border: 1px solid #c8dde8; text-align: center; min-width: 36px; }
+    .matrix-table th { background: #e8f4fc; font-weight: 600; color: #2a6496; }
+    .matrix-table td.self { background: #d6eaf8; }
+    .matrix-table td.win { color: #1a8040; font-weight: 700; }
+    .matrix-table td.loss { color: #c0392b; font-weight: 700; }
+    .pairing-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 7px 0; border-bottom: 1px solid #d6eaf8; font-size: 0.83rem; }
+    .pairing-row:last-child { border-bottom: none; }
+    .pairing-row .p-team { font-weight: 600; color: #1a3a5c; flex: 1; min-width: 60px; }
+    .pairing-row .p-vs { color: #889; font-size: 0.75rem; flex-shrink: 0; }
+    .pairing-row .p-imp { width: 68px; padding: 6px; border: 1px solid #a0c4d8; border-radius: 4px; background: #f0f7fb; color: #1a1a2e; text-align: center; font-size: 0.85rem; flex-shrink: 0; }
+    .pairing-row .p-vp { font-size: 0.78rem; color: #2a6496; min-width: 58px; text-align: center; flex-shrink: 0; }
+    .sw-team-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .sw-team-row .sw-num { width: 30px; font-size: 0.82rem; color: #889; text-align: right; flex-shrink: 0; }
+    .sw-team-row input { flex: 1; padding: 7px 8px; border: 1px solid #a0c4d8; border-radius: 4px; background: #f0f7fb; color: #1a1a2e; font-size: 0.85rem; }
     /* Match Score tab */
     .match-container { width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 16px; }
     .match-type-toggle { display: flex; border: 2px solid #2a82bd; border-radius: 8px; overflow: hidden; }
@@ -816,6 +839,61 @@
             <input class="match-num" type="number" id="vp-imps" placeholder="e.g. 17" oninput="calcVPs()" />
           </div>
           <div class="match-result-box" id="vp-result" style="display:none;"></div>
+        </div>
+
+        <!-- Swiss Standard Tournament Manager -->
+        <div id="swiss-panel" style="display:none;" class="swiss-section">
+          <div id="swiss-setup-card" class="match-card">
+            <div class="match-card-title">Tournament Setup</div>
+            <div class="match-input-row" style="flex-wrap:nowrap;">
+              <label style="white-space:nowrap;">Game name:</label>
+              <input type="text" id="sw-name" style="flex:1;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;" />
+            </div>
+            <div class="match-input-row">
+              <label># of teams:</label>
+              <input type="number" id="sw-count" class="match-num" min="4" max="32" step="2" value="8" />
+              <button class="btn-analyze" style="font-size:0.82rem;padding:7px 14px;" onclick="swSetupTeams()">Set Up Teams</button>
+            </div>
+            <div id="sw-team-list" style="display:none;">
+              <div style="font-size:0.8rem;color:#667;margin-bottom:6px;">Team names (editable):</div>
+              <div id="sw-team-inputs"></div>
+              <div class="match-input-row" style="margin-top:8px;">
+                <label>Boards / round:</label>
+                <input type="number" id="sw-boards" class="match-num" min="4" max="28" value="8" />
+              </div>
+              <button class="btn-analyze" style="margin-top:8px;width:100%;font-size:0.88rem;padding:10px;" onclick="swStartTournament()">Start Tournament</button>
+            </div>
+          </div>
+
+          <div id="swiss-active" style="display:none;" class="swiss-section">
+            <div class="match-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div class="match-card-title" id="sw-game-title"></div>
+                <span style="font-size:0.78rem;color:#667;" id="sw-round-label"></span>
+              </div>
+              <div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:4px;">Standings</div>
+              <div id="sw-standings"></div>
+            </div>
+            <div class="match-card">
+              <div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:8px;" id="sw-pairing-label"></div>
+              <div style="display:flex;gap:4px;font-size:0.75rem;color:#889;margin-bottom:4px;flex-wrap:wrap;">
+                <span style="flex:1;">Team (NS)</span><span style="flex-shrink:0;width:20px;"></span>
+                <span style="flex:1;">Team (EW)</span>
+                <span style="width:68px;text-align:center;">NS IMPs</span>
+                <span style="width:68px;text-align:center;">EW IMPs</span>
+                <span style="width:58px;text-align:center;">VPs</span>
+              </div>
+              <div id="sw-pairings"></div>
+              <div class="btn-row" style="margin-top:10px;">
+                <button class="btn-analyze" style="flex:1;font-size:0.88rem;" onclick="swCompleteRound()">Complete Round</button>
+                <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="swNewGame()">New Game</button>
+              </div>
+            </div>
+            <div class="match-card">
+              <div class="match-card-title" style="margin-bottom:8px;">Opponent Matrix</div>
+              <div class="matrix-wrap" id="sw-matrix"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2128,6 +2206,206 @@
       checkPaymentReturn();
     })();
 
+    // ---- Swiss Standard Tournament Manager ----
+    let swissState = null;
+
+    function swShowPanel() {
+      const fmt = document.getElementById('team-format');
+      const mov = document.getElementById('team-movement');
+      const panel = document.getElementById('swiss-panel');
+      if (!panel || !fmt || !mov) return;
+      panel.style.display = (fmt.value === 'swiss' && mov.value === 'standard') ? '' : 'none';
+    }
+
+    function swSetupTeams() {
+      const count = parseInt(document.getElementById('sw-count').value) || 8;
+      if (count < 4 || count % 2 !== 0) { alert('Please enter an even number of teams (minimum 4).'); return; }
+      const c = document.getElementById('sw-team-inputs');
+      c.innerHTML = '';
+      for (let i = 1; i <= count; i++) {
+        const row = document.createElement('div');
+        row.className = 'sw-team-row';
+        row.innerHTML = `<span class="sw-num">${i}</span><input type="text" id="sw-t${i}" value="Team ${i}" />`;
+        c.appendChild(row);
+      }
+      document.getElementById('sw-team-list').style.display = '';
+    }
+
+    function swStartTournament() {
+      const count = parseInt(document.getElementById('sw-count').value) || 8;
+      if (count % 2 !== 0) { alert('Even number of teams required.'); return; }
+      const nameEl = document.getElementById('sw-name');
+      const name = nameEl.value.trim() || nameEl.placeholder;
+      const boards = parseInt(document.getElementById('sw-boards').value) || 8;
+      const teams = [];
+      for (let i = 1; i <= count; i++) {
+        const el = document.getElementById(`sw-t${i}`);
+        teams.push({ id: i, name: (el ? el.value.trim() : '') || `Team ${i}` });
+      }
+      swissState = { name, teams, boards, rounds: [] };
+      document.getElementById('swiss-setup-card').style.display = 'none';
+      document.getElementById('swiss-active').style.display = '';
+      document.getElementById('sw-game-title').textContent = name;
+      swNextRound();
+    }
+
+    function swNewGame() {
+      if (swissState && !confirm('Start a new game? Current tournament data will be lost.')) return;
+      swissState = null;
+      document.getElementById('swiss-active').style.display = 'none';
+      document.getElementById('swiss-setup-card').style.display = '';
+      document.getElementById('sw-team-list').style.display = 'none';
+    }
+
+    function swGetVPs(impDiff) {
+      const sc = [0,2,4,7,10,14,18,23,28,34,41];
+      let d = 0;
+      for (let i = sc.length - 1; i >= 0; i--) { if (Math.abs(impDiff) >= sc[i]) { d = i; break; } }
+      return impDiff >= 0 ? [10+d, 10-d] : [10-d, 10+d];
+    }
+
+    function swTotalVPs(id) {
+      if (!swissState) return 0;
+      let t = 0;
+      for (const r of swissState.rounds) {
+        if (!r.completed) continue;
+        for (const p of r.pairings) {
+          if (p.nsId === id) t += p.nsVps;
+          else if (p.ewId === id) t += p.ewVps;
+        }
+      }
+      return t;
+    }
+
+    function swHasPlayed(a, b) {
+      for (const r of swissState.rounds) {
+        for (const p of r.pairings) {
+          if ((p.nsId===a&&p.ewId===b)||(p.nsId===b&&p.ewId===a)) return true;
+        }
+      }
+      return false;
+    }
+
+    function swPair() {
+      const sorted = [...swissState.teams].sort((a,b) => swTotalVPs(b.id) - swTotalVPs(a.id));
+      const used = new Set(), pairs = [];
+      for (let i = 0; i < sorted.length; i++) {
+        if (used.has(sorted[i].id)) continue;
+        let matched = false;
+        for (let j = i+1; j < sorted.length; j++) {
+          if (used.has(sorted[j].id) || swHasPlayed(sorted[i].id, sorted[j].id)) continue;
+          pairs.push({nsId:sorted[i].id, ewId:sorted[j].id, nsVps:0, ewVps:0});
+          used.add(sorted[i].id); used.add(sorted[j].id); matched = true; break;
+        }
+        if (!matched) {
+          for (let j = i+1; j < sorted.length; j++) {
+            if (!used.has(sorted[j].id)) {
+              pairs.push({nsId:sorted[i].id, ewId:sorted[j].id, nsVps:0, ewVps:0});
+              used.add(sorted[i].id); used.add(sorted[j].id); break;
+            }
+          }
+        }
+      }
+      return pairs;
+    }
+
+    function swNextRound() {
+      swissState.rounds.push({ pairings: swPair(), completed: false });
+      swRender();
+    }
+
+    function swName(id) { return (swissState.teams.find(t=>t.id===id)||{}).name||`T${id}`; }
+
+    function swRenderStandings() {
+      const doneRounds = swissState.rounds.filter(r=>r.completed).length;
+      const sorted = [...swissState.teams].sort((a,b)=>swTotalVPs(b.id)-swTotalVPs(a.id));
+      document.getElementById('sw-standings').innerHTML =
+        '<table class="swiss-table"><thead><tr><th>#</th><th>Team</th><th style="text-align:right;">VPs</th></tr></thead><tbody>' +
+        sorted.map((t,i)=>`<tr${i===0&&doneRounds>0?' class="rank-1"':''}><td>${i+1}</td><td>${t.name}</td><td style="text-align:right;">${swTotalVPs(t.id)}</td></tr>`).join('') +
+        '</tbody></table>';
+    }
+
+    function swRenderPairings() {
+      const rNum = swissState.rounds.length;
+      document.getElementById('sw-round-label').textContent = `Round ${rNum}`;
+      document.getElementById('sw-pairing-label').textContent = `Round ${rNum} — Enter IMPs`;
+      const c = document.getElementById('sw-pairings');
+      c.innerHTML = '';
+      swissState.rounds[rNum-1].pairings.forEach((p, idx) => {
+        const div = document.createElement('div');
+        div.className = 'pairing-row';
+        div.innerHTML =
+          `<span class="p-team">${swName(p.nsId)}</span>` +
+          `<span class="p-vs">vs</span>` +
+          `<span class="p-team">${swName(p.ewId)}</span>` +
+          `<input class="p-imp" type="number" id="swi-ns-${idx}" placeholder="NS" oninput="swLive(${idx})">` +
+          `<input class="p-imp" type="number" id="swi-ew-${idx}" placeholder="EW" oninput="swLive(${idx})">` +
+          `<span class="p-vp" id="swv-${idx}"></span>`;
+        c.appendChild(div);
+      });
+    }
+
+    function swLive(idx) {
+      const ns = parseInt(document.getElementById(`swi-ns-${idx}`).value);
+      const ew = parseInt(document.getElementById(`swi-ew-${idx}`).value);
+      const el = document.getElementById(`swv-${idx}`);
+      if (isNaN(ns)||isNaN(ew)) { el.textContent=''; return; }
+      const [nv,ev] = swGetVPs(ns-ew);
+      el.textContent = `${nv}–${ev}`;
+    }
+
+    function swCompleteRound() {
+      const round = swissState.rounds[swissState.rounds.length-1];
+      let ok = true;
+      round.pairings.forEach((p,idx) => {
+        const ns = parseInt(document.getElementById(`swi-ns-${idx}`)?.value);
+        const ew = parseInt(document.getElementById(`swi-ew-${idx}`)?.value);
+        if (isNaN(ns)||isNaN(ew)) { ok=false; return; }
+        const [nv,ev] = swGetVPs(ns-ew);
+        p.nsVps=nv; p.ewVps=ev;
+      });
+      if (!ok) { alert('Enter IMPs for all matches before completing the round.'); return; }
+      round.completed = true;
+      swNextRound();
+    }
+
+    function swRenderMatrix() {
+      const teams = swissState.teams;
+      const done = swissState.rounds.filter(r=>r.completed);
+      let h = '<table class="matrix-table"><thead><tr><th></th>';
+      teams.forEach(t => { h += `<th title="${t.name}">${t.name.length>7?t.name.slice(0,6)+'…':t.name}</th>`; });
+      h += '<th style="background:#d6eaf8;">VPs</th></tr></thead><tbody>';
+      teams.forEach(a => {
+        h += `<tr><th style="text-align:left;">${a.name.length>7?a.name.slice(0,6)+'…':a.name}</th>`;
+        teams.forEach(b => {
+          if (a.id===b.id) { h+='<td class="self">—</td>'; return; }
+          let vp=null;
+          for (const r of done) {
+            for (const p of r.pairings) {
+              if (p.nsId===a.id&&p.ewId===b.id) { vp=p.nsVps; break; }
+              if (p.ewId===a.id&&p.nsId===b.id) { vp=p.ewVps; break; }
+            }
+            if (vp!==null) break;
+          }
+          const cls = vp!==null ? (vp>10?' class="win"':vp<10?' class="loss"':'') : '';
+          h += `<td${cls}>${vp!==null?vp:''}</td>`;
+        });
+        h += `<td style="font-weight:700;background:#f0f7fb;">${swTotalVPs(a.id)}</td></tr>`;
+      });
+      h += '</tbody></table>';
+      document.getElementById('sw-matrix').innerHTML = h;
+    }
+
+    function swRender() { swRenderStandings(); swRenderPairings(); swRenderMatrix(); }
+
+    (function swInitName() {
+      const el = document.getElementById('sw-name');
+      if (!el) return;
+      const now = new Date();
+      const d = now.toISOString().slice(0,10);
+      el.value = `${d} ${now.getHours()<12?'AM':'PM'}`;
+    })();
+
     // ---- Match Score Tab ----
 
     function selectMatchType(type) {
@@ -2173,6 +2451,7 @@
       const fmt = document.getElementById('team-format').value;
       const mov = document.getElementById('team-movement').value;
       document.getElementById('team-desc').textContent = (TEAM_DESCS[fmt] || {})[mov] || '';
+      swShowPanel();
     }
 
     function addMpRow() {

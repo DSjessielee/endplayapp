@@ -43,12 +43,14 @@ Split architecture: 3 free services working together.
 
 ## Step 3: Deploy Frontend to Cloudflare Pages
 
-1. Edit `webapp/frontend/config.js` with your URLs from steps 1 and 2
+1. Edit `webapp/pages/config.js` with your URLs from steps 1 and 2 (if present)
 2. Go to dash.cloudflare.com → Pages → Create a project
 3. Connect to Git → select your repo
 4. Settings:
    - **Build command**: (leave blank)
-   - **Build output directory**: `webapp/frontend`
+   - **Build output directory**: `webapp/pages`
+   - **Root directory**: `webapp/pages`
+   - **Production branch**: `master`
 5. Deploy → your site is live at `your-project.pages.dev`
 
 ## Costs

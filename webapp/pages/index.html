@@ -2609,9 +2609,10 @@
           const base = 2 * numNormal + 1;
           // p0: A(NS)vsB(EW) @base, p1: B(NS)vsC(EW) @base+1, p2: C(NS)vsA(EW) @base+2
           if (twp.length === 3) {
-            assignMap[twp[0].nsId] = { tNS: base,   tEW: base+2 }; // A: NS @base, EW @base+2
-            assignMap[twp[0].ewId] = { tNS: base+1, tEW: base   }; // B: NS @base+1, EW @base
-            assignMap[twp[1].ewId] = { tNS: base+2, tEW: base+1 }; // C: NS @base+2, EW @base+1
+            // H1 EW tables; H2: each EW moves to the third table (not own NS, not H1 EW)
+            assignMap[twp[0].nsId] = { tNS: base,   tEW: base+2, tEW2: base+1 }; // A
+            assignMap[twp[0].ewId] = { tNS: base+1, tEW: base,   tEW2: base+2 }; // B
+            assignMap[twp[1].ewId] = { tNS: base+2, tEW: base+1, tEW2: base   }; // C
             curRound.threeWayIds.forEach(id => tripleTeamIds.add(id));
           }
         }
@@ -2627,7 +2628,7 @@
           if (a) {
             nsCell = `<b style="color:#1565c0;">T${a.tNS}</b>`;
             ewCell = isTriple
-              ? `<b style="color:#6a1a60;">T${a.tEW}/T${a.tNS}</b>`
+              ? `<b style="color:#6a1a60;">T${a.tEW}/T${a.tEW2}</b>`
               : `<b style="color:#6a1a60;">T${a.tEW}</b>`;
           } else {
             nsCell = '<span style="color:#aaa;">—</span>';

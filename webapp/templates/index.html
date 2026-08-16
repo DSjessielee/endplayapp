@@ -952,7 +952,111 @@
           </div>
         </div>
 
-        <!-- General Team Game Setup (all formats except Swiss Standard) -->
+        <!-- Round Robin Tournament Manager -->
+        <div id="rr-panel" style="display:none;" class="swiss-section">
+          <div id="rr-setup-card" class="match-card">
+            <div class="match-card-title">Round Robin Setup</div>
+            <div class="match-input-row" style="flex-wrap:nowrap;">
+              <label style="white-space:nowrap;">Game name:</label>
+              <input type="text" id="rr-name" style="flex:1;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;" />
+            </div>
+            <div class="match-input-row">
+              <label># of teams:</label>
+              <input type="number" id="rr-count" class="match-num" min="3" max="32" value="6" />
+              <button class="btn-analyze" style="font-size:0.82rem;padding:7px 14px;" onclick="rrSetupTeams()">Set Up Teams</button>
+            </div>
+            <div id="rr-team-list" style="display:none;">
+              <div style="font-size:0.8rem;color:#667;margin:6px 0 4px;">Team names (editable):</div>
+              <div id="rr-team-inputs"></div>
+              <div class="match-input-row" style="margin-top:8px;">
+                <label>Boards / round:</label>
+                <input type="number" id="rr-boards" class="match-num" min="4" max="28" value="8" />
+                <label style="margin-left:10px;white-space:nowrap;">Score type:</label>
+                <select id="rr-scoretype" class="match-sel" style="width:72px;">
+                  <option value="vp">VP</option>
+                  <option value="imp">IMP</option>
+                  <option value="bam">BAM</option>
+                </select>
+              </div>
+              <button class="btn-analyze" style="margin-top:8px;width:100%;font-size:0.88rem;padding:10px;" onclick="rrStartTournament()">Start Tournament</button>
+            </div>
+          </div>
+          <div id="rr-active" style="display:none;" class="swiss-section">
+            <div class="match-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div class="match-card-title" id="rr-game-title"></div>
+                <span style="font-size:0.78rem;color:#667;" id="rr-round-label"></span>
+              </div>
+              <div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:4px;">Standings</div>
+              <div id="rr-standings"></div>
+            </div>
+            <div class="match-card">
+              <div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:8px;" id="rr-pairing-label"></div>
+              <div style="display:flex;gap:4px;font-size:0.75rem;color:#889;margin-bottom:4px;flex-wrap:wrap;">
+                <span style="flex:1;">Team (NS)</span><span style="flex-shrink:0;width:20px;"></span>
+                <span style="flex:1;">Team (EW)</span>
+                <span style="width:68px;text-align:center;">NS IMPs</span>
+                <span style="width:68px;text-align:center;">EW IMPs</span>
+                <span style="width:58px;text-align:center;">VPs</span>
+              </div>
+              <div id="rr-pairings"></div>
+              <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+                <button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" id="rr-complete-btn" onclick="rrCompleteRound()">Complete Round</button>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="rrEdit()">Edit</button>
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="rrScoreEditOpen()">Scores</button>
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;color:#27ae60;border-color:#27ae60;" id="rr-finish-btn" onclick="rrFinish()">Finish</button>
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="rrNewGame()">New</button>
+                </div>
+              </div>
+            </div>
+            <div id="rr-completed-banner" class="match-card" style="display:none;background:#e8f5e9;border-color:#27ae60;padding:12px;text-align:center;">
+              <div style="color:#27ae60;font-weight:700;font-size:0.95rem;">Tournament Complete</div>
+            </div>
+            <div id="rr-edit-section" class="match-card" style="display:none;">
+              <div class="match-card-title" style="margin-bottom:8px;">Edit Game</div>
+              <div class="match-input-row" style="flex-wrap:nowrap;">
+                <label style="white-space:nowrap;">Game name:</label>
+                <input type="text" id="rr-edit-name" style="flex:1;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;" />
+              </div>
+              <div class="match-input-row" style="flex-wrap:nowrap;">
+                <label style="white-space:nowrap;">Boards / round:</label>
+                <input type="number" id="rr-edit-boards" min="1" max="40" style="width:60px;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;text-align:center;" />
+              </div>
+              <div style="font-size:0.8rem;color:#667;margin:8px 0 4px;">Team names:</div>
+              <div id="rr-edit-teams"></div>
+              <div class="btn-row" style="margin-top:10px;">
+                <button class="btn-analyze" style="flex:1;font-size:0.85rem;" onclick="rrSaveEdit()">Save Changes</button>
+                <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="rrCancelEdit()">Cancel</button>
+              </div>
+            </div>
+            <div id="rr-score-edit-section" class="match-card" style="display:none;">
+              <div class="match-card-title" style="margin-bottom:8px;">Edit Round Scores</div>
+              <div class="match-input-row" style="flex-wrap:nowrap;margin-bottom:10px;">
+                <label style="white-space:nowrap;">Round:</label>
+                <select id="rr-score-edit-round" style="flex:1;padding:7px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.85rem;" onchange="rrScoreEditLoadRound()"></select>
+              </div>
+              <div style="display:flex;gap:4px;font-size:0.72rem;color:#889;margin-bottom:4px;flex-wrap:wrap;">
+                <span style="flex:1;">Team (NS)</span><span style="flex-shrink:0;width:16px;"></span>
+                <span style="flex:1;">Team (EW)</span>
+                <span style="width:68px;text-align:center;">NS IMPs</span>
+                <span style="width:68px;text-align:center;">EW IMPs</span>
+                <span style="width:54px;text-align:center;">VPs</span>
+              </div>
+              <div id="rr-score-edit-pairings"></div>
+              <div class="btn-row" style="margin-top:10px;">
+                <button class="btn-analyze" style="flex:1;font-size:0.85rem;" onclick="rrScoreSaveEdit()">Save Changes</button>
+                <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="rrScoreEditClose()">Cancel</button>
+              </div>
+            </div>
+            <div class="match-card">
+              <div class="match-card-title" style="margin-bottom:8px;">Opponent Matrix</div>
+              <div class="matrix-wrap" id="rr-matrix"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- General Team Game Setup (KO / Duplicate) -->
         <div id="general-team-panel" style="display:none;" class="swiss-section">
           <div id="gt-setup-card" class="match-card">
             <div class="match-card-title">Game Setup</div>
@@ -2348,10 +2452,13 @@
       if (!fmt || !mov) return;
       const isSwissStd = fmt.value === 'swiss';
       const isTriple = fmt.value === 'swiss-triple';
+      const isRR = fmt.value === 'rr';
       const swPanel = document.getElementById('swiss-panel');
+      const rrPanel = document.getElementById('rr-panel');
       const gtPanel = document.getElementById('general-team-panel');
       if (swPanel) swPanel.style.display = (isSwissStd || isTriple) ? '' : 'none';
-      if (gtPanel) gtPanel.style.display = (isSwissStd || isTriple) ? 'none' : '';
+      if (rrPanel) rrPanel.style.display = isRR ? '' : 'none';
+      if (gtPanel) gtPanel.style.display = (!isSwissStd && !isTriple && !isRR) ? '' : 'none';
       const countEl = document.getElementById('sw-count');
       if (countEl) {
         if (isTriple) {
@@ -3257,6 +3364,360 @@
       showFinishModal('swiss');
     }
 
+    // ---- Round Robin Tournament Manager ----
+    let rrState = null;
+
+    function rrName(id) { return (rrState.teams.find(t=>t.id===id)||{}).name||`T${id}`; }
+
+    function rrGetVPs(impDiff, boards) {
+      const tau = 0.618034;
+      const B = 15 * Math.sqrt(boards || 20);
+      const d = Math.abs(impDiff);
+      let winnerVp = Math.min(20, 10 + 10 * (1 - Math.pow(tau, 3 * d / B)) / (1 - Math.pow(tau, 3)));
+      winnerVp = Math.round(winnerVp * 100) / 100;
+      const loserVp = Math.round((20 - winnerVp) * 100) / 100;
+      return impDiff >= 0 ? [winnerVp, loserVp] : [loserVp, winnerVp];
+    }
+
+    function rrVPsToImpApprox(winnerVp, loserVp, boards) {
+      const tau = 0.618034;
+      const B = 15 * Math.sqrt(boards || 20);
+      const norm = 1 - Math.pow(tau, 3);
+      const inner = 1 - (winnerVp - 10) * norm / 10;
+      if (inner >= 1) return 0;
+      if (inner <= 0) return Math.round(B);
+      return Math.round(B / 3 * Math.log(inner) / Math.log(tau));
+    }
+
+    function rrTotalVPs(id) {
+      if (!rrState) return 0;
+      let t = 0;
+      for (const r of rrState.schedule) {
+        if (!r.completed) continue;
+        for (const p of r.pairings) {
+          if (p.nsId === id) t += p.nsVps;
+          else if (p.ewId === id) t += p.ewVps;
+        }
+      }
+      return Math.round(t * 10) / 10;
+    }
+
+    function generateRRSchedule(teams) {
+      const N = teams.length;
+      const n = N % 2 === 0 ? N : N + 1;
+      const ids = teams.map(t => t.id);
+      if (N % 2 !== 0) ids.push(null); // null = bye
+      const schedule = [];
+      for (let round = 0; round < n - 1; round++) {
+        const pairings = [];
+        for (let i = 0; i < n / 2; i++) {
+          const ns = ids[i], ew = ids[n - 1 - i];
+          if (ns !== null && ew !== null)
+            pairings.push({ nsId: ns, ewId: ew, nsVps: 0, ewVps: 0 });
+        }
+        schedule.push({ pairings, completed: false });
+        const last = ids[n - 1];
+        for (let i = n - 1; i > 1; i--) ids[i] = ids[i - 1];
+        ids[1] = last;
+      }
+      return schedule;
+    }
+
+    function rrSetupTeams() {
+      const count = parseInt(document.getElementById('rr-count').value) || 4;
+      if (count < 3) { alert('Round Robin requires at least 3 teams.'); return; }
+      rrBuildTeamRows(count);
+      document.getElementById('rr-team-list').style.display = '';
+    }
+
+    function rrBuildTeamRows(count, names) {
+      const c = document.getElementById('rr-team-inputs');
+      c.innerHTML = '';
+      for (let i = 1; i <= count; i++) {
+        const name = (names && names[i-1]) ? names[i-1] : `Team ${i}`;
+        const row = document.createElement('div');
+        row.className = 'sw-team-row';
+        row.innerHTML = `<span class="sw-num">${i}</span><input type="text" id="rr-t${i}" value="${name}" style="flex:1;" />`;
+        c.appendChild(row);
+      }
+      document.getElementById('rr-count').value = count;
+    }
+
+    function rrStartTournament() {
+      const count = parseInt(document.getElementById('rr-count').value) || 4;
+      if (count < 3) { alert('Round Robin requires at least 3 teams.'); return; }
+      const nameEl = document.getElementById('rr-name');
+      const name = nameEl.value.trim() || nameEl.placeholder;
+      const boards = parseInt(document.getElementById('rr-boards').value) || 8;
+      const scoreType = document.getElementById('rr-scoretype').value || 'vp';
+      const teams = [];
+      for (let i = 1; i <= count; i++) {
+        const el = document.getElementById(`rr-t${i}`);
+        teams.push({ id: i, name: (el ? el.value.trim() : '') || `Team ${i}` });
+      }
+      const schedule = generateRRSchedule(teams);
+      rrState = { name, teams, boards, scoreType, schedule, currentRound: 0, completed: false };
+      document.getElementById('rr-setup-card').style.display = 'none';
+      document.getElementById('rr-team-list').style.display = 'none';
+      document.getElementById('rr-active').style.display = '';
+      document.getElementById('rr-game-title').textContent = name;
+      rrRender();
+    }
+
+    function rrRender() { rrRenderStandings(); rrRenderPairings(); rrRenderMatrix(); localSaveState(); }
+
+    function rrRenderStandings() {
+      const sorted = [...rrState.teams].sort((a,b) => rrTotalVPs(b.id) - rrTotalVPs(a.id));
+      const doneRounds = rrState.schedule.filter(r=>r.completed).length;
+      const st = rrState.scoreType || 'vp';
+      const scoreLabel = st === 'imp' ? 'IMPs' : st === 'bam' ? 'BAM' : 'VPs';
+      document.getElementById('rr-standings').innerHTML =
+        `<table class="swiss-table"><thead><tr><th>#</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th></tr></thead><tbody>` +
+        sorted.map((t,i) =>
+          `<tr${i===0&&doneRounds>0?' class="rank-1"':''}><td>${i+1}</td><td>${t.name}</td><td style="text-align:right;">${rrTotalVPs(t.id)}</td></tr>`
+        ).join('') + '</tbody></table>';
+    }
+
+    function rrRenderPairings() {
+      const completeBtn = document.getElementById('rr-complete-btn');
+      const totalRounds = rrState.schedule.length;
+      const doneRounds = rrState.schedule.filter(r=>r.completed).length;
+      if (rrState.completed || doneRounds >= totalRounds) {
+        rrState.completed = true;
+        completeBtn.style.display = 'none';
+        document.getElementById('rr-round-label').textContent = `${doneRounds} rounds completed`;
+        document.getElementById('rr-pairing-label').textContent = 'Tournament Complete';
+        document.getElementById('rr-pairings').innerHTML =
+          `<div style="text-align:center;padding:18px 8px;color:#27ae60;font-weight:600;font-size:0.9rem;">
+            All ${doneRounds} rounds complete!<br>
+            <span style="font-size:0.8rem;font-weight:400;color:#666;">Use <b>Scores</b> to review or edit any round.</span>
+          </div>`;
+        document.getElementById('rr-completed-banner').style.display = '';
+        return;
+      }
+      completeBtn.style.display = '';
+      const rIdx = rrState.currentRound;
+      const round = rrState.schedule[rIdx];
+      document.getElementById('rr-round-label').textContent = `Round ${rIdx + 1} of ${totalRounds}`;
+      document.getElementById('rr-pairing-label').textContent = `Round ${rIdx + 1} of ${totalRounds} — Enter IMPs`;
+      const st = rrState.scoreType || 'vp';
+      const phNS = st === 'bam' ? 'NS Boards' : 'NS IMPs';
+      const phEW = st === 'bam' ? 'EW Boards' : 'EW IMPs';
+      const stepAttr = st === 'bam' ? ' step="0.5"' : '';
+      const c = document.getElementById('rr-pairings');
+      c.innerHTML = '';
+      round.pairings.forEach((p, idx) => {
+        const div = document.createElement('div');
+        div.className = 'pairing-row';
+        div.innerHTML =
+          `<span class="p-team">${rrName(p.nsId)}</span>` +
+          `<span class="p-vs">vs</span>` +
+          `<span class="p-team">${rrName(p.ewId)}</span>` +
+          `<input class="p-imp" type="number" min="0"${stepAttr} id="rri-ns-${idx}" placeholder="${phNS}" oninput="rrLive(${idx})">` +
+          `<input class="p-imp" type="number" min="0"${stepAttr} id="rri-ew-${idx}" placeholder="${phEW}" oninput="rrLive(${idx})">` +
+          `<span class="p-vp" id="rrv-${idx}"></span>`;
+        c.appendChild(div);
+      });
+    }
+
+    function rrLive(idx) {
+      const nsEl = document.getElementById(`rri-ns-${idx}`);
+      const ewEl = document.getElementById(`rri-ew-${idx}`);
+      if (nsEl.value !== '' && parseFloat(nsEl.value) < 0) nsEl.value = 0;
+      if (ewEl.value !== '' && parseFloat(ewEl.value) < 0) ewEl.value = 0;
+      const ns = parseFloat(nsEl.value), ew = parseFloat(ewEl.value);
+      const el = document.getElementById(`rrv-${idx}`);
+      if (isNaN(ns) || isNaN(ew)) { el.textContent = ''; return; }
+      const st = rrState?.scoreType || 'vp';
+      if (st === 'bam') { el.textContent = `${ns}–${ew}`; return; }
+      if (st === 'imp') { const d = ns-ew; el.textContent = (d>=0?'+':'')+d; return; }
+      const [nv, ev] = rrGetVPs(ns - ew, rrState.boards);
+      el.textContent = `${nv}–${ev}`;
+    }
+
+    function rrCompleteRound() {
+      const rIdx = rrState.currentRound;
+      const round = rrState.schedule[rIdx];
+      let ok = true;
+      round.pairings.forEach((p, idx) => {
+        const ns = parseFloat(document.getElementById(`rri-ns-${idx}`)?.value);
+        const ew = parseFloat(document.getElementById(`rri-ew-${idx}`)?.value);
+        if (isNaN(ns) || isNaN(ew)) { ok = false; return; }
+        const st = rrState.scoreType || 'vp';
+        if (st === 'imp' || st === 'bam') { p.nsVps = ns; p.ewVps = ew; }
+        else { const [nv, ev] = rrGetVPs(ns - ew, rrState.boards); p.nsVps = nv; p.ewVps = ev; }
+      });
+      if (!ok) { alert(`Enter ${rrState.scoreType==='bam'?'boards won':'IMPs'} for all matches before completing the round.`); return; }
+      round.completed = true;
+      rrState.currentRound++;
+      rrRender();
+    }
+
+    function rrRenderMatrix() {
+      const teams = rrState.teams;
+      const done = rrState.schedule.filter(r=>r.completed);
+      const st = rrState.scoreType || 'vp';
+      const matrixLabel = st === 'imp' ? 'IMPs' : st === 'bam' ? 'BAM' : 'VPs';
+      let h = '<table class="matrix-table"><thead><tr><th></th>';
+      teams.forEach(t => { h += `<th title="${t.name}">${t.name.length>7?t.name.slice(0,6)+'…':t.name}</th>`; });
+      h += `<th style="background:#d6eaf8;">${matrixLabel}</th></tr></thead><tbody>`;
+      teams.forEach(a => {
+        h += `<tr><th style="text-align:left;">${a.name.length>7?a.name.slice(0,6)+'…':a.name}</th>`;
+        teams.forEach(b => {
+          if (a.id===b.id) { h+='<td class="self">—</td>'; return; }
+          let vp=null, opp=null;
+          for (const r of done) {
+            for (const p of r.pairings) {
+              if (p.nsId===a.id&&p.ewId===b.id) { vp=p.nsVps; opp=p.ewVps; break; }
+              if (p.ewId===a.id&&p.nsId===b.id) { vp=p.ewVps; opp=p.nsVps; break; }
+            }
+            if (vp!==null) break;
+          }
+          const cls = (vp!==null&&opp!==null)?(vp>opp?' class="win"':vp<opp?' class="loss"':''):'';
+          h += `<td${cls}>${vp!==null?vp:''}</td>`;
+        });
+        h += `<td style="font-weight:700;background:#f0f7fb;">${rrTotalVPs(a.id)}</td></tr>`;
+      });
+      h += '</tbody></table>';
+      document.getElementById('rr-matrix').innerHTML = h;
+    }
+
+    function rrNewGame() {
+      if (rrState && !confirm('Start a new game? Current tournament data will be lost.')) return;
+      rrState = null;
+      localClearState('rr');
+      document.getElementById('rr-active').style.display = 'none';
+      document.getElementById('rr-setup-card').style.display = '';
+      document.getElementById('rr-team-list').style.display = 'none';
+      document.getElementById('rr-completed-banner').style.display = 'none';
+      document.getElementById('rr-complete-btn').style.display = '';
+      document.getElementById('rr-finish-btn').style.display = '';
+    }
+
+    function rrEdit() {
+      const sec = document.getElementById('rr-edit-section');
+      if (sec.style.display !== 'none') { rrCancelEdit(); return; }
+      document.getElementById('rr-edit-name').value = rrState.name;
+      document.getElementById('rr-edit-boards').value = rrState.boards;
+      const tc = document.getElementById('rr-edit-teams');
+      tc.innerHTML = rrState.teams.map(t =>
+        `<div class="sw-team-row"><span class="sw-num">${t.id}</span><input type="text" id="rr-et${t.id}" value="${t.name}" style="flex:1;padding:6px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.85rem;background:#f0f7fb;color:#1a1a2e;" /></div>`
+      ).join('');
+      sec.style.display = '';
+    }
+
+    function rrCancelEdit() { document.getElementById('rr-edit-section').style.display = 'none'; }
+
+    function rrSaveEdit() {
+      const name = document.getElementById('rr-edit-name').value.trim() || rrState.name;
+      const boards = parseInt(document.getElementById('rr-edit-boards').value) || rrState.boards;
+      rrState.name = name;
+      rrState.boards = boards;
+      rrState.teams.forEach(t => {
+        const el = document.getElementById(`rr-et${t.id}`);
+        if (el) t.name = el.value.trim() || t.name;
+      });
+      document.getElementById('rr-game-title').textContent = name;
+      rrRenderStandings(); rrRenderMatrix();
+      rrCancelEdit();
+    }
+
+    function rrFinish() {
+      if (!rrState.schedule.filter(r=>r.completed).length) { alert('Complete at least one round before finishing.'); return; }
+      rrState.completed = true;
+      localSaveState();
+      document.getElementById('rr-complete-btn').style.display = 'none';
+      document.getElementById('rr-finish-btn').style.display = 'none';
+      document.getElementById('rr-completed-banner').style.display = '';
+      showFinishModal('rr');
+    }
+
+    function rrScoreEditOpen() {
+      const sec = document.getElementById('rr-score-edit-section');
+      if (sec.style.display !== 'none') { rrScoreEditClose(); return; }
+      const completed = rrState.schedule.filter(r => r.completed);
+      if (!completed.length) { alert('No completed rounds to edit.'); return; }
+      const sel = document.getElementById('rr-score-edit-round');
+      sel.innerHTML = '';
+      rrState.schedule.forEach((r, idx) => {
+        if (!r.completed) return;
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = `Round ${idx + 1}`;
+        sel.appendChild(opt);
+      });
+      sec.style.display = '';
+      rrScoreEditLoadRound();
+    }
+
+    function rrScoreEditClose() { document.getElementById('rr-score-edit-section').style.display = 'none'; }
+
+    function rrScoreEditLoadRound() {
+      const idx = parseInt(document.getElementById('rr-score-edit-round').value);
+      const round = rrState.schedule[idx];
+      const c = document.getElementById('rr-score-edit-pairings');
+      const st = rrState.scoreType || 'vp';
+      c.innerHTML = '';
+      const editStep = st === 'bam' ? ' step="0.5"' : '';
+      function editVal(p, isNS) {
+        if (p.nsVps === undefined) return '';
+        if (st === 'imp' || st === 'bam') return isNS ? p.nsVps : p.ewVps;
+        return rrVPsToImpApprox(isNS ? p.nsVps : p.ewVps, isNS ? p.ewVps : p.nsVps, rrState.boards);
+      }
+      round.pairings.forEach((p, j) => {
+        const div = document.createElement('div');
+        div.className = 'pairing-row';
+        div.innerHTML =
+          `<span class="p-team">${rrName(p.nsId)}</span>` +
+          `<span class="p-vs">vs</span>` +
+          `<span class="p-team">${rrName(p.ewId)}</span>` +
+          `<input class="p-imp" type="number" min="0"${editStep} id="rre-ns-${j}" value="${editVal(p,true)}" placeholder="NS" oninput="rrScoreLive(${j})">` +
+          `<input class="p-imp" type="number" min="0"${editStep} id="rre-ew-${j}" value="${editVal(p,false)}" placeholder="EW" oninput="rrScoreLive(${j})">` +
+          `<span class="p-vp" id="rrev-${j}">${p.nsVps}–${p.ewVps}</span>`;
+        c.appendChild(div);
+      });
+    }
+
+    function rrScoreLive(j) {
+      const nsEl = document.getElementById(`rre-ns-${j}`);
+      const ewEl = document.getElementById(`rre-ew-${j}`);
+      if (nsEl.value !== '' && parseFloat(nsEl.value) < 0) nsEl.value = 0;
+      if (ewEl.value !== '' && parseFloat(ewEl.value) < 0) ewEl.value = 0;
+      const ns = parseFloat(nsEl.value), ew = parseFloat(ewEl.value);
+      const el = document.getElementById(`rrev-${j}`);
+      if (isNaN(ns) || isNaN(ew)) { el.textContent = ''; return; }
+      const st = rrState?.scoreType || 'vp';
+      if (st === 'bam') { el.textContent = `${ns}–${ew}`; return; }
+      if (st === 'imp') { const d = ns-ew; el.textContent = (d>=0?'+':'')+d; return; }
+      const [nv, ev] = rrGetVPs(ns - ew, rrState.boards);
+      el.textContent = `${nv}–${ev}`;
+    }
+
+    function rrScoreSaveEdit() {
+      const idx = parseInt(document.getElementById('rr-score-edit-round').value);
+      const round = rrState.schedule[idx];
+      const st = rrState.scoreType || 'vp';
+      let ok = true;
+      round.pairings.forEach((p, j) => {
+        const ns = parseFloat(document.getElementById(`rre-ns-${j}`)?.value);
+        const ew = parseFloat(document.getElementById(`rre-ew-${j}`)?.value);
+        if (isNaN(ns) || isNaN(ew)) { ok = false; return; }
+        if (st === 'imp' || st === 'bam') { p.nsVps = ns; p.ewVps = ew; }
+        else { const [nv, ev] = rrGetVPs(ns - ew, rrState.boards); p.nsVps = nv; p.ewVps = ev; }
+      });
+      if (!ok) { alert('Enter scores for all matches.'); return; }
+      rrRender();
+      showToast('Round scores updated!', 'ok');
+      rrScoreEditClose();
+    }
+
+    (function rrInitName() {
+      const el = document.getElementById('rr-name');
+      if (!el) return;
+      const now = new Date();
+      el.placeholder = `${now.toISOString().slice(0,10)} ${now.getHours()<12?'AM':'PM'} Round Robin`;
+    })();
+
     // ---- GT Edit + Finish ----
 
     function gtEdit() {
@@ -3478,6 +3939,8 @@
       try {
         if (swissState) localStorage.setItem('fb_swiss', JSON.stringify(swissState));
         else localStorage.removeItem('fb_swiss');
+        if (rrState) localStorage.setItem('fb_rr', JSON.stringify(rrState));
+        else localStorage.removeItem('fb_rr');
         if (gtState) localStorage.setItem('fb_gt', JSON.stringify(gtState));
         else localStorage.removeItem('fb_gt');
       } catch(e) {}
@@ -3486,6 +3949,7 @@
     function localClearState(type) {
       try {
         if (!type || type === 'swiss') localStorage.removeItem('fb_swiss');
+        if (!type || type === 'rr') localStorage.removeItem('fb_rr');
         if (!type || type === 'gt') localStorage.removeItem('fb_gt');
       } catch(e) {}
     }
@@ -3510,6 +3974,25 @@
           document.getElementById('sw-finish-btn').style.display = done ? 'none' : '';
           document.getElementById('sw-completed-banner').style.display = done ? '' : 'none';
           swRender();
+          return;
+        }
+        const rr = localStorage.getItem('fb_rr');
+        if (rr) {
+          rrState = JSON.parse(rr);
+          switchTab('match');
+          document.getElementById('team-format').value = 'rr';
+          updateTeamFormat();
+          swShowPanel();
+          document.getElementById('rr-setup-card').style.display = 'none';
+          document.getElementById('rr-team-list').style.display = 'none';
+          document.getElementById('rr-active').style.display = '';
+          document.getElementById('rr-game-title').textContent = rrState.name;
+          const doneRounds = rrState.schedule.filter(r=>r.completed).length;
+          document.getElementById('rr-round-label').textContent = `Round ${Math.min(rrState.currentRound+1, rrState.schedule.length)} of ${rrState.schedule.length}`;
+          document.getElementById('rr-completed-banner').style.display = rrState.completed ? '' : 'none';
+          document.getElementById('rr-complete-btn').style.display = rrState.completed ? 'none' : '';
+          document.getElementById('rr-finish-btn').style.display = rrState.completed ? 'none' : '';
+          rrRender();
           return;
         }
         const gt = localStorage.getItem('fb_gt');
@@ -3550,7 +4033,7 @@
 
     function showFinishModal(type) {
       _finishType = type;
-      document.getElementById('finishModalTitle').textContent = type === 'swiss' ? 'Tournament Complete!' : 'Game Complete!';
+      document.getElementById('finishModalTitle').textContent = (type === 'swiss' || type === 'rr') ? 'Tournament Complete!' : 'Game Complete!';
       const loggedIn = !!(sb && currentUser);
       document.getElementById('finishModalMsg').textContent = loggedIn
         ? 'Save this game to your account to view it later.'

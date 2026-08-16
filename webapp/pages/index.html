@@ -450,7 +450,7 @@
     .matrix-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .matrix-table { border-collapse: collapse; font-size: 0.78rem; }
     .matrix-table th, .matrix-table td { padding: 4px 8px; border: 1px solid #c8dde8; text-align: center; min-width: 36px; }
-    .matrix-table th { background: #e8f4fc; font-weight: 600; color: #2a6496; }
+    .matrix-table th { background: #e8f4fc; font-weight: 600; color: #2a6496; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .matrix-table td.self { background: #d6eaf8; }
     .matrix-table td.win { color: #1a8040; font-weight: 700; }
     .db-history-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #e8f0f8; gap:8px; }
@@ -500,6 +500,24 @@
     .vp-side.loss .vp-num { color: #c0392b; }
     .vp-side.tie .vp-num { color: #e67e22; }
     .vp-label { font-size: 0.75rem; color: #667; }
+
+    /* ---- Desktop / wide display / landscape tablet & phone ---- */
+    @media (min-width: 900px), (orientation: landscape) and (min-width: 600px) {
+      .match-container { max-width: 860px; }
+      #swiss-active, #rr-active {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      #sw-completed-banner, #sw-edit-section, #sw-score-edit-section, #sw-matrix-card,
+      #rr-completed-banner, #rr-edit-section, #rr-score-edit-section, #rr-matrix-card {
+        grid-column: 1 / -1;
+      }
+      .matrix-table th, .matrix-table td { padding: 6px 14px; font-size: 0.85rem; min-width: 54px; }
+      .matrix-table th { max-width: 140px; }
+      .pairing-row { flex-wrap: nowrap; }
+      .pairing-row .p-imp { width: 80px; }
+    }
   </style>
 </head>
 <body>
@@ -872,7 +890,7 @@
           </div>
 
           <div id="swiss-active" style="display:none;" class="swiss-section">
-            <div class="match-card">
+            <div id="sw-standings-card" class="match-card">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                 <div class="match-card-title" id="sw-game-title"></div>
                 <span style="font-size:0.78rem;color:#667;" id="sw-round-label"></span>
@@ -880,7 +898,7 @@
               <div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:4px;">Standings</div>
               <div id="sw-standings"></div>
             </div>
-            <div class="match-card">
+            <div id="sw-round-card" class="match-card">
               <div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:8px;" id="sw-pairing-label"></div>
               <div style="display:flex;gap:4px;font-size:0.75rem;color:#889;margin-bottom:4px;flex-wrap:wrap;">
                 <span style="flex:1;">Team (NS)</span><span style="flex-shrink:0;width:20px;"></span>
@@ -947,7 +965,7 @@
                 <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="swScoreEditClose()">Cancel</button>
               </div>
             </div>
-            <div class="match-card">
+            <div id="sw-matrix-card" class="match-card">
               <div class="match-card-title" style="margin-bottom:8px;">Opponent Matrix</div>
               <div class="matrix-wrap" id="sw-matrix"></div>
             </div>
@@ -984,7 +1002,7 @@
             </div>
           </div>
           <div id="rr-active" style="display:none;" class="swiss-section">
-            <div class="match-card">
+            <div id="rr-standings-card" class="match-card">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                 <div class="match-card-title" id="rr-game-title"></div>
                 <span style="font-size:0.78rem;color:#667;" id="rr-round-label"></span>
@@ -992,7 +1010,7 @@
               <div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:4px;">Standings</div>
               <div id="rr-standings"></div>
             </div>
-            <div class="match-card">
+            <div id="rr-round-card" class="match-card">
               <div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin-bottom:8px;" id="rr-pairing-label"></div>
               <div style="display:flex;gap:4px;font-size:0.75rem;color:#889;margin-bottom:4px;flex-wrap:wrap;">
                 <span style="flex:1;">Team (NS)</span><span style="flex-shrink:0;width:20px;"></span>
@@ -1051,7 +1069,7 @@
                 <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="rrScoreEditClose()">Cancel</button>
               </div>
             </div>
-            <div class="match-card">
+            <div id="rr-matrix-card" class="match-card">
               <div class="match-card-title" style="margin-bottom:8px;">Opponent Matrix</div>
               <div class="matrix-wrap" id="rr-matrix"></div>
             </div>
@@ -2877,10 +2895,10 @@
       const st = swissState?.scoreType || 'vp';
       const matrixLabel = st === 'bam' ? 'BAM' : 'VPs';
       let h = '<table class="matrix-table"><thead><tr><th></th>';
-      teams.forEach(t => { h += `<th title="${t.name}">${t.name.length>7?t.name.slice(0,6)+'…':t.name}</th>`; });
+      teams.forEach(t => { h += `<th title="${t.name}">${t.name}</th>`; });
       h += `<th style="background:#d6eaf8;">${matrixLabel}</th></tr></thead><tbody>`;
       teams.forEach(a => {
-        h += `<tr><th style="text-align:left;">${a.name.length>7?a.name.slice(0,6)+'…':a.name}</th>`;
+        h += `<tr><th style="text-align:left;" title="${a.name}">${a.name}</th>`;
         teams.forEach(b => {
           if (a.id===b.id) { h+='<td class="self">—</td>'; return; }
           let vp=null, opp=null;
@@ -3621,10 +3639,10 @@
       const st = rrState.scoreType || 'vp';
       const matrixLabel = st === 'bam' ? 'BAM' : 'VPs';
       let h = '<table class="matrix-table"><thead><tr><th></th>';
-      teams.forEach(t => { h += `<th title="${t.name}">${t.name.length>7?t.name.slice(0,6)+'…':t.name}</th>`; });
+      teams.forEach(t => { h += `<th title="${t.name}">${t.name}</th>`; });
       h += `<th style="background:#d6eaf8;">${matrixLabel}</th></tr></thead><tbody>`;
       teams.forEach(a => {
-        h += `<tr><th style="text-align:left;">${a.name.length>7?a.name.slice(0,6)+'…':a.name}</th>`;
+        h += `<tr><th style="text-align:left;" title="${a.name}">${a.name}</th>`;
         teams.forEach(b => {
           if (a.id===b.id) { h+='<td class="self">—</td>'; return; }
           let vp=null, opp=null;

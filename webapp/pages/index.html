@@ -1188,6 +1188,10 @@
   <script>
     const TABS = ['dds', 'play', 'eval', 'score', 'match'];
     function switchTab(tab) {
+      if (tab === 'match') {
+        if (!currentUser) { showAuthModal(); return; }
+        if (!isPaid()) { showPromoModal(); return; }
+      }
       document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', TABS[i] === tab));
       TABS.forEach(t => {
         const el = document.getElementById('tab-' + t);
@@ -2578,8 +2582,8 @@
       const nameEl = document.getElementById('sw-name');
       const name = nameEl.value.trim() || nameEl.placeholder;
       const boards = parseInt(document.getElementById('sw-boards').value) || 8;
-      if (isTriple && boards % 2 !== 0) { alert('Boards per round must be even for Swiss Triple (triangle matches play half the boards each).'); return; }
       const targetRounds = parseInt(document.getElementById('sw-rounds').value) || 0;
+      if (isTriple && targetRounds > 0 && targetRounds % 2 !== 0) { alert('Swiss Triple requires an even number of rounds (2, 4, 6 …).'); return; }
       const scoreType = document.getElementById('team-movement')?.value || 'vp';
       const teams = [];
       for (let i = 1; i <= count; i++) {
@@ -2626,7 +2630,7 @@
         if (r.threeWayIds && r.threeWayIds.includes(id)) {
           const vps = [];
           for (const p of r.pairings) {
-            if (!p.tw) continue;
+            if (!p.tw || p.twLocked) continue;
             if (p.nsId === id) vps.push(p.nsVps);
             else if (p.ewId === id) vps.push(p.ewVps);
           }
@@ -2820,11 +2824,16 @@
       });
 
       if (twPairings.length === 3) {
+        const isOddRound = swissState.tripleMode && (rNum % 2 === 1);
         const hdr = document.createElement('div');
         hdr.style.cssText = 'font-size:0.75rem;font-weight:700;color:#7b2d00;margin:10px 0 4px;padding:4px 6px;background:#fff3e0;border-radius:5px;';
-        hdr.textContent = swissState.tripleMode
-          ? `▲ 3-Way Triangle — ${swissState.boards/2} boards each · ${twLabel} of 2 matches`
-          : `▲ 3-Way Triangle Match — team score = ${twLabel} of 2 matches`;
+        if (swissState.tripleMode) {
+          hdr.textContent = isOddRound
+            ? `▲ 3-Way Triangle — play now, enter scores after Round ${rNum + 1}`
+            : `▲ 3-Way Triangle — enter scores (${swissState.boards} boards · ${twLabel} of 2 matches)`;
+        } else {
+          hdr.textContent = `▲ 3-Way Triangle Match — team score = ${twLabel} of 2 matches`;
+        }
         c.appendChild(hdr);
         const base = 2 * numNormal + 1;
         twPairings.forEach((p, twIdx) => {
@@ -2832,13 +2841,14 @@
           const tbl = base + twIdx;
           const div = document.createElement('div');
           div.className = 'pairing-row';
+          const lockAttr = isOddRound ? ' disabled style="opacity:0.4;"' : '';
           div.innerHTML =
             `<span class="p-tbl" style="font-size:0.72rem;color:#7b2d00;font-weight:700;white-space:nowrap;">T${tbl}</span>` +
             `<span class="p-team">${swName(p.nsId)}</span>` +
             `<span class="p-vs">vs</span>` +
             `<span class="p-team">${swName(p.ewId)}</span>` +
-            `<input class="p-imp" type="number"${stepAttr} id="swi-ns-${gIdx}" placeholder="${phNS}" oninput="swLive(${gIdx})">` +
-            `<input class="p-imp" type="number"${stepAttr} id="swi-ew-${gIdx}" placeholder="${phEW}" oninput="swLive(${gIdx})">` +
+            `<input class="p-imp" type="number"${stepAttr}${lockAttr} id="swi-ns-${gIdx}" placeholder="${phNS}" oninput="swLive(${gIdx})">` +
+            `<input class="p-imp" type="number"${stepAttr}${lockAttr} id="swi-ew-${gIdx}" placeholder="${phEW}" oninput="swLive(${gIdx})">` +
             `<span class="p-vp" id="swv-${gIdx}"></span>`;
           c.appendChild(div);
         });
@@ -2856,8 +2866,7 @@
       if (isNaN(ns)||isNaN(ew)) { el.innerHTML=''; return; }
       const st = swissState?.scoreType || 'vp';
       if (st === 'bam') { el.textContent = `${ns}–${ew}`; return; }
-      const round = swissState?.rounds[swissState.rounds.length-1];
-      const boards = (swissState?.tripleMode && round?.pairings[idx]?.tw) ? swissState.boards/2 : swissState?.boards;
+      const boards = swissState?.boards;
       const d = ns - ew;
       const [nv,ev] = swGetVPs(d, boards);
       if (st === 'imp') {
@@ -2868,10 +2877,13 @@
     }
 
     function swCompleteRound() {
-      const round = swissState.rounds[swissState.rounds.length-1];
+      const roundIdx = swissState.rounds.length - 1;
+      const round = swissState.rounds[roundIdx];
       const st = swissState.scoreType || 'vp';
+      const isOddRound = swissState.tripleMode && (roundIdx % 2 === 0);
       let ok = true;
-      round.pairings.forEach((p,idx) => {
+      round.pairings.forEach((p, idx) => {
+        if (p.tw && isOddRound) { p.twLocked = true; return; }
         const ns = parseFloat(document.getElementById(`swi-ns-${idx}`)?.value);
         const ew = parseFloat(document.getElementById(`swi-ew-${idx}`)?.value);
         if (isNaN(ns)||isNaN(ew)) { ok=false; return; }
@@ -2879,8 +2891,7 @@
           p.nsVps = ns; p.ewVps = ew;
         } else {
           if (st === 'imp') { p.nsImps = ns; p.ewImps = ew; }
-          const boards = (swissState.tripleMode && p.tw) ? swissState.boards/2 : swissState.boards;
-          const [nv,ev] = swGetVPs(ns-ew, boards);
+          const [nv,ev] = swGetVPs(ns-ew, swissState.boards);
           p.nsVps=nv; p.ewVps=ev;
         }
       });
@@ -2904,6 +2915,7 @@
           let vp=null, opp=null;
           for (const r of done) {
             for (const p of r.pairings) {
+              if (p.twLocked) continue;
               if (p.nsId===a.id&&p.ewId===b.id) { vp=p.nsVps; opp=p.ewVps; break; }
               if (p.ewId===a.id&&p.nsId===b.id) { vp=p.ewVps; opp=p.nsVps; break; }
             }
@@ -3260,28 +3272,41 @@
       });
 
       if (twPairings.length === 3) {
+        const isOddRound = swissState.tripleMode && (idx % 2 === 0);
         const twLabel = st === 'bam' ? 'BAM total' : st === 'imp' ? 'IMP total' : 'VP total';
         const hdr = document.createElement('div');
         hdr.style.cssText = 'font-size:0.75rem;font-weight:700;color:#7b2d00;margin:10px 0 4px;padding:4px 6px;background:#fff3e0;border-radius:5px;';
-        hdr.textContent = swissState.tripleMode
-          ? `▲ 3-Way Triangle — ${swissState.boards/2} boards each · ${twLabel} of 2 matches`
-          : `▲ 3-Way Triangle Match — ${twLabel} of 2 matches`;
+        if (swissState.tripleMode) {
+          hdr.textContent = isOddRound
+            ? `▲ 3-Way Triangle — scores entered after Round ${idx + 2}`
+            : `▲ 3-Way Triangle — ${swissState.boards} boards · ${twLabel} of 2 matches`;
+        } else {
+          hdr.textContent = `▲ 3-Way Triangle Match — ${twLabel} of 2 matches`;
+        }
         c.appendChild(hdr);
         const base = 2 * numNormal + 1;
-        const twBoards = swissState.tripleMode ? swissState.boards/2 : swissState.boards;
         twPairings.forEach((p, twIdx) => {
           const j = numNormal + twIdx;
           const tbl = base + twIdx;
           const div = document.createElement('div');
           div.className = 'pairing-row';
-          div.innerHTML =
-            `<span class="p-tbl" style="font-size:0.7rem;color:#7b2d00;font-weight:700;white-space:nowrap;flex:0 0 auto;">T${tbl}</span>` +
-            `<span class="p-team">${swName(p.nsId)}</span>` +
-            `<span class="p-vs">vs</span>` +
-            `<span class="p-team">${swName(p.ewId)}</span>` +
-            `<input class="p-imp" type="number" min="0"${editStep} id="swe-ns-${j}" value="${editVal(p,true,twBoards)}" placeholder="NS" oninput="swScoreLive(${j})">` +
-            `<input class="p-imp" type="number" min="0"${editStep} id="swe-ew-${j}" value="${editVal(p,false,twBoards)}" placeholder="EW" oninput="swScoreLive(${j})">` +
-            `<span class="p-vp" id="swev-${j}">${p.nsVps}–${p.ewVps}</span>`;
+          if (isOddRound) {
+            div.innerHTML =
+              `<span class="p-tbl" style="font-size:0.7rem;color:#7b2d00;font-weight:700;white-space:nowrap;flex:0 0 auto;">T${tbl}</span>` +
+              `<span class="p-team">${swName(p.nsId)}</span>` +
+              `<span class="p-vs">vs</span>` +
+              `<span class="p-team">${swName(p.ewId)}</span>` +
+              `<span class="p-vp" style="color:#aaa;">locked</span>`;
+          } else {
+            div.innerHTML =
+              `<span class="p-tbl" style="font-size:0.7rem;color:#7b2d00;font-weight:700;white-space:nowrap;flex:0 0 auto;">T${tbl}</span>` +
+              `<span class="p-team">${swName(p.nsId)}</span>` +
+              `<span class="p-vs">vs</span>` +
+              `<span class="p-team">${swName(p.ewId)}</span>` +
+              `<input class="p-imp" type="number" min="0"${editStep} id="swe-ns-${j}" value="${editVal(p,true,swissState.boards)}" placeholder="NS" oninput="swScoreLive(${j})">` +
+              `<input class="p-imp" type="number" min="0"${editStep} id="swe-ew-${j}" value="${editVal(p,false,swissState.boards)}" placeholder="EW" oninput="swScoreLive(${j})">` +
+              `<span class="p-vp" id="swev-${j}">${p.nsVps}–${p.ewVps}</span>`;
+          }
           c.appendChild(div);
         });
       }
@@ -3309,9 +3334,7 @@
       if (isNaN(ns) || isNaN(ew)) { el.innerHTML = ''; return; }
       const st = swissState?.scoreType || 'vp';
       if (st === 'bam') { el.textContent = `${ns}–${ew}`; return; }
-      const rIdx = parseInt(document.getElementById('sw-score-edit-round').value);
-      const p = swissState.rounds[rIdx]?.pairings[j];
-      const boards = (swissState.tripleMode && p?.tw) ? swissState.boards/2 : swissState.boards;
+      const boards = swissState.boards;
       const d = ns - ew;
       const [nv, ev] = swGetVPs(d, boards);
       if (st === 'imp') {
@@ -3327,6 +3350,7 @@
       const st = swissState?.scoreType || 'vp';
       let ok = true;
       round.pairings.forEach((p, j) => {
+        if (p.twLocked) return;
         const ns = parseFloat(document.getElementById(`swe-ns-${j}`)?.value);
         const ew = parseFloat(document.getElementById(`swe-ew-${j}`)?.value);
         if (isNaN(ns) || isNaN(ew)) { ok = false; return; }
@@ -3334,8 +3358,7 @@
           p.nsVps = ns; p.ewVps = ew;
         } else {
           if (st === 'imp') { p.nsImps = ns; p.ewImps = ew; }
-          const boards = (swissState.tripleMode && p.tw) ? swissState.boards/2 : swissState.boards;
-          const [nv, ev] = swGetVPs(ns - ew, boards);
+          const [nv, ev] = swGetVPs(ns - ew, swissState.boards);
           p.nsVps = nv; p.ewVps = ev;
         }
       });

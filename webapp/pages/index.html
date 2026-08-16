@@ -259,7 +259,10 @@
     .par-result .par-label { color: #fa0; font-weight: 700; }
     .par-result .par-score { color: #1a1a2e; font-weight: 700; font-size: 1.05rem; }
     .par-result .par-contracts { color: #556; font-size: 0.82rem; margin-top: 2px; }
-    .tabs { display: flex; gap: 0; margin-bottom: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tabs { display: flex; gap: 0; margin-bottom: 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; max-width: 900px; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .site-logo { max-width: 280px; width: 80%; height: auto; margin-bottom: 4px; }
+    .dds-left { display: flex; flex-direction: column; align-items: center; width: 100%; }
     .tab { padding: 8px 12px; background: #fff; color: #2a6496; border: 2px solid #85b8d0; border-bottom: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600; font-size: 0.75rem; -webkit-tap-highlight-color: transparent; text-align: center; flex-shrink: 0; }
     .tab.active { background: #d6eaf8; color: #1a3a5c; border-color: #2a82bd; font-weight: 700; }
     .tab-content { display: none; width: 100%; }
@@ -434,12 +437,6 @@
       .compass-rose { width: 56px; height: 56px; }
     }
 
-    /* ---- Landscape phone ---- */
-    @media (orientation: landscape) and (max-height: 500px) {
-      .play-hand { max-width: 200px; }
-      .play-card { padding: 2px 3px 9px 3px; font-size: 0.75rem; }
-      .play-suit { gap: 1px; }
-    }
     /* Swiss Teams Tournament */
     .swiss-section { display: flex; flex-direction: column; gap: 10px; }
     .swiss-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
@@ -503,7 +500,12 @@
 
     /* ---- Desktop / wide display / landscape tablet & phone ---- */
     @media (min-width: 900px), (orientation: landscape) and (min-width: 600px) {
+      body { padding: 20px 32px; }
       .match-container { max-width: 860px; }
+      .tab { font-size: 0.8rem; padding: 8px 16px; }
+      .score-form { max-width: 480px; }
+      .eval-container { max-width: 640px; }
+      .play-container { max-width: 600px; }
       #swiss-active, #rr-active {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -517,6 +519,56 @@
       .matrix-table th { max-width: 140px; }
       .pairing-row { flex-wrap: nowrap; }
       .pairing-row .p-imp { width: 80px; }
+    }
+
+    /* ---- iPad / large tablet portrait (768px+) ---- */
+    @media (min-width: 768px) and (orientation: portrait) {
+      .match-container { max-width: 680px; }
+      .score-form { max-width: 480px; }
+      .eval-container { max-width: 600px; }
+      .play-container { max-width: 580px; }
+      .compass { max-width: 540px; grid-template-columns: 175px auto 175px; }
+      .hand-box { max-width: 175px; }
+      .results-panel { max-width: 480px; }
+      .controls { max-width: 540px; }
+      #swiss-active, #rr-active {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      #sw-completed-banner, #sw-edit-section, #sw-score-edit-section, #sw-matrix-card,
+      #rr-completed-banner, #rr-edit-section, #rr-score-edit-section, #rr-matrix-card {
+        grid-column: 1 / -1;
+      }
+    }
+
+    /* ---- Landscape phone (compact height — overrides desktop rule above) ---- */
+    @media (orientation: landscape) and (max-height: 500px) {
+      body { padding: 4px 12px; }
+      .site-logo { display: none; }
+      .designer-credit { display: none; }
+      .subtitle { display: none; }
+      .auth-bar { margin-bottom: 4px; }
+      .tabs { margin-bottom: 6px; }
+      .tab { padding: 5px 10px; font-size: 0.72rem; }
+      .main-container { gap: 8px; }
+      .controls { margin-top: 4px; gap: 6px; }
+      .match-card { padding: 10px; gap: 7px; }
+      .match-card-title { font-size: 0.82rem; }
+      .swiss-table th, .swiss-table td { padding: 3px 6px; font-size: 0.78rem; }
+      .pairing-row { padding: 4px 0; }
+      .play-hand { max-width: 200px; }
+      .play-card { padding: 2px 3px 9px 3px; font-size: 0.75rem; }
+      .play-suit { gap: 1px; }
+      .modal { max-height: 90vh; overflow-y: auto; }
+    }
+
+    /* ---- Large desktop / large tablet landscape (1100px+) ---- */
+    @media (min-width: 1100px) {
+      .main-container { max-width: 1100px; }
+      #tab-dds.tab-content { flex-direction: row; align-items: flex-start; justify-content: center; gap: 32px; }
+      #tab-dds .dds-left { width: auto; flex-shrink: 0; }
+      #tab-dds .results-panel { max-width: 380px; }
     }
   </style>
 </head>
@@ -565,6 +617,16 @@
 
   <div id="toast"></div>
 
+  <!-- Save Match Modal -->
+  <div class="modal-overlay" id="saveMatchModal" onclick="if(event.target===this)closeSaveMatchModal()">
+    <div class="modal" style="max-width:280px;">
+      <h2 style="margin-bottom:16px;">Save Match</h2>
+      <button class="btn-auth" style="background:#2a6496;width:100%;margin-bottom:10px;" onclick="saveMatchLocal()">📥 Download to device</button>
+      <button class="btn-auth" style="background:#27ae60;width:100%;margin-bottom:14px;" id="save-match-online-btn" onclick="saveMatchOnline()">☁️ Save online</button>
+      <button class="btn-auth" style="background:#8899aa;width:100%;" onclick="closeSaveMatchModal()">Cancel</button>
+    </div>
+  </div>
+
   <!-- Finish Game Modal -->
   <div class="modal-overlay" id="finishModal">
     <div class="modal" style="text-align:center;">
@@ -576,7 +638,7 @@
     </div>
   </div>
 
-  <img src="/logo.jpg" alt="FunBridge" style="max-width:280px; width:80%; height:auto; margin-bottom:4px;" />
+  <img src="/logo.jpg" alt="FunBridge" class="site-logo" />
   <div class="designer-credit">
     <span class="designer-label">Designed by Heather</span>
     <button class="thumbs-btn" id="thumbsBtn" onclick="thumbsUp()" title="Like this app!">&#128077;</button>
@@ -591,7 +653,7 @@
     <div class="tab" onclick="switchTab('match')">Match Score</div>
   </div>
   <div class="main-container">
-    <div id="tab-dds" class="tab-content active" style="display:flex; flex-direction:column; align-items:center;">
+    <div id="tab-dds" class="tab-content active"><div class="dds-left">
       <div class="compass">
         <div style="grid-area:sample;align-self:end;justify-self:start;">
           <button class="btn-hand-img" onclick="loadSampleHand()" style="padding:6px 10px;font-size:0.72rem;">🎲 Sample</button>
@@ -675,6 +737,7 @@
         </div>
         <div class="spinner" id="spinner"></div>
         <div class="auto-status" id="autoStatus"></div>
+      </div>
       </div>
       <div class="results-panel" id="resultsPanel" style="display:none;">
         <div class="results-title">Double Dummy Results</div>
@@ -805,22 +868,60 @@
           </select>
         </div>
         <div class="match-desc" id="pair-desc">Boards move up one table, E/W pairs move down, N/S pairs stay. Produces two winners (N/S and E/W). Best for 7+ tables with an even number.</div>
-        <div class="match-card">
-          <div class="match-card-title">Matchpoint Calculator</div>
+        <div id="mitchell-setup" class="match-card">
+          <div class="match-card-title">Game Setup</div>
+          <div class="match-input-row" style="flex-wrap:nowrap;">
+            <label style="white-space:nowrap;">Game name:</label>
+            <input type="text" id="mit-name" style="flex:1;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;" />
+          </div>
           <div class="match-input-row">
-            <label>Your N/S score:</label>
-            <input class="match-num" type="number" id="mp-your" placeholder="e.g. 420" />
+            <label>Tables:</label>
+            <input class="match-num" type="number" id="mit-tables" min="2" max="40" placeholder="e.g. 7" oninput="updateMitchellInfo()" />
           </div>
-          <div style="font-size:0.8rem;color:#667;">Other N/S scores at this board:</div>
-          <div class="mp-list" id="mp-list">
-            <div class="mp-row"><input type="number" placeholder="e.g. 450" /><button class="btn-remove" onclick="removeMpRow(this)">&#10005;</button></div>
-            <div class="mp-row"><input type="number" placeholder="e.g. 170" /><button class="btn-remove" onclick="removeMpRow(this)">&#10005;</button></div>
+          <div class="match-input-row">
+            <label>Rounds:</label>
+            <input class="match-num" type="number" id="mit-rounds" min="1" max="40" placeholder="e.g. 7" oninput="updateMitchellInfo()" />
           </div>
-          <div class="btn-row">
-            <button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="addMpRow()">+ Add Table</button>
-            <button class="btn-analyze" style="font-size:0.82rem;padding:8px 16px;" onclick="calcMatchpoints()">Calculate</button>
+          <div class="match-input-row">
+            <label>Boards / round:</label>
+            <input class="match-num" type="number" id="mit-boards" min="1" max="40" placeholder="e.g. 2" oninput="updateMitchellInfo()" />
           </div>
-          <div class="match-result-box" id="mp-result" style="display:none;"></div>
+          <div id="mitchell-info" style="font-size:0.82rem;color:#1a5276;background:#e8f4fc;border-radius:6px;padding:8px 12px;line-height:1.7;"></div>
+          <button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;margin-top:4px;" onclick="startMitchell()">Start Game</button>
+        </div>
+        <div id="mit-saved-card" class="match-card" style="display:none;">
+          <div class="match-card-title" style="margin-bottom:6px;">My Saved Games</div>
+          <div id="mit-saved-rows"></div>
+        </div>
+        <div id="mitchell-active" style="display:none;flex-direction:column;gap:10px;">
+          <div class="match-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <div class="match-card-title" id="mit-game-title"></div>
+              <span style="font-size:0.78rem;color:#667;" id="mit-round-label"></span>
+            </div>
+            <div id="mit-round-rows"></div>
+            <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+              <button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" id="mit-complete-btn" onclick="mitchellCompleteRound()">Complete Round</button>
+              <div id="mit-edit-btns" style="display:none;flex-direction:column;gap:6px;">
+                <button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" onclick="mitchellSaveEdit()">Save Edit</button>
+                <button class="btn-clear" style="font-size:0.75rem;padding:7px;" onclick="mitchellCancelEdit()">Cancel Edit</button>
+              </div>
+              <button class="btn-clear" style="font-size:0.75rem;padding:7px;" onclick="mitchellNewGame()">New Game</button>
+            </div>
+          </div>
+          <div id="mit-history-card" class="match-card" style="display:none;">
+            <div class="match-card-title" style="margin-bottom:6px;">Completed Rounds</div>
+            <div id="mit-history-rows"></div>
+          </div>
+          <div id="mit-results-card" class="match-card" style="display:none;">
+            <div class="match-card-title" style="margin-bottom:8px;">Final Results</div>
+            <div id="mit-results"></div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;">
+              <button class="btn-analyze" style="font-size:0.88rem;padding:10px;" id="mit-save-btn" onclick="mitchellSaveResults(this)">Save to Cloud</button>
+              <button class="btn-analyze" style="font-size:0.88rem;padding:10px;background:#27ae60;" onclick="mitchellSaveLocalOnly()">Save to Local File</button>
+              <button class="btn-clear" style="font-size:0.75rem;padding:7px;" onclick="mitchellNewGame()">New Game</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -881,9 +982,9 @@
               <div id="sw-team-inputs"></div>
               <div class="match-input-row" style="margin-top:8px;">
                 <label>Boards / round:</label>
-                <input type="number" id="sw-boards" class="match-num" min="4" max="28" value="8" />
+                <input type="number" id="sw-boards" class="match-num" min="4" max="28" placeholder="e.g. 8" />
                 <label style="margin-left:10px;white-space:nowrap;">Total rounds:</label>
-                <input type="number" id="sw-rounds" class="match-num" min="1" max="20" value="5" />
+                <input type="number" id="sw-rounds" class="match-num" min="1" max="20" placeholder="e.g. 5" />
               </div>
               <button class="btn-analyze" style="margin-top:8px;width:100%;font-size:0.88rem;padding:10px;" onclick="swStartTournament()">Start Tournament</button>
             </div>
@@ -911,7 +1012,7 @@
               <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
                 <button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" id="sw-complete-btn" onclick="swCompleteRound()">Complete Round</button>
                 <div style="display:flex;gap:6px;">
-                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" id="sw-save-btn" onclick="dbSave('swiss')">Save</button>
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" id="sw-save-btn" onclick="openSaveMatchModal('swiss')">Save</button>
                   <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="swEdit()">Edit</button>
                   <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="swScoreEditOpen()">Scores</button>
                   <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;color:#27ae60;border-color:#27ae60;" id="sw-finish-btn" onclick="swFinish()">Finish</button>
@@ -990,7 +1091,7 @@
               <div id="rr-team-inputs"></div>
               <div class="match-input-row" style="margin-top:8px;">
                 <label>Boards / round:</label>
-                <input type="number" id="rr-boards" class="match-num" min="4" max="28" value="8" />
+                <input type="number" id="rr-boards" class="match-num" min="4" max="28" placeholder="e.g. 8" />
                 <label style="margin-left:10px;white-space:nowrap;">Score type:</label>
                 <select id="rr-scoretype" class="match-sel" style="width:72px;">
                   <option value="vp">VP</option>
@@ -1023,6 +1124,7 @@
               <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
                 <button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" id="rr-complete-btn" onclick="rrCompleteRound()">Complete Round</button>
                 <div style="display:flex;gap:6px;">
+                  <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="openSaveMatchModal('rr')">Save</button>
                   <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="rrEdit()">Edit</button>
                   <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;" onclick="rrScoreEditOpen()">Scores</button>
                   <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px 2px;color:#27ae60;border-color:#27ae60;" id="rr-finish-btn" onclick="rrFinish()">Finish</button>
@@ -1078,6 +1180,55 @@
 
         <!-- General Team Game Setup (KO / Duplicate) -->
         <div id="general-team-panel" style="display:none;" class="swiss-section">
+
+          <!-- Shared Duplicate Match (admin liyvjia@gmail.com + phantom team players only) -->
+          <div id="dup-shared-section" style="display:none;">
+            <!-- Admin: match list + create -->
+            <div id="dup-admin-card" class="match-card" style="display:none;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div class="match-card-title" style="margin-bottom:0;">Shared Duplicate</div>
+                <button class="btn-clear" style="font-size:0.78rem;padding:5px 12px;" onclick="dupSharedShowCreate()">+ New</button>
+              </div>
+              <div id="dup-create-form" style="display:none;border:1px solid #a0c4d8;border-radius:8px;padding:10px;margin-bottom:10px;background:#f8fcff;">
+                <div style="font-size:0.82rem;font-weight:600;color:#2a6496;margin-bottom:8px;">Create Match</div>
+                <div style="display:flex;flex-direction:column;gap:6px;font-size:0.82rem;">
+                  <div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Name:</label><input type="text" id="dup-create-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" placeholder="Match name" /></div>
+                  <div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Boards:</label><input type="number" id="dup-create-boards" min="1" max="32" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" placeholder="8" /></div>
+                  <div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Team 1 name:</label><input type="text" id="dup-create-t1name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" placeholder="Team 1" /></div>
+                  <div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Team 2 name:</label><input type="text" id="dup-create-t2name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" placeholder="Team 2" /></div>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                  <button class="btn-analyze" style="flex:1;font-size:0.8rem;padding:7px;" onclick="dupSharedCreateMatch()">Create</button>
+                  <button class="btn-clear" style="font-size:0.8rem;padding:7px 12px;" onclick="document.getElementById('dup-create-form').style.display='none'">Cancel</button>
+                </div>
+              </div>
+              <div id="dup-admin-match-list"></div>
+            </div>
+            <!-- Admin: open specific match -->
+            <div id="dup-admin-match-card" class="match-card" style="display:none;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div class="match-card-title" id="dup-admin-match-title" style="margin-bottom:0;"></div>
+                <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="dupSharedAdminView()">← Back</button>
+              </div>
+              <div id="dup-admin-boards"></div>
+            </div>
+            <!-- Team player: board entry -->
+            <div id="dup-team-card" class="match-card" style="display:none;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <div class="match-card-title" id="dup-team-title" style="margin-bottom:0;"></div>
+                <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="dupSharedTeamView()">↺ Refresh</button>
+              </div>
+              <div id="dup-team-boards"></div>
+              <button id="dup-team-submit-btn" class="btn-analyze" style="width:100%;margin-top:10px;font-size:0.88rem;padding:10px;" onclick="dupSharedTeamSave()">Submit Scores</button>
+            </div>
+            <!-- Full results after completion -->
+            <div id="dup-shared-results-card" class="match-card" style="display:none;">
+              <div class="match-card-title" style="margin-bottom:8px;">Match Results</div>
+              <div id="dup-shared-results"></div>
+              <button class="btn-clear" style="width:100%;font-size:0.75rem;padding:7px;margin-top:10px;" onclick="dupSharedTeamView()">← Back</button>
+            </div>
+          </div>
+
           <div id="gt-setup-card" class="match-card">
             <div class="match-card-title">Game Setup</div>
             <div class="match-input-row" style="flex-wrap:nowrap;">
@@ -1086,15 +1237,15 @@
             </div>
             <div class="match-input-row">
               <label># of teams:</label>
-              <input type="number" id="gt-teams" class="match-num" min="2" max="64" step="2" value="8" />
+              <input type="number" id="gt-teams" class="match-num" min="2" max="64" step="2" placeholder="e.g. 8" />
             </div>
             <div class="match-input-row">
               <label># of rounds:</label>
-              <input type="number" id="gt-rounds" class="match-num" min="1" max="20" value="5" />
+              <input type="number" id="gt-rounds" class="match-num" min="1" max="20" placeholder="e.g. 5" />
             </div>
             <div class="match-input-row">
               <label>Boards / round:</label>
-              <input type="number" id="gt-boards" class="match-num" min="4" max="28" value="8" />
+              <input type="number" id="gt-boards" class="match-num" min="4" max="28" placeholder="e.g. 8" />
             </div>
             <button class="btn-analyze" style="width:100%;margin-top:4px;font-size:0.88rem;padding:10px;" onclick="gtSetupTeams()">Set Up Teams</button>
           </div>
@@ -1112,11 +1263,37 @@
             </div>
             <button class="btn-analyze" style="margin-top:8px;width:100%;font-size:0.88rem;padding:10px;" onclick="gtStartGame()">Start Game</button>
           </div>
+          <!-- KO Duplicate: player assignment -->
+          <div id="gt-dup-players-card" class="match-card" style="display:none;">
+            <div class="match-card-title" style="margin-bottom:8px;">Player Assignment</div>
+            <div style="font-size:0.8rem;color:#667;margin-bottom:8px;">Assign players from your database to each team position (optional).</div>
+            <div id="gt-dup-players-rows"></div>
+            <button class="btn-analyze" style="width:100%;margin-top:10px;font-size:0.88rem;padding:10px;" onclick="dupStartBoards()">Start Match</button>
+          </div>
+          <!-- KO Duplicate: board-by-board entry -->
+          <div id="gt-dup-boards-card" class="match-card" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
+              <div class="match-card-title" id="gt-dup-game-title" style="flex:1;min-width:0;"></div>
+              <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="openSaveMatchModal('dup')">Save</button>
+              <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="dupNewMatch()">New</button>
+            </div>
+            <div id="gt-dup-boards-rows"></div>
+            <button id="gt-dup-calc-btn" class="btn-analyze" style="width:100%;margin-top:10px;font-size:0.88rem;padding:10px;display:none;" onclick="dupCalcAll()">Calculate IMPs</button>
+          </div>
+          <!-- KO Duplicate: results -->
+          <div id="gt-dup-results-card" class="match-card" style="display:none;">
+            <div class="match-card-title" style="margin-bottom:8px;">Match Results</div>
+            <div id="gt-dup-results"></div>
+            <div style="display:flex;gap:6px;margin-top:10px;">
+              <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px;" onclick="openSaveMatchModal('dup')">Save</button>
+              <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px;" onclick="dupNewMatch()">New Match</button>
+            </div>
+          </div>
           <div id="gt-active" class="match-card" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;">
               <div class="match-card-title" id="gt-game-title" style="flex:1;min-width:0;"></div>
               <div style="display:flex;gap:5px;flex-shrink:0;">
-                <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" id="gt-save-btn" onclick="dbSave('gt')">Save</button>
+                <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" id="gt-save-btn" onclick="openSaveMatchModal('gt')">Save</button>
                 <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="gtEdit()">Edit</button>
                 <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;color:#27ae60;border-color:#27ae60;" id="gt-finish-btn" onclick="gtFinish()">Finish</button>
                 <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="gtNewGame()">New</button>
@@ -1190,7 +1367,8 @@
     function switchTab(tab) {
       if (tab === 'match') {
         if (!currentUser) { showAuthModal(); return; }
-        if (!isPaid()) { showPromoModal(); return; }
+        if (!isPaid() && !_DUP_BYPASS_EMAILS.includes(currentUser.email)) { showPromoModal(); return; }
+        setTimeout(()=>dupSharedInit().catch(()=>{}),0);
       }
       document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', TABS[i] === tab));
       TABS.forEach(t => {
@@ -2936,29 +3114,65 @@
       const el = document.getElementById('sw-name');
       if (!el) return;
       const now = new Date();
-      const d = now.toISOString().slice(0,10);
-      el.value = `${d} ${now.getHours()<12?'AM':'PM'}`;
+      el.placeholder = `${now.toISOString().slice(0,10)} ${now.getHours()<12?'AM':'PM'}`;
     })();
 
     // ---- General Team Game Setup ----
     let gtState = null;
 
-    function gtSetupTeams() {
+    async function gtSetupTeams() {
       const count = parseInt(document.getElementById('gt-teams').value) || 8;
       if (count < 2) { alert('Need at least 2 teams.'); return; }
+      const fmt = document.getElementById('team-format')?.value;
+      const isDup = fmt === 'ko' && count === 2;
+      if (isDup && sb) {
+        try { const { data } = await sb.from('players').select('id,name').order('name'); _dupPlayers = data||[]; } catch(e) { _dupPlayers = []; }
+      }
       const c = document.getElementById('gt-team-inputs');
       c.innerHTML = '';
+      const fss = 'flex:1;padding:5px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;color:#1a1a2e;';
       for (let i = 1; i <= count; i++) {
         const row = document.createElement('div');
-        row.className = 'sw-team-row';
-        row.innerHTML = `<span class="sw-num">${i}</span><input type="text" id="gt-t${i}" value="Team ${i}" />`;
+        if (isDup) {
+          row.style.cssText = 'margin-bottom:14px;border-bottom:1px solid #d0e6f0;padding-bottom:10px;';
+          const pOpt = (req) => (req ? '<option value="">— Select captain —</option>' : '<option value="">— none —</option>') +
+            _dupPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+          const pField = (id, req) => _dupPlayers.length > 0
+            ? `<select id="${id}" style="${fss}">${pOpt(req)}</select>`
+            : `<input id="${id}" placeholder="${req ? 'Captain name (required)' : 'Player name'}" style="${fss}">`;
+          row.innerHTML =
+            `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">` +
+              `<span class="sw-num">${i}</span>` +
+              `<input type="text" id="gt-t${i}" value="Team ${i}" style="flex:1;padding:8px;border:1px solid #a0c4d8;border-radius:6px;background:#f0f7fb;color:#1a1a2e;font-size:0.88rem;">` +
+            `</div>` +
+            `<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;">` +
+              `<span style="font-size:0.75rem;font-weight:600;color:#2a6496;min-width:90px;">Captain (N) *</span>` +
+              pField(`dup-setup-cap-${i}`, true) +
+            `</div>` +
+            `<div style="font-size:0.7rem;color:#999;margin:2px 0 4px 96px;">Additional players (optional)</div>` +
+            `<div style="display:flex;gap:6px;align-items:center;margin-bottom:3px;">` +
+              `<span style="font-size:0.72rem;color:#667;min-width:90px;">Partner (S)</span>` +
+              pField(`dup-setup-s-${i}`, false) +
+            `</div>` +
+            `<div style="display:flex;gap:6px;align-items:center;margin-bottom:3px;">` +
+              `<span style="font-size:0.72rem;color:#667;min-width:90px;">East</span>` +
+              pField(`dup-setup-e-${i}`, false) +
+            `</div>` +
+            `<div style="display:flex;gap:6px;align-items:center;">` +
+              `<span style="font-size:0.72rem;color:#667;min-width:90px;">West</span>` +
+              pField(`dup-setup-w-${i}`, false) +
+            `</div>`;
+        } else {
+          row.className = 'sw-team-row';
+          row.innerHTML = `<span class="sw-num">${i}</span><input type="text" id="gt-t${i}" value="Team ${i}" />`;
+        }
         c.appendChild(row);
       }
       document.getElementById('gt-teams-card').style.display = '';
       dbRefreshPresets('gt');
     }
 
-    function gtStartGame() {
+    async function gtStartGame() {
       const count = parseInt(document.getElementById('gt-teams').value) || 8;
       const rounds = parseInt(document.getElementById('gt-rounds').value) || 5;
       const boards = parseInt(document.getElementById('gt-boards').value) || 8;
@@ -2971,6 +3185,32 @@
       }
       const fmtEl = document.getElementById('team-format');
       const movEl = document.getElementById('team-movement');
+      // KO 2-team → duplicate match flow
+      if (fmtEl.value === 'ko' && count === 2) {
+        const getField = (id) => {
+          const el = document.getElementById(id); if (!el) return null;
+          if (el.tagName === 'SELECT') { const p=_dupPlayers.find(p=>String(p.id)===String(el.value)); return p||null; }
+          const n=el.value.trim(); return n ? {id:null,name:n} : null;
+        };
+        for (let i=1;i<=2;i++) { if(!getField(`dup-setup-cap-${i}`)){alert(`Please select a captain for Team ${i}.`);return;} }
+        teams.forEach((team,ti) => {
+          const i=ti+1;
+          team.captain = getField(`dup-setup-cap-${i}`);
+          team.players = {
+            ns: [getField(`dup-setup-cap-${i}`), getField(`dup-setup-s-${i}`)].filter(Boolean),
+            ew: [getField(`dup-setup-e-${i}`), getField(`dup-setup-w-${i}`)].filter(Boolean),
+          };
+        });
+        dupState = { name, teams, boards, boardScores: Array.from({length:boards},()=>({sc1:null,sc2:null,imp:null,contract1:null,contract2:null})), completed: false };
+        document.getElementById('gt-setup-card').style.display = 'none';
+        document.getElementById('gt-teams-card').style.display = 'none';
+        document.getElementById('gt-dup-game-title').textContent = dupState.name;
+        document.getElementById('gt-dup-calc-btn').style.display = 'none';
+        dupInitSessions();
+        dupShowCurrentBoard();
+        document.getElementById('gt-dup-boards-card').style.display = '';
+        return;
+      }
       gtState = { name, teams, rounds, boards, completed: false, format: fmtEl.value, movement: movEl.value };
       const fmtLabel = {'swiss':'Swiss Teams','rr':'Round Robin','ko':'KO / Duplicate'}[fmtEl.value] || fmtEl.value;
       const movLabel = movEl.options[movEl.selectedIndex].text;
@@ -2990,10 +3230,13 @@
 
     function gtNewGame() {
       if (!confirm('Start a new game? Current data will be lost.')) return;
-      gtState = null;
+      gtState = null; dupState = null;
       localClearState('gt');
       document.getElementById('gt-active').style.display = 'none';
       document.getElementById('gt-teams-card').style.display = 'none';
+      document.getElementById('gt-dup-players-card').style.display = 'none';
+      document.getElementById('gt-dup-boards-card').style.display = 'none';
+      document.getElementById('gt-dup-results-card').style.display = 'none';
       document.getElementById('gt-setup-card').style.display = '';
       document.getElementById('gt-completed-banner').style.display = 'none';
       document.getElementById('gt-edit-section').style.display = 'none';
@@ -3897,6 +4140,7 @@
         document.getElementById('match-' + t).classList.toggle('active', t === type);
       });
       if (type === 'team') swShowPanel();
+      if (type === 'pair') mitchellLoadGames();
     }
 
     const PAIR_DESCS = {
@@ -3905,14 +4149,1292 @@
       howell: 'All pairs move so every pair meets every other pair. One overall winner. Best for smaller games (3–7 tables).',
     };
     function updatePairDesc() {
-      document.getElementById('pair-desc').textContent = PAIR_DESCS[document.getElementById('pair-movement').value];
+      const mov = document.getElementById('pair-movement').value;
+      document.getElementById('pair-desc').textContent = PAIR_DESCS[mov];
+      const setupEl = document.getElementById('mitchell-setup');
+      if (setupEl) setupEl.style.display = mov === 'mitchell' ? '' : 'none';
+      if (mov === 'mitchell') updateMitchellInfo();
+    }
+
+    function updateMitchellInfo() {
+      const tables = parseInt(document.getElementById('mit-tables').value) || 0;
+      const rounds = parseInt(document.getElementById('mit-rounds').value) || 0;
+      const bpr    = parseInt(document.getElementById('mit-boards').value) || 0;
+      const el = document.getElementById('mitchell-info');
+      if (!tables || !rounds || !bpr) { el.textContent = ''; return; }
+      const totalBoards = rounds * bpr;
+      const sets = tables; // one set per table
+      const evenWarn = tables % 2 === 0 ? '⚠ Standard Mitchell requires an odd number of tables.' : '';
+      const roundsWarn = rounds > tables - 1 ? `⚠ Rounds (${rounds}) exceed tables−1 (${tables-1}); pairs will repeat opponents.` : '';
+      el.innerHTML =
+        `Total boards: <b>${totalBoards}</b> &nbsp;·&nbsp; Board sets: <b>${sets}</b> (${bpr} board${bpr!==1?'s':''}/set)` +
+        (evenWarn ? `<br><span style="color:#c0392b;">${evenWarn}</span>` : '') +
+        (roundsWarn ? `<br><span style="color:#b7770d;">${roundsWarn}</span>` : '');
+    }
+
+    // ---- Mitchell Tournament Manager ----
+    const LEGAL_SCORES = (function() {
+      const s = new Set([0]);
+      const ts  = (lv, st) => st==='C'||st==='D' ? 20*lv : st==='H'||st==='S' ? 30*lv : 40+30*(lv-1);
+      const ov  = (st, m, v) => m===1 ? (st==='C'||st==='D' ? 20 : 30) : m===2 ? (v?200:100) : (v?400:200);
+      const dbl = (d, v) => { let t=0; for(let i=1;i<=d;i++) t+=v?(i===1?200:300):(i===1?100:i<=3?200:300); return t; };
+      const und = (d, v, m) => m===1 ? (v?100:50)*d : m===2 ? dbl(d,v) : dbl(d,v)*2;
+      const made = (lv, st, o, v, m) => {
+        const t = ts(lv, st) * m;
+        let tot = t + (t>=100 ? (v?500:300) : 50);
+        if (lv===6) tot += v?750:500; else if (lv===7) tot += v?1500:1000;
+        tot += ov(st, m, v) * o;
+        if (m===2) tot += 50; else if (m===4) tot += 100;
+        return tot;
+      };
+      for (let lv=1; lv<=7; lv++) {
+        const tn=6+lv, mo=13-tn;
+        for (const st of ['C','D','H','S','N'])
+          for (const v of [0,1]) for (const m of [1,2,4])
+            for (let o=0; o<=mo; o++) s.add(made(lv, st, o, v, m));
+        for (const v of [0,1]) for (const m of [1,2,4])
+          for (let d=1; d<=tn; d++) s.add(und(d, v, m));
+      }
+      return s;
+    })();
+    function isLegalBridgeScore(n) { return Number.isInteger(n) && LEGAL_SCORES.has(Math.abs(n)); }
+
+    const LEGAL_SCORES_SORTED = (function() {
+      const pos = [...LEGAL_SCORES].sort((a,b) => a-b);
+      const neg = pos.filter(n => n > 0).map(n => -n).sort((a,b) => a-b);
+      return [...neg, ...pos];
+    })();
+    const _lsNext = (cur) => LEGAL_SCORES_SORTED.find(v => v > cur) ?? LEGAL_SCORES_SORTED[LEGAL_SCORES_SORTED.length-1];
+    const _lsPrev = (cur) => { for (let i=LEGAL_SCORES_SORTED.length-1;i>=0;i--) if (LEGAL_SCORES_SORTED[i]<cur) return LEGAL_SCORES_SORTED[i]; return LEGAL_SCORES_SORTED[0]; };
+
+    let _mitKey = false;
+    function mitScoreKeydown(e) {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const el = e.target, cur = parseFloat(el.value) || 0;
+        el.value = el.dataset.prev = e.key === 'ArrowUp' ? _lsNext(cur) : _lsPrev(cur);
+        return;
+      }
+      _mitKey = true;
+    }
+    function mitScoreInput(el) {
+      if (_mitKey) { _mitKey = false; return; }
+      const prev = parseFloat(el.dataset.prev || '0') || 0;
+      const cur = parseFloat(el.value);
+      if (isNaN(cur) || el.value === '') return;
+      if (isLegalBridgeScore(cur)) { el.dataset.prev = cur; return; }
+      const next = cur > prev ? _lsNext(prev) : _lsPrev(prev);
+      el.value = el.dataset.prev = next;
+    }
+
+    let mitchellState = null;
+
+    (function mitInitName() {
+      const el = document.getElementById('mit-name');
+      if (!el) return;
+      const now = new Date();
+      el.placeholder = `${now.toISOString().slice(0,10)} ${now.getHours()<12?'AM':'PM'}`;
+    })();
+
+    function startMitchell() {
+      const nameEl = document.getElementById('mit-name');
+      const tables = parseInt(document.getElementById('mit-tables').value);
+      const rounds = parseInt(document.getElementById('mit-rounds').value);
+      const bpr    = parseInt(document.getElementById('mit-boards').value);
+      if (!tables || tables < 2) { alert('Enter at least 2 tables.'); return; }
+      if (tables % 2 === 0) { alert('Standard Mitchell requires an odd number of tables.'); return; }
+      if (!rounds || rounds < 1) { alert('Enter at least 1 round.'); return; }
+      if (!bpr || bpr < 1) { alert('Enter boards per round.'); return; }
+      const name = nameEl.value.trim() || nameEl.placeholder;
+      mitchellState = { name, tables, rounds, bpr, scores: [], currentRound: 0, completed: false };
+      document.getElementById('mitchell-setup').style.display = 'none';
+      const active = document.getElementById('mitchell-active');
+      active.style.display = 'flex';
+      document.getElementById('mit-game-title').textContent = name;
+      mitchellRenderRound();
+    }
+
+    function mitchellRenderRound(roundIdx) {
+      const { tables, rounds, bpr, currentRound } = mitchellState;
+      const r = roundIdx !== undefined ? roundIdx : currentRound;
+      if (roundIdx === undefined) {
+        document.getElementById('mit-round-label').textContent = `Round ${r+1} of ${rounds}`;
+        document.getElementById('mit-complete-btn').style.display = '';
+      }
+      const c = document.getElementById('mit-round-rows');
+      c.innerHTML = '';
+      const prev = mitchellState.scores[r] || [];
+      for (let t = 0; t < tables; t++) {
+        const ewPair = ((t - r) % tables + tables) % tables + 1; // EW move up → subtract r
+        const boardSet = (t + r) % tables;                       // boards move down → add r
+        const b1 = boardSet * bpr + 1;                          // first board number (1-indexed)
+        const savedBoards = prev[t] || [];
+        const tableRow = document.createElement('div');
+        tableRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;' + (t > 0 ? 'border-top:1px solid #d0e6f0;margin-top:2px;' : '');
+        let rowHtml =
+          `<span style="min-width:28px;text-align:center;font-size:0.72rem;font-weight:700;color:#2a6496;">T${t+1}</span>` +
+          `<span style="font-size:0.82rem;font-weight:600;min-width:48px;">NS ${t+1}</span>` +
+          `<span style="font-size:0.82rem;font-weight:600;min-width:48px;">EW ${ewPair}</span>`;
+        for (let pos = 0; pos < bpr; pos++) {
+          const boardNum = b1 + pos;
+          const saved = savedBoards[pos] !== undefined && savedBoards[pos] !== null ? savedBoards[pos] : '';
+          rowHtml +=
+            `<span style="font-size:0.78rem;color:#667;">Bd ${boardNum}</span>` +
+            `<input type="number" step="1" id="mit-sc-${t}-${pos}" value="${saved}" data-prev="${saved || 0}" placeholder="e.g. 140" ` +
+            `onkeydown="mitScoreKeydown(event)" oninput="mitScoreInput(this)" ` +
+            `style="width:90px;padding:5px 6px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.85rem;text-align:center;" />`;
+        }
+        tableRow.innerHTML = rowHtml;
+        c.appendChild(tableRow);
+      }
+    }
+
+    function mitchellCompleteRound() {
+      const { tables, rounds, bpr, currentRound } = mitchellState;
+      const roundScores = [];
+      for (let t = 0; t < tables; t++) {
+        const tableScores = [];
+        for (let pos = 0; pos < bpr; pos++) {
+          const v = document.getElementById(`mit-sc-${t}-${pos}`)?.value?.trim();
+          if (v === '' || v === undefined) { alert(`Enter NS score for Table ${t+1}, Board ${pos+1}.`); return; }
+          const sc = Number(v);
+          if (!isLegalBridgeScore(sc)) {
+            alert(`Invalid score at Table ${t+1}, Board ${pos+1}. Must be a legal bridge score (e.g. 140, -50, 420).`); return;
+          }
+          tableScores.push(sc);
+        }
+        roundScores.push(tableScores);
+      }
+      mitchellState.scores[currentRound] = roundScores;
+      mitchellState.currentRound++;
+      mitchellRenderHistory();
+      if (mitchellState.currentRound >= rounds) {
+        mitchellState.completed = true;
+      }
+      mitchellSaveToDb();
+      if (mitchellState.completed) {
+        document.getElementById('mit-complete-btn').style.display = 'none';
+        document.getElementById('mit-round-rows').innerHTML =
+          '<div style="text-align:center;padding:14px;color:#27ae60;font-weight:600;">All rounds complete!</div>';
+        document.getElementById('mit-round-label').textContent = `${rounds} rounds completed`;
+        mitchellRenderResults();
+      } else {
+        mitchellRenderRound();
+      }
+    }
+
+    function mitchellCalcMPs() {
+      const { tables, rounds, bpr, scores } = mitchellState;
+      const nsMPs = new Array(tables).fill(0);
+      const ewMPs = new Array(tables).fill(0);
+      const nsTop = new Array(tables).fill(0);
+      const ewTop = new Array(tables).fill(0);
+      for (let boardNum = 0; boardNum < tables * bpr; boardNum++) {
+        const b   = Math.floor(boardNum / bpr); // board set (0-indexed)
+        const pos = boardNum % bpr;              // position within set
+        const entries = [];
+        for (let r = 0; r < rounds; r++) {
+          const t     = ((b - r) % tables + tables) % tables; // board set b is at this table
+          const ewIdx = ((t - r) % tables + tables) % tables; // EW pair at that table
+          const sc    = scores[r]?.[t]?.[pos];
+          if (sc !== undefined && sc !== null && sc !== '' && !isNaN(sc)) {
+            entries.push({ nsIdx: t, ewIdx, sc: Number(sc) });
+          }
+        }
+        const boardTop = 2 * (entries.length - 1);
+        for (let i = 0; i < entries.length; i++) {
+          let mp = 0;
+          for (let j = 0; j < entries.length; j++) {
+            if (i === j) continue;
+            if (entries[i].sc > entries[j].sc) mp += 2;
+            else if (entries[i].sc === entries[j].sc) mp += 1;
+          }
+          nsMPs[entries[i].nsIdx] += mp;
+          ewMPs[entries[i].ewIdx] += boardTop - mp;
+          nsTop[entries[i].nsIdx] += boardTop;
+          ewTop[entries[i].ewIdx] += boardTop;
+        }
+      }
+      return { nsMPs, ewMPs, nsTop, ewTop };
+    }
+
+    function mitchellBuildAllPairs() {
+      const { tables } = mitchellState;
+      const { nsMPs, ewMPs, nsTop, ewTop } = mitchellCalcMPs();
+      const all = [];
+      for (let k = 0; k < tables; k++) {
+        if (nsTop[k] > 0) all.push({ label:`NS ${k+1}`, mp:nsMPs[k], top:nsTop[k] });
+        if (ewTop[k] > 0) all.push({ label:`EW ${k+1}`, mp:ewMPs[k], top:ewTop[k] });
+      }
+      all.sort((a,b) => (b.mp/b.top) - (a.mp/a.top));
+      const nsSorted = [...Array(tables).keys()].sort((a,b) => nsMPs[b]-nsMPs[a]);
+      const ewSorted = [...Array(tables).keys()].sort((a,b) => ewMPs[b]-ewMPs[a]);
+      return { all, nsSorted, ewSorted, nsMPs, ewMPs, nsTop, ewTop };
+    }
+
+    function mitchellRenderResults() {
+      const { all, nsSorted, ewSorted, nsMPs, ewMPs, nsTop, ewTop } = mitchellBuildAllPairs();
+      const pct = (mp, top) => top > 0 ? `${Math.round(mp/top*100)}%` : '-';
+      const mkTable = (rows, title) => {
+        let h = `<div style="font-size:0.82rem;font-weight:600;color:#2a6496;margin-bottom:4px;">${title}</div>`;
+        h += '<table class="swiss-table"><thead><tr><th>Rank</th><th>Pair</th><th>MPs</th><th>%</th></tr></thead><tbody>';
+        rows.forEach(({label, mp, top}, rank) => {
+          const cls = rank === 0 ? ' class="rank-1"' : '';
+          h += `<tr${cls}><td>${rank+1}</td><td>${label}</td><td>${mp}</td><td>${pct(mp,top)}</td></tr>`;
+        });
+        h += '</tbody></table>';
+        return h;
+      };
+      const nsRows = nsSorted.map(k => ({label:`NS ${k+1}`, mp:nsMPs[k], top:nsTop[k]}));
+      const ewRows = ewSorted.map(k => ({label:`EW ${k+1}`, mp:ewMPs[k], top:ewTop[k]}));
+      document.getElementById('mit-results').innerHTML =
+        mkTable(all,    'Overall Standings') + '<div style="height:12px;"></div>' +
+        mkTable(nsRows, 'NS Standings')      + '<div style="height:12px;"></div>' +
+        mkTable(ewRows, 'EW Standings');
+      document.getElementById('mit-results-card').style.display = '';
+    }
+
+    function mitchellGenerateResultsText() {
+      const { name, tables, rounds, bpr } = mitchellState;
+      const { all, nsSorted, ewSorted, nsMPs, ewMPs, nsTop, ewTop } = mitchellBuildAllPairs();
+      const pct = (mp, top) => top > 0 ? `${Math.round(mp/top*100)}%` : '-';
+      const pad = (s, n) => String(s).padEnd(n);
+      let txt = `${name}\n${'='.repeat(Math.max(name.length,20))}\n`;
+      txt += `${new Date().toLocaleString()}  |  ${tables} tables · ${rounds} rounds · ${bpr} board${bpr!==1?'s':''}/round\n\n`;
+      txt += 'OVERALL STANDINGS\n' + pad('Rank',6) + pad('Pair',8) + pad('MPs',6) + '%\n';
+      all.forEach((p, r) => { txt += pad(r+1,6) + pad(p.label,8) + pad(p.mp,6) + pct(p.mp,p.top) + '\n'; });
+      txt += '\nNS STANDINGS\n' + pad('Rank',6) + pad('Pair',8) + pad('MPs',6) + '%\n';
+      nsSorted.forEach((k,r) => { txt += pad(r+1,6) + pad(`NS ${k+1}`,8) + pad(nsMPs[k],6) + pct(nsMPs[k],nsTop[k]) + '\n'; });
+      txt += '\nEW STANDINGS\n' + pad('Rank',6) + pad('Pair',8) + pad('MPs',6) + '%\n';
+      ewSorted.forEach((k,r) => { txt += pad(r+1,6) + pad(`EW ${k+1}`,8) + pad(ewMPs[k],6) + pct(ewMPs[k],ewTop[k]) + '\n'; });
+      return txt;
+    }
+
+    async function mitchellSaveResults(btn) {
+      if (!mitchellState) return;
+      const orig = btn ? btn.textContent : '';
+      if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+      await mitchellSaveToDb();
+      if (btn) {
+        btn.textContent = 'Saved ✓';
+        setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1800);
+      }
+    }
+
+    function mitchellDownloadResults() {
+      if (!mitchellState) return;
+      mitchellSaveToDb();
+    }
+
+    function mitchellNewGame() {
+      if (mitchellState && mitchellState.currentRound > 0) {
+        mitchellShowSaveDialog();
+      } else {
+        mitchellResetToSetup();
+      }
+    }
+
+    function mitchellShowSaveDialog() {
+      let dlg = document.getElementById('mit-save-dialog');
+      if (!dlg) {
+        dlg = document.createElement('div');
+        dlg.id = 'mit-save-dialog';
+        dlg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;display:flex;align-items:center;justify-content:center;';
+        document.body.appendChild(dlg);
+      }
+      dlg.innerHTML =
+        '<div style="background:#fff;border-radius:12px;padding:24px 20px;max-width:300px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.25);text-align:center;">' +
+          '<div style="font-size:1rem;font-weight:700;color:#1a3a5c;margin-bottom:8px;">Start New Game?</div>' +
+          '<div style="font-size:0.85rem;color:#555;margin-bottom:18px;">Save this game before starting a new one?</div>' +
+          '<div style="display:flex;flex-direction:column;gap:8px;">' +
+            '<button onclick="mitchellSaveCloudAndNew()" style="padding:10px;background:#2a82bd;color:#fff;border:none;border-radius:8px;font-size:0.88rem;font-weight:600;cursor:pointer;">Save to Cloud</button>' +
+            '<button onclick="mitchellSaveLocalAndNew()" style="padding:10px;background:#27ae60;color:#fff;border:none;border-radius:8px;font-size:0.88rem;font-weight:600;cursor:pointer;">Save to Local File</button>' +
+            '<button onclick="mitchellDiscardAndNew()" style="padding:10px;background:#e55;color:#fff;border:none;border-radius:8px;font-size:0.88rem;font-weight:600;cursor:pointer;">Discard & Start New</button>' +
+            '<button onclick="document.getElementById(\'mit-save-dialog\').style.display=\'none\'" style="padding:10px;background:#eee;color:#444;border:none;border-radius:8px;font-size:0.88rem;cursor:pointer;">Cancel</button>' +
+          '</div>' +
+        '</div>';
+      dlg.style.display = 'flex';
+    }
+
+    function mitchellSaveLocalOnly() {
+      if (!mitchellState) return;
+      const txt = mitchellGenerateResultsText();
+      const blob = new Blob([txt], {type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${mitchellState.name.replace(/[^a-z0-9]/gi,'_')}_results.txt`; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function mitchellSaveCloudAndNew() { mitchellSaveToDb(); mitchellResetToSetup(); }
+    function mitchellSaveLocalAndNew() {
+      if (!mitchellState) return;
+      const txt = mitchellGenerateResultsText();
+      const blob = new Blob([txt], {type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${mitchellState.name.replace(/[^a-z0-9]/gi,'_')}_results.txt`; a.click();
+      URL.revokeObjectURL(url);
+      mitchellResetToSetup();
+    }
+    function mitchellDiscardAndNew() { mitchellResetToSetup(); }
+
+    function mitchellResetToSetup() {
+      mitchellState = null;
+      const dlg = document.getElementById('mit-save-dialog');
+      if (dlg) dlg.style.display = 'none';
+      document.getElementById('mitchell-active').style.display = 'none';
+      document.getElementById('mit-results-card').style.display = 'none';
+      document.getElementById('mit-history-card').style.display = 'none';
+      document.getElementById('mitchell-setup').style.display = '';
+      mitchellLoadGames();
+    }
+
+    function mitchellRenderHistory() {
+      const { tables, bpr, scores, currentRound } = mitchellState;
+      const card = document.getElementById('mit-history-card');
+      if (currentRound === 0) { card.style.display = 'none'; return; }
+      card.style.display = '';
+      let html = '';
+      for (let r = 0; r < currentRound; r++) {
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #e8f0f6;">` +
+          `<span style="font-size:0.85rem;font-weight:600;color:#2a6496;">Round ${r+1}</span>` +
+          `<button style="font-size:0.75rem;padding:3px 10px;background:#2a82bd;color:#fff;border:none;border-radius:6px;cursor:pointer;" onclick="mitchellEditRound(${r})">Edit</button>` +
+          `</div>` +
+          `<div style="display:flex;flex-wrap:wrap;gap:3px 10px;padding:3px 0 5px;">`;
+        for (let t = 0; t < tables; t++) {
+          const sc = (scores[r]?.[t] ?? []).join(', ');
+          html += `<span style="font-size:0.78rem;color:#555;">T${t+1}: ${sc}</span>`;
+        }
+        html += `</div>`;
+      }
+      document.getElementById('mit-history-rows').innerHTML = html;
+    }
+
+    function mitchellEditRound(r) {
+      mitchellState.editingRound = r;
+      document.getElementById('mit-complete-btn').style.display = 'none';
+      document.getElementById('mit-edit-btns').style.display = 'flex';
+      document.getElementById('mit-round-label').textContent = `Editing Round ${r+1}`;
+      mitchellRenderRound(r);
+    }
+
+    function mitchellCancelEdit() {
+      mitchellState.editingRound = null;
+      document.getElementById('mit-edit-btns').style.display = 'none';
+      const { completed, currentRound, rounds } = mitchellState;
+      if (completed) {
+        document.getElementById('mit-complete-btn').style.display = 'none';
+        document.getElementById('mit-round-label').textContent = `${rounds} rounds completed`;
+        document.getElementById('mit-round-rows').innerHTML =
+          '<div style="text-align:center;padding:14px;color:#27ae60;font-weight:600;">All rounds complete!</div>';
+      } else {
+        mitchellRenderRound();
+      }
+    }
+
+    function mitchellSaveEdit() {
+      const r = mitchellState.editingRound;
+      if (r === null || r === undefined) return;
+      const { tables, bpr } = mitchellState;
+      const roundScores = [];
+      for (let t = 0; t < tables; t++) {
+        const tableScores = [];
+        for (let pos = 0; pos < bpr; pos++) {
+          const v = document.getElementById(`mit-sc-${t}-${pos}`)?.value?.trim();
+          if (v === '' || v === undefined) { alert(`Enter NS score for Table ${t+1}, Board ${pos+1}.`); return; }
+          const sc = Number(v);
+          if (!isLegalBridgeScore(sc)) { alert(`Invalid score at Table ${t+1}, Board ${pos+1}.`); return; }
+          tableScores.push(sc);
+        }
+        roundScores.push(tableScores);
+      }
+      mitchellState.scores[r] = roundScores;
+      mitchellState.editingRound = null;
+      document.getElementById('mit-edit-btns').style.display = 'none';
+      mitchellRenderHistory();
+      mitchellSaveToDb();
+      if (mitchellState.completed) {
+        document.getElementById('mit-complete-btn').style.display = 'none';
+        document.getElementById('mit-round-label').textContent = `${mitchellState.rounds} rounds completed`;
+        document.getElementById('mit-round-rows').innerHTML =
+          '<div style="text-align:center;padding:14px;color:#27ae60;font-weight:600;">All rounds complete!</div>';
+        mitchellRenderResults();
+      } else {
+        mitchellRenderRound();
+      }
+    }
+
+    async function mitchellSaveToDb() {
+      if (!currentUser || !sb) return;
+      const { name, tables, rounds, bpr, scores, currentRound, completed } = mitchellState;
+      const payload = {
+        user_id: currentUser.id,
+        name, tables, rounds, bpr,
+        movement: 'mitchell',
+        scores,
+        current_round: currentRound,
+        completed,
+        updated_at: new Date().toISOString(),
+      };
+      try {
+        if (mitchellState.dbId) {
+          await sb.from('pair_games').update(payload).eq('id', mitchellState.dbId);
+        } else {
+          const { data, error } = await sb.from('pair_games').insert(payload).select('id').single();
+          if (!error && data) mitchellState.dbId = data.id;
+        }
+      } catch(e) { /* non-fatal */ }
+    }
+
+    async function mitchellLoadGames() {
+      const card = document.getElementById('mit-saved-card');
+      if (!card) return;
+      if (!currentUser || !sb) { card.style.display = 'none'; return; }
+      const { data } = await sb.from('pair_games')
+        .select('id,name,tables,rounds,bpr,current_round,completed,updated_at,scores')
+        .eq('user_id', currentUser.id)
+        .order('updated_at', { ascending: false })
+        .limit(10);
+      if (!data || data.length === 0) { card.style.display = 'none'; return; }
+      card.style.display = '';
+      let html = '';
+      data.forEach(g => {
+        const dt = new Date(g.updated_at).toLocaleDateString();
+        const status = g.completed ? 'Done' : `Rd ${g.current_round}/${g.rounds}`;
+        html +=
+          `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #e8f0f6;">` +
+          `<div><div style="font-size:0.85rem;font-weight:600;color:#1a3a5c;">${g.name}</div>` +
+          `<div style="font-size:0.75rem;color:#666;">${g.tables}T · ${dt} · ${status}</div></div>` +
+          `<button style="font-size:0.75rem;padding:4px 10px;background:#2a82bd;color:#fff;border:none;border-radius:6px;cursor:pointer;" onclick="mitchellResumeGame('${g.id}')">Load</button>` +
+          `</div>`;
+      });
+      document.getElementById('mit-saved-rows').innerHTML = html;
+      window._mitSavedGames = data;
+    }
+
+    function mitchellResumeGame(id) {
+      const g = window._mitSavedGames?.find(x => x.id === id);
+      if (!g) return;
+      mitchellState = {
+        dbId: g.id,
+        name: g.name,
+        tables: g.tables,
+        rounds: g.rounds,
+        bpr: g.bpr,
+        scores: g.scores || [],
+        currentRound: g.current_round,
+        completed: g.completed,
+        editingRound: null,
+      };
+      document.getElementById('mitchell-setup').style.display = 'none';
+      document.getElementById('mitchell-active').style.display = 'flex';
+      document.getElementById('mit-game-title').textContent = g.name;
+      if (g.completed) {
+        document.getElementById('mit-complete-btn').style.display = 'none';
+        document.getElementById('mit-round-rows').innerHTML =
+          '<div style="text-align:center;padding:14px;color:#27ae60;font-weight:600;">All rounds complete!</div>';
+        document.getElementById('mit-round-label').textContent = `${g.rounds} rounds completed`;
+        mitchellRenderResults();
+      } else {
+        mitchellRenderRound();
+      }
+      mitchellRenderHistory();
+    }
+
+    // ---- KO Duplicate Match ----
+    let dupState = null, _dupPlayers = [];
+    const _dupVulPat = ['none','ns','ew','both','ns','ew','both','none','ew','both','none','ns','both','none','ns','ew'];
+    function dupBoardVul(b1) { return _dupVulPat[(b1-1)%16]; }
+    function dupVulLabel(b1) { return {'none':'—','ns':'NS','ew':'EW','both':'All'}[dupBoardVul(b1)]; }
+    function dupIsVul(dec, b1) {
+      const v = dupBoardVul(b1), isNS = dec==='N'||dec==='S';
+      return v==='both'||(v==='ns'&&isNS)||(v==='ew'&&!isNS);
+    }
+
+    function dupCalcImp(diff) {
+      const d = Math.abs(diff);
+      const thresholds = [20,50,90,130,170,220,270,320,370,430,500,600,750,900,1100,1300,1500,1750,2000,2500,3000,3500,4000];
+      let imp = 0;
+      for (const t of thresholds) { if (d >= t) imp++; else break; }
+      return diff >= 0 ? imp : -imp;
+    }
+
+    function dupContractScore(lv, suit, mx, dec, ot, b1) {
+      const vul = dupIsVul(dec, b1);
+      const tv = (suit==='C'||suit==='D') ? 20 : 30;
+      const basePts = suit==='N' ? (40+30*(lv-1))*mx : tv*lv*mx;
+      let sc;
+      if (ot < 0) {
+        const d=-ot; let pen=0;
+        if (mx===1) pen=(vul?100:50)*d;
+        else if (mx===2) { for(let i=1;i<=d;i++) pen+=i===1?(vul?200:100):i<=3?(vul?300:200):300; }
+        else             { for(let i=1;i<=d;i++) pen+=i===1?(vul?400:200):i<=3?(vul?600:400):600; }
+        sc = -pen;
+      } else {
+        sc = basePts;
+        sc += basePts>=100 ? (vul?500:300) : 50;
+        if (lv===6) sc += vul?750:500;
+        if (lv===7) sc += vul?1500:1000;
+        if (mx>=2) sc += 50;
+        if (ot>0) sc += (mx===1?tv:mx===2?(vul?200:100):(vul?400:200))*ot;
+      }
+      return (dec==='N'||dec==='S') ? sc : -sc;
+    }
+
+    async function dupShowPlayers() {
+      _dupPlayers = [];
+      if (sb) {
+        try { const { data } = await sb.from('players').select('id,name').order('name'); _dupPlayers = data||[]; } catch(e) {}
+      }
+      const makeOpts = () => {
+        let h = '<option value="">— none —</option>';
+        _dupPlayers.forEach(p => { h += `<option value="${p.id}">${p.name}</option>`; });
+        return h;
+      };
+      const pSel = (id) => `<select id="${id}" style="flex:1;padding:5px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;color:#1a1a2e;">${makeOpts()}</select>`;
+      let html = _dupPlayers.length===0 ? '<div style="font-size:0.82rem;color:#888;margin-bottom:10px;">No players found — you can skip and assign names later.</div>' : '';
+      dupState.teams.forEach((team, ti) => {
+        const i=ti+1;
+        html += `<div style="margin-bottom:12px;">` +
+          `<div style="font-size:0.85rem;font-weight:700;color:#2a6496;margin-bottom:5px;">${team.name}</div>` +
+          `<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px;"><span style="font-size:0.78rem;color:#667;min-width:24px;">NS</span>${pSel(`dup-t${i}-ns1`)}${pSel(`dup-t${i}-ns2`)}</div>` +
+          `<div style="display:flex;gap:6px;align-items:center;"><span style="font-size:0.78rem;color:#667;min-width:24px;">EW</span>${pSel(`dup-t${i}-ew1`)}${pSel(`dup-t${i}-ew2`)}</div>` +
+          `</div>`;
+      });
+      document.getElementById('gt-dup-players-rows').innerHTML = html;
+      document.getElementById('gt-dup-players-card').style.display = '';
+    }
+
+    function dupStartBoards() {
+      const getP = (id) => { const el=document.getElementById(id); const pid=el?.value; return pid?(_dupPlayers.find(p=>String(p.id)===String(pid))||null):null; };
+      dupState.teams.forEach((team, ti) => {
+        const i=ti+1;
+        team.players = {
+          ns: [getP(`dup-t${i}-ns1`),getP(`dup-t${i}-ns2`)].filter(Boolean),
+          ew: [getP(`dup-t${i}-ew1`),getP(`dup-t${i}-ew2`)].filter(Boolean),
+        };
+      });
+      dupState.boardScores = Array.from({length:dupState.boards}, ()=>({sc1:null,sc2:null,imp:null}));
+      document.getElementById('gt-dup-players-card').style.display = 'none';
+      document.getElementById('gt-dup-game-title').textContent = dupState.name;
+      dupRenderBoards();
+      document.getElementById('gt-dup-boards-card').style.display = '';
+    }
+
+    function dupRenderBoards() {
+      const { teams, boards } = dupState;
+      const ss = 'padding:3px 2px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.75rem;';
+      const lvOpts = Array.from({length:7},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
+      const suitOpts = '<option value="">—</option><option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S">♠</option><option value="N">NT</option>';
+      const mxOpts = '<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
+      const decOpts = '<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
+      const rsOpts = '<option value="">Res</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+
+        '<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+      let html = '';
+      for (let b=0; b<boards; b++) {
+        const b1=b+1, vul=dupVulLabel(b1);
+        html += `<div style="padding:8px 0;border-bottom:1px solid #d0e6f0;">` +
+          `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">` +
+            `<span style="font-size:0.82rem;font-weight:700;color:#2a6496;">Board ${b1}</span>` +
+            `<span style="font-size:0.72rem;color:#667;background:#e8f4fc;border-radius:4px;padding:1px 6px;">Vul: ${vul}</span>` +
+            `<span id="dup-imp-${b}" style="font-size:0.82rem;font-weight:600;color:#888;">—</span>` +
+          `</div>`;
+        [0,1].forEach(t => {
+          html += `<div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-bottom:4px;">` +
+            `<span style="font-size:0.72rem;color:#555;min-width:50px;flex-shrink:0;">${teams[t].name}<br><span style="color:#2a6496;">NS</span></span>` +
+            `<select id="dup-lv-${t}-${b}" style="${ss}width:34px;" onchange="dupUpdateBoard(${t},${b})" title="Level"><option value="">Lv</option>${lvOpts}</select>` +
+            `<select id="dup-su-${t}-${b}" style="${ss}width:42px;" onchange="dupUpdateBoard(${t},${b})" title="Suit">${suitOpts}</select>` +
+            `<select id="dup-mx-${t}-${b}" style="${ss}width:38px;" onchange="dupUpdateBoard(${t},${b})" title="Doubled">${mxOpts}</select>` +
+            `<select id="dup-by-${t}-${b}" style="${ss}width:38px;" onchange="dupUpdateBoard(${t},${b})" title="Declarer">${decOpts}</select>` +
+            `<select id="dup-rs-${t}-${b}" style="${ss}width:62px;" onchange="dupUpdateBoard(${t},${b})" title="Result">${rsOpts}</select>` +
+            `<span id="dup-sc-${t}-${b}" style="font-size:0.78rem;font-weight:600;color:#1a3a5c;min-width:38px;text-align:right;">—</span>` +
+          `</div>`;
+        });
+        html += `</div>`;
+      }
+      document.getElementById('gt-dup-boards-rows').innerHTML = html;
+    }
+
+    function dupUpdateBoard(t, b) {
+      const lv=parseInt(document.getElementById(`dup-lv-${t}-${b}`)?.value);
+      const su=document.getElementById(`dup-su-${t}-${b}`)?.value;
+      const mx=parseInt(document.getElementById(`dup-mx-${t}-${b}`)?.value)||1;
+      const by=document.getElementById(`dup-by-${t}-${b}`)?.value;
+      const rsEl=document.getElementById(`dup-rs-${t}-${b}`);
+      const rs=rsEl?.value;
+      const scEl=document.getElementById(`dup-sc-${t}-${b}`);
+      const key=t===0?'sc1':'sc2';
+      if (!lv||!su||!by||rs===''||rs===undefined||rs===null) {
+        if(scEl) scEl.textContent='—';
+        dupState.boardScores[b][key]=null;
+      } else {
+        const score=dupContractScore(lv,su,mx,by,parseInt(rs),b+1);
+        if(scEl) { scEl.textContent=score>=0?`+${score}`:`${score}`; }
+        dupState.boardScores[b][key]=score;
+      }
+      dupUpdateImp(b);
+    }
+
+    function dupUpdateImp(b) {
+      const sc=dupState.boardScores[b];
+      const impEl=document.getElementById(`dup-imp-${b}`);
+      if(sc.sc1!==null&&sc.sc2!==null) {
+        const imp=dupCalcImp(sc.sc1-sc.sc2);
+        sc.imp=imp;
+        if(impEl){impEl.textContent=(imp>=0?'+':'')+imp+' IMP';impEl.style.color=imp>0?'#2a82bd':imp<0?'#c0392b':'#888';}
+      } else {
+        sc.imp=null;
+        if(impEl){impEl.textContent='—';impEl.style.color='#888';}
+      }
+    }
+
+    function dupInitSessions() {
+      const h=Math.floor(dupState.boards/2);
+      const first=Array.from({length:h},(_,i)=>i);
+      const second=Array.from({length:dupState.boards-h},(_,i)=>i+h);
+      // Session order: T1 first half → T1 second half (swap between) → T2 first half → T2 second half
+      dupState.sessions=[
+        {team:0, boards:first,  phaseLabel:'First half',  needsSwap:true},
+        {team:0, boards:second, phaseLabel:'Second half', needsSwap:false},
+        {team:1, boards:second, phaseLabel:'First half',  needsSwap:true},
+        {team:1, boards:first,  phaseLabel:'Second half', needsSwap:false},
+      ];
+      dupState.sessionIdx=0;
+      dupState.sessionCursor=0;
+    }
+
+    function dupShowCurrentBoard() {
+      const sess=dupState.sessions[dupState.sessionIdx];
+      const b=sess.boards[dupState.sessionCursor];
+      const t=sess.team;
+      const b1=b+1, team=dupState.teams[t], vul=dupVulLabel(b1);
+      const canEdit=dupState.sessionCursor>0;
+      const isLast=dupState.sessionCursor===sess.boards.length-1;
+      const phaseLabel=sess.phaseLabel;
+      const ss='padding:5px 4px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.82rem;';
+      const lvOpts=Array.from({length:7},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
+      const suitOpts='<option value="">—</option><option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S">♠</option><option value="N">NT</option>';
+      const mxOpts='<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
+      const decOpts='<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
+      const rsOpts='<option value="">Res</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+      const capName=team.captain?.name||'';
+      document.getElementById('gt-dup-boards-rows').innerHTML=
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">` +
+          `<div><div style="font-size:0.9rem;font-weight:700;color:#2a6496;">${team.name}${capName?' — '+capName:''}</div>` +
+          `<div style="font-size:0.72rem;color:#667;">${phaseLabel} · Board ${dupState.sessionCursor+1} of ${sess.boards.length}</div></div>` +
+          `<span style="font-size:0.72rem;background:#e8f4fc;border-radius:4px;padding:2px 8px;color:#555;">Vul: ${vul}</span>` +
+        `</div>` +
+        `<div style="background:#f8fafd;border:1px solid #d0e6f0;border-radius:8px;padding:14px 10px;margin-bottom:14px;">` +
+          `<div style="font-size:1.05rem;font-weight:700;color:#1a3a5c;margin-bottom:12px;text-align:center;">Board ${b1}</div>` +
+          `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;">` +
+            `<select id="dup-b-lv" style="${ss}width:46px;" onchange="dupLiveScore(${t},${b})" title="Level"><option value="">Lv</option>${lvOpts}</select>` +
+            `<select id="dup-b-su" style="${ss}width:52px;" onchange="dupLiveScore(${t},${b})" title="Suit">${suitOpts}</select>` +
+            `<select id="dup-b-mx" style="${ss}width:46px;" onchange="dupLiveScore(${t},${b})" title="Doubled">${mxOpts}</select>` +
+            `<select id="dup-b-by" style="${ss}width:46px;" onchange="dupLiveScore(${t},${b})" title="Declarer">${decOpts}</select>` +
+            `<select id="dup-b-rs" style="${ss}width:72px;" onchange="dupLiveScore(${t},${b})" title="Result">${rsOpts}</select>` +
+          `</div>` +
+          `<div id="dup-b-score" style="text-align:center;font-size:1.15rem;font-weight:700;color:#888;margin-top:12px;">—</div>` +
+        `</div>` +
+        `<div style="display:flex;gap:8px;">` +
+          (canEdit?`<button class="btn-clear" style="flex:1;padding:10px;font-size:0.85rem;" onclick="dupEditPrevBoard()">← Board ${sess.boards[dupState.sessionCursor-1]+1}</button>`:`<div style="flex:1;"></div>`) +
+          `<button class="btn-analyze" style="flex:2;padding:10px;font-size:0.9rem;" onclick="dupConfirmBoard(${t},${b})">${isLast?'Confirm & Done ✓':'Confirm →'}</button>` +
+        `</div>`;
+      const stored=dupState.boardScores[b][`contract${t+1}`];
+      if(stored){
+        ['lv','su','mx','by','rs'].forEach(k=>{const el=document.getElementById(`dup-b-${k}`);if(el)el.value=stored[k];});
+        dupLiveScore(t,b);
+      }
+    }
+
+    function dupLiveScore(t,b){
+      const lv=parseInt(document.getElementById('dup-b-lv')?.value);
+      const su=document.getElementById('dup-b-su')?.value;
+      const mx=parseInt(document.getElementById('dup-b-mx')?.value)||1;
+      const by=document.getElementById('dup-b-by')?.value;
+      const rs=document.getElementById('dup-b-rs')?.value;
+      const scEl=document.getElementById('dup-b-score');
+      if(!lv||!su||!by||rs===''||rs===undefined){if(scEl){scEl.textContent='—';scEl.style.color='#888';}return;}
+      const sc=dupContractScore(lv,su,mx,by,parseInt(rs),b+1);
+      if(scEl){scEl.textContent=(sc>=0?'+':'')+sc;scEl.style.color=sc>0?'#2a82bd':sc<0?'#c0392b':'#888';}
+    }
+
+    function dupConfirmBoard(t,b){
+      const lv=document.getElementById('dup-b-lv')?.value;
+      const su=document.getElementById('dup-b-su')?.value;
+      const by=document.getElementById('dup-b-by')?.value;
+      const rs=document.getElementById('dup-b-rs')?.value;
+      if(!lv||!su||!by||rs===''||rs===undefined){alert('Please complete the contract entry before confirming.');return;}
+      const mx=parseInt(document.getElementById('dup-b-mx')?.value)||1;
+      const score=dupContractScore(parseInt(lv),su,mx,by,parseInt(rs),b+1);
+      dupState.boardScores[b][`contract${t+1}`]={lv,su,mx:String(mx),by,rs};
+      dupState.boardScores[b][t===0?'sc1':'sc2']=score;
+      const sess=dupState.sessions[dupState.sessionIdx];
+      if(dupState.sessionCursor<sess.boards.length-1){
+        dupState.sessionCursor++;
+        dupShowCurrentBoard();
+      } else {
+        dupSessionComplete();
+      }
+    }
+
+    function dupEditPrevBoard(){
+      if(dupState.sessionCursor>0){dupState.sessionCursor--;dupShowCurrentBoard();}
+    }
+
+    function dupSessionComplete(){
+      const idx=dupState.sessionIdx;
+      const sess=dupState.sessions[idx];
+      const team=dupState.teams[sess.team];
+      const isLast=idx===dupState.sessions.length-1;
+      if(isLast){
+        document.getElementById('gt-dup-boards-rows').innerHTML=
+          `<div style="text-align:center;padding:28px 12px;">` +
+          `<div style="font-size:1rem;font-weight:700;color:#2a6496;margin-bottom:8px;">All boards completed!</div>` +
+          `<div style="font-size:0.85rem;color:#667;margin-bottom:24px;">Both teams have entered all their results.</div>` +
+          `<button class="btn-analyze" style="width:100%;padding:14px;font-size:0.95rem;" onclick="dupCalcAll()">Finish Game & See Results</button>` +
+          `</div>`;
+        return;
+      }
+      const nextSess=dupState.sessions[idx+1];
+      const nextTeam=dupState.teams[nextSess.team];
+      const nb=nextSess.boards;
+      const nbLabel=`Boards ${nb[0]+1}–${nb[nb.length-1]+1}`;
+      const sameTeam=sess.team===nextSess.team;
+      let inner;
+      if(sameTeam){
+        inner=
+          `<div style="font-size:0.95rem;font-weight:700;color:#2a6496;margin-bottom:10px;">${team.name} — First half done!</div>` +
+          `<div style="font-size:0.85rem;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 12px;margin-bottom:14px;color:#7a5c00;text-align:left;">Swap boards between tables now.</div>` +
+          `<div style="font-size:0.82rem;color:#555;margin-bottom:20px;">Next: enter your Second half — <strong>${nbLabel}</strong></div>` +
+          `<button class="btn-analyze" style="width:100%;padding:12px;font-size:0.92rem;" onclick="dupNextSession()">Continue — Second half →</button>`;
+      } else {
+        inner=
+          `<div style="font-size:0.95rem;font-weight:700;color:#2a6496;margin-bottom:10px;">${team.name} — All entries done!</div>` +
+          `<div style="font-size:0.85rem;color:#667;margin-bottom:16px;">Hand the device to <strong>${nextTeam.name}</strong> captain.</div>` +
+          `<div style="font-size:0.82rem;color:#555;margin-bottom:20px;">${nextTeam.name} will enter: <strong>${nbLabel}</strong></div>` +
+          `<button class="btn-analyze" style="width:100%;padding:12px;font-size:0.92rem;" onclick="dupNextSession()">Ready — ${nextTeam.name} Captain →</button>`;
+      }
+      document.getElementById('gt-dup-boards-rows').innerHTML=`<div style="text-align:center;padding:24px 12px;">${inner}</div>`;
+    }
+
+    function dupNextSession(){
+      dupState.sessionIdx++;
+      dupState.sessionCursor=0;
+      dupShowCurrentBoard();
+    }
+
+    function dupCalcAll() {
+      const { boards, boardScores, teams } = dupState;
+      for(let b=0;b<boards;b++){
+        const sc=boardScores[b];
+        if(sc.sc1!==null&&sc.sc2!==null) sc.imp=dupCalcImp(sc.sc1-sc.sc2);
+        else sc.imp=null;
+      }
+      const total=boardScores.reduce((s,b)=>s+(b?.imp??0),0);
+      dupState.totalImp=total; dupState.completed=true;
+      const t1=teams[0], t2=teams[1];
+      const t1Imp=Math.max(0,total), t2Imp=Math.max(0,-total);
+      const winner=total>0?t1.name:total<0?t2.name:null;
+      const sn={'C':'♣','D':'♦','H':'♥','S':'♠','N':'NT'};
+      const fmtC=(c)=>c?`${c.lv}${sn[c.su]||c.su}${c.mx==='2'||c.mx===2?'×':c.mx==='4'||c.mx===4?'××':''} by ${c.by} (${parseInt(c.rs)>0?'+'+c.rs:c.rs==='0'||c.rs===0?'=':c.rs})`:'—';
+      const playerLine=(team)=>{
+        const ns=team.players?.ns?.map(p=>p.name).join(' / ')||'';
+        const ew=team.players?.ew?.map(p=>p.name).join(' / ')||'';
+        return (ns||ew)?`<div style="font-size:0.75rem;color:#667;margin-top:2px;">${ns?'NS: '+ns:''}${ns&&ew?' · ':''}${ew?'EW: '+ew:''}</div>`:'';
+      };
+      let html=`<div style="display:grid;grid-template-columns:24px 1fr 1fr 40px;gap:2px;padding:4px 0 6px;border-bottom:2px solid #d0e6f0;font-size:0.72rem;font-weight:600;color:#2a6496;">` +
+        `<span>#</span><span>${t1.name}</span><span>${t2.name}</span><span style="text-align:right;">IMP</span></div>`;
+      boardScores.forEach((s,b)=>{
+        if(s.sc1===null||s.sc2===null) return;
+        const imp=s.imp??0;
+        html+=`<div style="border-bottom:1px solid #eef4f8;padding:5px 0;">` +
+          `<div style="display:grid;grid-template-columns:24px 1fr 1fr 40px;gap:2px;align-items:center;font-size:0.82rem;">` +
+            `<span style="font-weight:600;color:#555;">${b+1}</span>` +
+            `<span style="font-weight:600;color:${s.sc1>0?'#2a82bd':s.sc1<0?'#c0392b':'#555'}">${s.sc1>=0?'+':''}${s.sc1}</span>` +
+            `<span style="font-weight:600;color:${s.sc2>0?'#2a82bd':s.sc2<0?'#c0392b':'#555'}">${s.sc2>=0?'+':''}${s.sc2}</span>` +
+            `<span style="text-align:right;font-weight:700;color:${imp>0?'#2a82bd':imp<0?'#c0392b':'#888'}">${imp>=0?'+':''}${imp}</span>` +
+          `</div>` +
+          `<div style="display:grid;grid-template-columns:24px 1fr 1fr 40px;gap:2px;font-size:0.68rem;color:#888;margin-top:1px;">` +
+            `<span></span><span>${fmtC(s.contract1)}</span><span>${fmtC(s.contract2)}</span><span></span>` +
+          `</div>` +
+        `</div>`;
+      });
+      html+=`<div style="margin-top:14px;padding:12px;background:${winner?'#e8f4fc':'#f0f0f0'};border-radius:8px;text-align:center;">` +
+        (winner?`<div style="font-size:1.05rem;font-weight:700;color:#1a3a5c;">${winner} wins!</div><div style="font-size:0.85rem;color:#555;margin-top:3px;">${Math.abs(total)} IMP${Math.abs(total)!==1?'s':''}</div>`
+               :`<div style="font-size:0.95rem;font-weight:700;color:#555;">Tied — 0 IMPs</div>`) +
+        `</div>` +
+        `<div style="display:flex;gap:8px;margin-top:10px;">` +
+        `<div style="flex:1;padding:10px;background:#f0f7fb;border-radius:8px;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${t1.name}</div>${playerLine(t1)}<div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t1Imp} IMP</div></div>` +
+        `<div style="flex:1;padding:10px;background:#f0f7fb;border-radius:8px;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${t2.name}</div>${playerLine(t2)}<div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t2Imp} IMP</div></div>` +
+        `</div>`;
+      document.getElementById('gt-dup-results').innerHTML=html;
+      document.getElementById('gt-dup-boards-card').style.display='none';
+      document.getElementById('gt-dup-results-card').style.display='';
+    }
+
+    function dupNewMatch() {
+      dupState = null; _dupPlayers = [];
+      ['gt-dup-players-card','gt-dup-boards-card','gt-dup-results-card'].forEach(id => {
+        document.getElementById(id).style.display = 'none';
+      });
+      document.getElementById('gt-setup-card').style.display = '';
+    }
+
+    // ── Shared Duplicate Match (multi-user, Supabase-backed) ─────────────────
+    const DUP_ADMIN_EMAIL = 'liyvjia@gmail.com';
+    const DUP_PHANTOM = { team1: 'team1@funbridge.cc', team2: 'team2@funbridge.cc' };
+    const _DUP_BYPASS_EMAILS = [DUP_ADMIN_EMAIL, DUP_PHANTOM.team1, DUP_PHANTOM.team2];
+    let _dupSharedRole = null, _dupSharedMatch = null;
+    let _dupSharedCursor = 0, _dupSharedSeq = [], _dupSharedLocalScores = {}, _dupSharedSwapAcknowledged = false;
+
+    async function dupSharedInit() {
+      const sec = document.getElementById('dup-shared-section');
+      if (!sec) return;
+      const email = currentUser?.email;
+      _dupSharedRole = null; _dupSharedMatch = null;
+      if (!email || !sb) { sec.style.display='none'; return; }
+      if (email === DUP_ADMIN_EMAIL) _dupSharedRole = 'admin';
+      else if (email === DUP_PHANTOM.team1) _dupSharedRole = 'team1';
+      else if (email === DUP_PHANTOM.team2) _dupSharedRole = 'team2';
+      if (!_dupSharedRole) { sec.style.display='none'; return; }
+      sec.style.display = '';
+      ['dup-admin-card','dup-admin-match-card','dup-team-card','dup-shared-results-card'].forEach(id => {
+        const el=document.getElementById(id); if(el) el.style.display='none';
+      });
+      if (_dupSharedRole==='admin') await dupSharedAdminView();
+      else await dupSharedTeamView();
+    }
+
+    function dupSharedShowCreate() {
+      const f=document.getElementById('dup-create-form');
+      f.style.display = f.style.display==='none'?'':'none';
+    }
+
+    async function dupSharedCreateMatch() {
+      const name=document.getElementById('dup-create-name').value.trim();
+      const boards=parseInt(document.getElementById('dup-create-boards').value)||8;
+      const t1name=document.getElementById('dup-create-t1name').value.trim()||'Team 1';
+      const t2name=document.getElementById('dup-create-t2name').value.trim()||'Team 2';
+      if (!name) { alert('Enter a match name'); return; }
+      let t1uid=null, t2uid=null;
+      try {
+        const [r1,r2] = await Promise.all([
+          sb.rpc('admin_get_uid_by_email',{p_email:DUP_PHANTOM.team1}),
+          sb.rpc('admin_get_uid_by_email',{p_email:DUP_PHANTOM.team2}),
+        ]);
+        t1uid=r1.data; t2uid=r2.data;
+      } catch(e) {}
+      if (!t1uid||!t2uid) { alert('Team player accounts not found. Create team1@funbridge.cc and team2@funbridge.cc in Supabase Auth first.'); return; }
+      const {error}=await sb.from('dup_matches').insert({
+        creator_id:currentUser.id,name,boards,
+        team1_name:t1name,team2_name:t2name,
+        team1_uid:t1uid,team2_uid:t2uid,
+        team1_scores:[],team2_scores:[],completed:false
+      });
+      if (error) { alert('Error: '+error.message); return; }
+      document.getElementById('dup-create-form').style.display='none';
+      ['dup-create-name','dup-create-boards','dup-create-t1name','dup-create-t2name'].forEach(id=>{document.getElementById(id).value='';});
+      await dupSharedAdminView();
+    }
+
+    async function dupSharedAdminView() {
+      const {data:matches}=await sb.from('dup_matches').select('*').order('updated_at',{ascending:false});
+      let html='';
+      (matches||[]).forEach(m=>{
+        const t1n=(m.team1_scores||[]).length,t2n=(m.team2_scores||[]).length;
+        const stat=m.completed?'✓ Complete':`${t1n}+${t2n} / ${m.boards*2} boards`;
+        const sc=m.completed?'#27ae60':'#e67e22';
+        html+=`<div onclick="dupSharedOpenAdminMatch('${m.id}')" style="cursor:pointer;padding:10px 12px;border:1px solid #a0c4d8;border-radius:8px;margin-bottom:8px;background:#f0f7fb;">
+          <div style="font-size:0.88rem;font-weight:700;color:#1a3a5c;">${m.name}</div>
+          <div style="display:flex;justify-content:space-between;margin-top:2px;">
+            <span style="font-size:0.76rem;color:#555;">${m.team1_name} vs ${m.team2_name} · ${m.boards} boards</span>
+            <span style="font-size:0.74rem;font-weight:600;color:${sc};">${stat}</span>
+          </div></div>`;
+      });
+      if(!html) html='<div style="font-size:0.82rem;color:#888;padding:8px 0;">No matches yet.</div>';
+      document.getElementById('dup-admin-match-list').innerHTML=html;
+      document.getElementById('dup-admin-card').style.display='';
+      ['dup-admin-match-card','dup-team-card','dup-shared-results-card'].forEach(id=>{document.getElementById(id).style.display='none';});
+    }
+
+    async function dupSharedOpenAdminMatch(id) {
+      const {data:m}=await sb.from('dup_matches').select('*').eq('id',id).single();
+      if(!m) return;
+      _dupSharedMatch=m;
+      document.getElementById('dup-admin-match-title').textContent=m.name;
+      document.getElementById('dup-admin-card').style.display='none';
+      _dupSharedRenderAdminBoards(m);
+      document.getElementById('dup-admin-match-card').style.display='';
+    }
+
+    function _dupSharedRenderAdminBoards(m) {
+      const {boards,team1_name,team2_name,team1_scores,team2_scores,completed}=m;
+      const t1map={},t2map={};
+      (team1_scores||[]).forEach(s=>{t1map[s.b]=s;}); (team2_scores||[]).forEach(s=>{t2map[s.b]=s;});
+      const ss='padding:2px 2px;border:1px solid #a0c4d8;border-radius:3px;background:#f0f7fb;color:#1a1a2e;font-size:0.72rem;box-sizing:border-box;';
+      const lvO='<option value="">Lv</option>'+Array.from({length:7},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
+      const suO='<option value="">—</option><option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S">♠</option><option value="N">NT</option>';
+      const mxO='<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
+      const byO='<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
+      const rsO='<option value="">Res</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">=</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+      let html=`<div style="padding:4px 8px;background:${completed?'#e8f5e9':'#fff3e0'};border-radius:6px;margin-bottom:10px;font-size:0.78rem;color:${completed?'#27ae60':'#e67e22'};font-weight:600;">${completed?'✓ Complete':'In progress'}</div>`;
+      for(let b=1;b<=boards;b++){
+        const s1=t1map[b]||{},s2=t2map[b]||{},vul=dupVulLabel(b);
+        let impTxt='—',impC='#888';
+        if(s1.sc!==undefined&&s1.sc!==null&&s2.sc!==undefined&&s2.sc!==null){const imp=dupCalcImp(s1.sc-s2.sc);impTxt=(imp>=0?'+':'')+imp+' IMP';impC=imp>0?'#2a82bd':imp<0?'#c0392b':'#888';}
+        html+=`<div style="padding:6px 0;border-bottom:1px solid #d0e6f0;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <b style="font-size:0.8rem;color:#2a6496;">Board ${b}</b>
+            <span style="font-size:0.7rem;color:#667;">Vul: ${vul}</span>
+            <span id="dup-adm-imp-${b}" style="font-size:0.78rem;font-weight:600;color:${impC};">${impTxt}</span>
+          </div>`;
+        [[0,team1_name,s1],[1,team2_name,s2]].forEach(([t,tn,s])=>{
+          const p=`dup-adm-${t}-${b}`;
+          html+=`<div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap;margin-bottom:2px;">
+            <span style="font-size:0.7rem;color:#555;width:44px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tn}</span>
+            <select id="${p}-lv" style="${ss}width:30px;">${lvO}</select>
+            <select id="${p}-su" style="${ss}width:38px;">${suO}</select>
+            <select id="${p}-mx" style="${ss}width:34px;">${mxO}</select>
+            <select id="${p}-by" style="${ss}width:34px;">${byO}</select>
+            <select id="${p}-rs" style="${ss}width:56px;">${rsO}</select>
+            <span id="${p}-sc" style="font-size:0.74rem;font-weight:600;color:#1a3a5c;min-width:34px;text-align:right;">${s.sc!==undefined&&s.sc!==null?(s.sc>=0?'+':'')+s.sc:'—'}</span>
+          </div>`;
+        });
+        html+=`</div>`;
+      }
+      html+=`<div style="display:flex;gap:6px;margin-top:12px;">
+        <button class="btn-analyze" style="flex:1;font-size:0.8rem;padding:8px;" onclick="dupSharedAdminSave()">Save Changes</button>
+        <button class="btn-clear" style="font-size:0.78rem;padding:8px 10px;" onclick="dupSharedAdminToggleComplete()">${completed?'Reopen':'Mark Complete'}</button>
+        <button class="btn-clear" style="font-size:0.78rem;padding:8px 10px;color:#c0392b;border-color:#c0392b;" onclick="dupSharedAdminDelete()">Delete</button>
+      </div>`;
+      document.getElementById('dup-admin-boards').innerHTML=html;
+      const sv=(id,val)=>{const el=document.getElementById(id);if(el&&val!==undefined&&val!==null)el.value=String(val);};
+      for(let b=1;b<=boards;b++){
+        const s1=t1map[b]||{},s2=t2map[b]||{};
+        ['lv','su','mx','by','rs'].forEach(f=>{sv(`dup-adm-0-${b}-${f}`,s1[f]);sv(`dup-adm-1-${b}-${f}`,s2[f]);});
+        if(!t1map[b]?.mx) {const el=document.getElementById(`dup-adm-0-${b}-mx`);if(el)el.value='1';}
+        if(!t2map[b]?.mx) {const el=document.getElementById(`dup-adm-1-${b}-mx`);if(el)el.value='1';}
+      }
+      for(let b=1;b<=boards;b++) for(let t=0;t<2;t++) {
+        const p=`dup-adm-${t}-${b}`;
+        ['lv','su','mx','by','rs'].forEach(f=>{const el=document.getElementById(`${p}-${f}`);if(el)el.onchange=()=>_dupAdminRecalc(t,b);});
+      }
+    }
+
+    function _dupAdminRecalc(t,b) {
+      const p=`dup-adm-${t}-${b}`;
+      const lv=parseInt(document.getElementById(`${p}-lv`)?.value);
+      const su=document.getElementById(`${p}-su`)?.value;
+      const mx=parseInt(document.getElementById(`${p}-mx`)?.value)||1;
+      const by=document.getElementById(`${p}-by`)?.value;
+      const rs=document.getElementById(`${p}-rs`)?.value;
+      const scEl=document.getElementById(`${p}-sc`);
+      if(!lv||!su||!by||rs===''||rs===undefined){if(scEl)scEl.textContent='—';return null;}
+      const sc=dupContractScore(lv,su,mx,by,parseInt(rs),b);
+      if(scEl) scEl.textContent=sc>=0?`+${sc}`:`${sc}`;
+      return sc;
+    }
+
+    async function dupSharedAdminSave() {
+      if(!_dupSharedMatch) return;
+      const {id,boards}=_dupSharedMatch;
+      const t1s=[],t2s=[];
+      for(let b=1;b<=boards;b++){
+        for(let t=0;t<2;t++){
+          const sc=_dupAdminRecalc(t,b);
+          const p=`dup-adm-${t}-${b}`;
+          const lv=parseInt(document.getElementById(`${p}-lv`)?.value)||null;
+          const su=document.getElementById(`${p}-su`)?.value||null;
+          const mx=parseInt(document.getElementById(`${p}-mx`)?.value)||1;
+          const by=document.getElementById(`${p}-by`)?.value||null;
+          const rsv=document.getElementById(`${p}-rs`)?.value;
+          const rs=rsv!==''&&rsv!==undefined?parseInt(rsv):null;
+          if(lv&&su&&by&&rs!==null) (t===0?t1s:t2s).push({b,lv,su,mx,by,rs,sc});
+        }
+      }
+      for(let b=1;b<=boards;b++){
+        const s1=t1s.find(s=>s.b===b),s2=t2s.find(s=>s.b===b);
+        const impEl=document.getElementById(`dup-adm-imp-${b}`);
+        if(s1?.sc!==null&&s1?.sc!==undefined&&s2?.sc!==null&&s2?.sc!==undefined&&impEl){
+          const imp=dupCalcImp(s1.sc-s2.sc);impEl.textContent=(imp>=0?'+':'')+imp+' IMP';impEl.style.color=imp>0?'#2a82bd':imp<0?'#c0392b':'#888';
+        } else if(impEl){impEl.textContent='—';impEl.style.color='#888';}
+      }
+      const completed=t1s.length===boards&&t2s.length===boards;
+      const {error}=await sb.from('dup_matches').update({team1_scores:t1s,team2_scores:t2s,completed,updated_at:new Date().toISOString()}).eq('id',id);
+      if(error){alert('Save failed: '+error.message);return;}
+      _dupSharedMatch={..._dupSharedMatch,team1_scores:t1s,team2_scores:t2s,completed};
+      const banner=document.querySelector('#dup-admin-boards div:first-child');
+      if(banner){banner.textContent=completed?'✓ Complete':'In progress';banner.style.background=completed?'#e8f5e9':'#fff3e0';banner.style.color=completed?'#27ae60':'#e67e22';}
+      const btn=document.querySelector('#dup-admin-boards button.btn-analyze');
+      if(btn){const o=btn.textContent;btn.textContent='Saved ✓';setTimeout(()=>btn.textContent=o,1800);}
+    }
+
+    async function dupSharedAdminToggleComplete() {
+      if(!_dupSharedMatch) return;
+      const nc=!_dupSharedMatch.completed;
+      const {error}=await sb.from('dup_matches').update({completed:nc,updated_at:new Date().toISOString()}).eq('id',_dupSharedMatch.id);
+      if(error){alert('Error: '+error.message);return;}
+      _dupSharedMatch.completed=nc;
+      await dupSharedOpenAdminMatch(_dupSharedMatch.id);
+    }
+
+    async function dupSharedAdminDelete() {
+      if(!_dupSharedMatch) return;
+      if(!confirm(`Delete "${_dupSharedMatch.name}"? This cannot be undone.`)) return;
+      await sb.from('dup_matches').delete().eq('id',_dupSharedMatch.id);
+      _dupSharedMatch=null;
+      await dupSharedAdminView();
+    }
+
+    async function dupSharedTeamView() {
+      const uid=currentUser?.id, role=_dupSharedRole;
+      const col=role==='team1'?'team1_uid':'team2_uid';
+      const {data:matches}=await sb.from('dup_matches').select('*').eq(col,uid).order('updated_at',{ascending:false}).limit(10);
+      ['dup-admin-card','dup-admin-match-card'].forEach(id=>{document.getElementById(id).style.display='none';});
+      if(!matches||matches.length===0){
+        document.getElementById('dup-team-boards').innerHTML='<div style="font-size:0.85rem;color:#888;text-align:center;padding:16px;">No active match assigned. Ask the organiser to create one.</div>';
+        document.getElementById('dup-team-submit-btn').style.display='none';
+        document.getElementById('dup-team-title').textContent='Shared Duplicate';
+        document.getElementById('dup-team-card').style.display='';
+        document.getElementById('dup-shared-results-card').style.display='none';
+        return;
+      }
+      const active=matches.find(m=>!m.completed)||matches[0];
+      _dupSharedMatch=active;
+      document.getElementById('dup-team-title').textContent=active.name;
+      if(active.completed){
+        _dupSharedRenderFullResults(active);
+        document.getElementById('dup-shared-results-card').style.display='';
+        document.getElementById('dup-team-card').style.display='none';
+      } else {
+        _dupSharedRenderTeamBoards(active,role);
+        document.getElementById('dup-team-card').style.display='';
+        document.getElementById('dup-shared-results-card').style.display='none';
+      }
+    }
+
+    function _dupSharedGetSeq(boards, role) {
+      const h = Math.floor(boards / 2);
+      const first = Array.from({length: h}, (_, i) => i);
+      const second = Array.from({length: boards - h}, (_, i) => i + h);
+      return role === 'team1' ? [...first, ...second] : [...second, ...first];
+    }
+
+    function _dupSharedRenderTeamBoards(m, role) {
+      const myScores = role === 'team1' ? m.team1_scores : m.team2_scores;
+      const myMap = {};
+      (myScores || []).forEach(s => { myMap[s.b] = s; });
+      _dupSharedSeq = _dupSharedGetSeq(m.boards, role);
+      _dupSharedLocalScores = myMap;
+      const h = Math.floor(m.boards / 2);
+      const firstMissing = _dupSharedSeq.findIndex(bi => !myMap[bi + 1]);
+      _dupSharedCursor = firstMissing === -1 ? _dupSharedSeq.length : firstMissing;
+      _dupSharedSwapAcknowledged = _dupSharedCursor > h;
+      _dupSharedShowBoard();
+    }
+
+    function _dupSharedShowBoard() {
+      const m = _dupSharedMatch;
+      const {boards, team1_name, team2_name, team1_scores, team2_scores} = m;
+      const role = _dupSharedRole;
+      const myName = role === 'team1' ? team1_name : team2_name;
+      const otherName = role === 'team1' ? team2_name : team1_name;
+      const otherScores = role === 'team1' ? team2_scores : team1_scores;
+      const otherDone = (otherScores || []).length;
+      const h = Math.floor(boards / 2);
+      const cur = _dupSharedCursor;
+      document.getElementById('dup-team-submit-btn').style.display = 'none';
+
+      if (cur >= _dupSharedSeq.length) {
+        const allDone = otherDone >= boards;
+        document.getElementById('dup-team-boards').innerHTML = allDone
+          ? `<div style="text-align:center;padding:24px 8px;">
+              <div style="font-size:1rem;font-weight:700;color:#27ae60;margin-bottom:10px;">Both rooms finished ✓</div>
+              <button class="btn-analyze" style="font-size:0.9rem;padding:10px 24px;margin-top:4px;" onclick="dupSharedRefreshResults()">See Results →</button>
+             </div>`
+          : `<div style="text-align:center;padding:24px 8px;">
+              <div style="font-size:1rem;font-weight:700;color:#2a6496;margin-bottom:10px;">Your boards complete ✓</div>
+              <div style="font-size:0.85rem;color:#667;margin-bottom:14px;">Waiting for ${otherName} to finish…<br><span style="font-size:0.78rem;color:#999;">(${otherDone} / ${boards} boards entered)</span></div>
+              <button class="btn-clear" style="font-size:0.8rem;padding:7px 14px;" onclick="dupSharedRefreshResults()">↺ Refresh</button>
+             </div>`;
+        return;
+      }
+
+      if (cur === h && !_dupSharedSwapAcknowledged) {
+        document.getElementById('dup-team-boards').innerHTML = `
+          <div style="text-align:center;padding:24px 8px;">
+            <div style="font-size:1rem;font-weight:700;color:#2a6496;margin-bottom:8px;">First half done!</div>
+            <div style="font-size:0.85rem;color:#444;margin-bottom:14px;">Swap boards with the other table now.</div>
+            <button class="btn-analyze" style="font-size:0.88rem;padding:9px 20px;" onclick="dupSharedContinueAfterSwap()">Continue — Second half →</button>
+          </div>`;
+        return;
+      }
+
+      const bi = _dupSharedSeq[cur], b = bi + 1, vul = dupVulLabel(b);
+      const saved = _dupSharedLocalScores[b] || {};
+      const phaseLabel = cur < h ? 'First half' : 'Second half';
+      const phasePos = (cur < h ? cur : cur - h) + 1;
+      const phaseTotal = cur < h ? h : boards - h;
+      const canEdit = cur > 0 && cur !== h;
+      const isLast = cur === _dupSharedSeq.length - 1;
+      const ss = 'padding:4px 2px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.78rem;';
+      const lvO = '<option value="">Lv</option>' + Array.from({length:7}, (_,i) => `<option value="${i+1}">${i+1}</option>`).join('');
+      const suO = '<option value="">—</option><option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S">♠</option><option value="N">NT</option>';
+      const mxO = '<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
+      const byO = '<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
+      const rsO = '<option value="">Res</option>' + [...Array(13)].map((_,i) => `<option value="${-(13-i)}">−${13-i}</option>`).join('') + '<option value="0">= made</option>' + [...Array(6)].map((_,i) => `<option value="${i+1}">+${i+1}</option>`).join('');
+      const scDisp = saved.sc != null ? (saved.sc >= 0 ? '+' + saved.sc : String(saved.sc)) : '—';
+      const editBtn = canEdit ? `<button class="btn-clear" style="font-size:0.8rem;padding:7px 12px;" onclick="dupSharedEditPrev()">← Board ${_dupSharedSeq[cur-1]+1}</button>` : '';
+
+      document.getElementById('dup-team-boards').innerHTML = `
+        <div style="font-size:0.75rem;color:#667;margin-bottom:8px;display:flex;justify-content:space-between;">
+          <span style="font-weight:600;color:#2a6496;">${myName}</span>
+          <span>${phaseLabel} · Board ${phasePos} of ${phaseTotal}</span>
+        </div>
+        <div style="background:#f0f7fb;border:1px solid #a0c4d8;border-radius:8px;padding:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <span style="font-size:0.95rem;font-weight:700;color:#1a1a2e;">Board ${b}</span>
+            <span style="font-size:0.72rem;color:#667;background:#e8f4fc;border-radius:4px;padding:2px 8px;">Vul: ${vul}</span>
+            <span id="dup-shared-score" style="font-size:0.85rem;font-weight:600;color:#1a3a5c;">${scDisp}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;">
+            <select id="dup-shared-lv" style="${ss}width:36px;" onchange="dupSharedRecalc()">${lvO}</select>
+            <select id="dup-shared-su" style="${ss}width:44px;" onchange="dupSharedRecalc()">${suO}</select>
+            <select id="dup-shared-mx" style="${ss}width:40px;" onchange="dupSharedRecalc()">${mxO}</select>
+            <select id="dup-shared-by" style="${ss}width:40px;" onchange="dupSharedRecalc()">${byO}</select>
+            <select id="dup-shared-rs" style="${ss}width:68px;" onchange="dupSharedRecalc()">${rsO}</select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          ${editBtn}
+          <button class="btn-analyze" style="flex:1;font-size:0.88rem;padding:9px;" onclick="dupSharedConfirmBoard()">${isLast ? 'Confirm & Done ✓' : 'Confirm →'}</button>
+        </div>
+        <div style="margin-top:10px;font-size:0.75rem;color:#999;text-align:center;">${otherName}: ${otherDone}/${boards} boards ${otherDone >= boards ? '✓' : '⏳'}</div>`;
+
+      const sv = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = String(val); };
+      sv('dup-shared-lv', saved.lv);
+      sv('dup-shared-su', saved.su);
+      sv('dup-shared-mx', saved.mx != null ? saved.mx : 1);
+      sv('dup-shared-by', saved.by);
+      sv('dup-shared-rs', saved.rs);
+    }
+
+    function dupSharedContinueAfterSwap() {
+      _dupSharedSwapAcknowledged = true;
+      _dupSharedShowBoard();
+    }
+
+    function dupSharedRecalc() {
+      const cur = _dupSharedCursor;
+      if (cur >= _dupSharedSeq.length) return;
+      const b = _dupSharedSeq[cur] + 1;
+      const lv = parseInt(document.getElementById('dup-shared-lv')?.value);
+      const su = document.getElementById('dup-shared-su')?.value;
+      const mx = parseInt(document.getElementById('dup-shared-mx')?.value) || 1;
+      const by = document.getElementById('dup-shared-by')?.value;
+      const rs = document.getElementById('dup-shared-rs')?.value;
+      const scEl = document.getElementById('dup-shared-score');
+      if (!lv || !su || !by || rs === '' || rs == null) { if (scEl) scEl.textContent = '—'; return; }
+      const sc = dupContractScore(lv, su, mx, by, parseInt(rs), b);
+      if (scEl) scEl.textContent = sc >= 0 ? `+${sc}` : `${sc}`;
+    }
+
+    async function dupSharedConfirmBoard() {
+      const cur = _dupSharedCursor;
+      if (cur >= _dupSharedSeq.length) return;
+      const bi = _dupSharedSeq[cur], b = bi + 1;
+      const lv = parseInt(document.getElementById('dup-shared-lv')?.value) || null;
+      const su = document.getElementById('dup-shared-su')?.value || null;
+      const mx = parseInt(document.getElementById('dup-shared-mx')?.value) || 1;
+      const by = document.getElementById('dup-shared-by')?.value || null;
+      const rsv = document.getElementById('dup-shared-rs')?.value;
+      const rs = rsv !== '' && rsv != null ? parseInt(rsv) : null;
+      if (!lv || !su || !by || rs === null) { alert('Please fill in all contract fields.'); return; }
+      const sc = dupContractScore(lv, su, mx, by, rs, b);
+      _dupSharedLocalScores[b] = {b, lv, su, mx, by, rs, sc};
+      const allScores = Object.values(_dupSharedLocalScores);
+      const col = _dupSharedRole === 'team1' ? 'team1_scores' : 'team2_scores';
+      const confirmBtn = document.querySelector('#dup-team-boards .btn-analyze');
+      if (confirmBtn) { confirmBtn.textContent = 'Saving…'; confirmBtn.disabled = true; }
+      const {data: updated, error} = await sb.from('dup_matches')
+        .update({[col]: allScores, updated_at: new Date().toISOString()})
+        .eq('id', _dupSharedMatch.id).select().single();
+      if (error) { alert('Save failed: ' + error.message); if (confirmBtn) confirmBtn.disabled = false; return; }
+      _dupSharedMatch = updated;
+      _dupSharedCursor++;
+      const {boards} = updated;
+      const t1n = (updated.team1_scores || []).length, t2n = (updated.team2_scores || []).length;
+      if (t1n === boards && t2n === boards && !updated.completed) {
+        await sb.from('dup_matches').update({completed: true, updated_at: new Date().toISOString()}).eq('id', _dupSharedMatch.id);
+        const {data: final} = await sb.from('dup_matches').select('*').eq('id', _dupSharedMatch.id).single();
+        if (final) _dupSharedMatch = final;
+      }
+      if (_dupSharedMatch.completed) {
+        _dupSharedRenderFullResults(_dupSharedMatch);
+        document.getElementById('dup-shared-results-card').style.display = '';
+        document.getElementById('dup-team-card').style.display = 'none';
+        return;
+      }
+      _dupSharedShowBoard();
+    }
+
+    function dupSharedEditPrev() {
+      if (_dupSharedCursor <= 0) return;
+      _dupSharedCursor--;
+      if (_dupSharedCursor === Math.floor(_dupSharedMatch.boards / 2)) _dupSharedSwapAcknowledged = true;
+      _dupSharedShowBoard();
+    }
+
+    async function dupSharedRefreshResults() {
+      if (!_dupSharedMatch) return;
+      const {data: m} = await sb.from('dup_matches').select('*').eq('id', _dupSharedMatch.id).single();
+      if (!m) return;
+      _dupSharedMatch = m;
+      if (m.completed) {
+        _dupSharedRenderFullResults(m);
+        document.getElementById('dup-shared-results-card').style.display = '';
+        document.getElementById('dup-team-card').style.display = 'none';
+      } else {
+        _dupSharedRenderTeamBoards(m, _dupSharedRole);
+      }
+    }
+
+    function _dupSharedRenderFullResults(m) {
+      const {boards,team1_name,team2_name,team1_scores,team2_scores}=m;
+      const t1map={},t2map={};
+      (team1_scores||[]).forEach(s=>{t1map[s.b]=s;}); (team2_scores||[]).forEach(s=>{t2map[s.b]=s;});
+      let total=0;
+      let html=`<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:3px;padding:3px 0 6px;border-bottom:1px solid #d0e6f0;font-size:0.72rem;font-weight:600;color:#2a6496;">
+        <span>Bd</span><span>${team1_name}</span><span>${team2_name}</span><span style="text-align:right;">IMP</span></div>`;
+      for(let b=1;b<=boards;b++){
+        const s1=t1map[b],s2=t2map[b];
+        if(!s1||!s2||s1.sc===null||s1.sc===undefined||s2.sc===null||s2.sc===undefined) continue;
+        const imp=dupCalcImp(s1.sc-s2.sc); total+=imp;
+        const c1=`${s1.lv}${s1.su==='N'?'NT':s1.su}${s1.mx>2?'××':s1.mx>1?'×':''}`,c2=`${s2.lv}${s2.su==='N'?'NT':s2.su}${s2.mx>2?'××':s2.mx>1?'×':''}`;
+        html+=`<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:3px;align-items:center;padding:3px 0;border-bottom:1px solid #eef4f8;font-size:0.78rem;">
+          <span style="color:#555;">${b}</span>
+          <span>${c1} ${s1.by}<br><span style="font-size:0.68rem;color:#667;">${s1.sc>=0?'+':''}${s1.sc}</span></span>
+          <span>${c2} ${s2.by}<br><span style="font-size:0.68rem;color:#667;">${s2.sc>=0?'+':''}${s2.sc}</span></span>
+          <span style="text-align:right;font-weight:600;color:${imp>0?'#2a82bd':imp<0?'#c0392b':'#888'}">${imp>=0?'+':''}${imp}</span>
+        </div>`;
+      }
+      const t1I=Math.max(0,total),t2I=Math.max(0,-total),win=total>0?team1_name:total<0?team2_name:null;
+      html+=`<div style="margin-top:12px;padding:12px;background:${win?'#e8f4fc':'#f0f0f0'};border-radius:8px;text-align:center;">
+        ${win?`<div style="font-size:1rem;font-weight:700;color:#1a3a5c;">${win} wins!</div><div style="font-size:0.85rem;color:#555;margin-top:2px;">${Math.abs(total)} IMP${Math.abs(total)!==1?'s':''}</div>`:`<div style="font-size:0.95rem;font-weight:700;color:#555;">Tied — 0 IMPs</div>`}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team1_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t1I} IMP</div></div>
+        <div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team2_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t2I} IMP</div></div>
+      </div>`;
+      document.getElementById('dup-shared-results').innerHTML=html;
     }
 
     const TEAM_MOVEMENTS = {
       swiss:          [['vp','VP'],['imp','IMP'],['bam','BAM']],
       'swiss-triple': [['vp','VP'],['imp','IMP'],['bam','BAM']],
       rr:             [['vp','VP'],['imp','IMP'],['bam','BAM']],
-      ko:             [['vp','VP'],['imp','IMP'],['bam','BAM']],
+      ko:             [['imp','IMP'],['bam','BAM']],
     };
     const TEAM_DESCS = {
       swiss: {
@@ -3947,34 +5469,6 @@
       const mov = document.getElementById('team-movement').value;
       document.getElementById('team-desc').textContent = (TEAM_DESCS[fmt] || {})[mov] || '';
       swShowPanel();
-    }
-
-    function addMpRow() {
-      const list = document.getElementById('mp-list');
-      const row = document.createElement('div');
-      row.className = 'mp-row';
-      row.innerHTML = '<input type="number" placeholder="Score" /><button class="btn-remove" onclick="removeMpRow(this)">&#10005;</button>';
-      list.appendChild(row);
-    }
-    function removeMpRow(btn) {
-      if (document.getElementById('mp-list').children.length > 1) btn.parentElement.remove();
-    }
-    function calcMatchpoints() {
-      const yourScore = parseFloat(document.getElementById('mp-your').value);
-      if (isNaN(yourScore)) return;
-      const others = [...document.querySelectorAll('#mp-list input')].map(i => parseFloat(i.value)).filter(v => !isNaN(v));
-      if (!others.length) return;
-      let mps = 0;
-      for (const s of others) {
-        if (yourScore > s) mps += 2;
-        else if (yourScore === s) mps += 1;
-      }
-      const top = others.length * 2;
-      const pct = Math.round(mps / top * 100);
-      const label = mps === top ? 'Top board!' : mps === 0 ? 'Bottom board' : pct >= 60 ? 'Above average' : 'Below average';
-      const res = document.getElementById('mp-result');
-      res.style.display = '';
-      res.innerHTML = `<div class="match-big">${mps}&thinsp;/&thinsp;${top}</div><div class="match-sub">${pct}% &mdash; ${label}</div>`;
     }
 
     const IMP_SCALE = [20,50,90,130,170,220,270,320,370,430,500,600,750,900,1100,1300,1500,1750,2000,2250,2500,3000,3500,4000];
@@ -4178,6 +5672,81 @@
       document.getElementById('finishModal').classList.remove('show');
     }
 
+    let _saveMatchFmt = null;
+    function openSaveMatchModal(fmt) {
+      _saveMatchFmt = fmt;
+      const onlineBtn = document.getElementById('save-match-online-btn');
+      if (onlineBtn) {
+        if (currentUser) {
+          onlineBtn.textContent = '☁️ Save online';
+          onlineBtn.disabled = false;
+          onlineBtn.style.opacity = '1';
+        } else {
+          onlineBtn.textContent = '☁️ Save online (log in required)';
+          onlineBtn.disabled = false;
+          onlineBtn.style.opacity = '0.7';
+        }
+      }
+      document.getElementById('saveMatchModal').classList.add('show');
+    }
+    function closeSaveMatchModal() {
+      document.getElementById('saveMatchModal').classList.remove('show');
+    }
+    function saveMatchLocal() {
+      let state;
+      if (_saveMatchFmt === 'dup') state = dupState;
+      else if (_saveMatchFmt === 'swiss') state = swissState;
+      else if (_saveMatchFmt === 'rr') state = rrState;
+      else if (_saveMatchFmt === 'gt') state = gtState;
+      if (!state) { alert('No active match to save.'); return; }
+      const safeName = (state.name || 'match').replace(/[^a-z0-9]/gi, '_');
+      const blob = new Blob([JSON.stringify({format: _saveMatchFmt, state, savedAt: new Date().toISOString()}, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${_saveMatchFmt}-${safeName}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      closeSaveMatchModal();
+    }
+    async function saveMatchOnline() {
+      if (!currentUser || !sb) { closeSaveMatchModal(); showAuthModal(); return; }
+      if (_saveMatchFmt === 'swiss') { closeSaveMatchModal(); dbSave('swiss'); return; }
+      if (_saveMatchFmt === 'gt') { closeSaveMatchModal(); dbSave('gt'); return; }
+      let state;
+      if (_saveMatchFmt === 'dup') state = dupState;
+      else if (_saveMatchFmt === 'rr') state = rrState;
+      if (!state) { alert('No active match.'); return; }
+      const payload = {
+        user_id: currentUser.id,
+        name: state.name || 'Match',
+        format: _saveMatchFmt === 'dup' ? 'ko-dup' : 'rr',
+        movement: 'standard',
+        boards_per_round: state.boards || 0,
+        round_count: _saveMatchFmt === 'dup' ? (state.boards || 0) : (state.schedule?.length || 0),
+        teams: state.teams || [],
+        rounds: _saveMatchFmt === 'dup' ? (state.boardScores || []) : (state.schedule || []),
+        status: state.completed ? 'completed' : 'active'
+      };
+      const btn = document.getElementById('save-match-online-btn');
+      if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+      try {
+        if (state.dbId) {
+          const {error} = await sb.from('bridge_games').update(payload).eq('id', state.dbId);
+          if (error) throw error;
+        } else {
+          const {data, error} = await sb.from('bridge_games').insert(payload).select('id').single();
+          if (error) throw error;
+          state.dbId = data.id;
+        }
+        closeSaveMatchModal();
+        showToast('Match saved!', 'ok');
+      } catch (e) {
+        if (btn) { btn.textContent = '☁️ Save online'; btn.disabled = false; }
+        showToast('Save failed: ' + e.message, 'err', 4000);
+      }
+    }
+
     // Auto-restore removed: page always starts empty
 
     // Listen for auth changes
@@ -4192,10 +5761,12 @@
         }
         await loadSubscription();
         dbRefreshHistory();
+        dupSharedInit().catch(()=>{});
       } else {
         currentSub = null;
         const card = document.getElementById('db-history-card');
         if (card) card.style.display = 'none';
+        dupSharedInit().catch(()=>{});
       }
       updateAuthUI();
     });

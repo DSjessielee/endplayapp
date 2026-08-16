@@ -2933,7 +2933,6 @@
       const fmtEl = document.getElementById('team-format');
       const movEl = document.getElementById('team-movement');
       gtState = { name, teams, rounds, boards, completed: false, format: fmtEl.value, movement: movEl.value };
-      const movEl = document.getElementById('team-movement');
       const fmtLabel = {'swiss':'Swiss Teams','rr':'Round Robin','ko':'KO / Duplicate'}[fmtEl.value] || fmtEl.value;
       const movLabel = movEl.options[movEl.selectedIndex].text;
       document.getElementById('gt-setup-card').style.display = 'none';

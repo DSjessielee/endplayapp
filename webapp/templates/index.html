@@ -3472,9 +3472,9 @@
       const st = rrState.scoreType || 'vp';
       const scoreLabel = st === 'imp' ? 'IMPs' : st === 'bam' ? 'BAM' : 'VPs';
       document.getElementById('rr-standings').innerHTML =
-        `<table class="swiss-table"><thead><tr><th>#</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th></tr></thead><tbody>` +
+        `<table class="swiss-table"><thead><tr><th>#</th><th>T</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th></tr></thead><tbody>` +
         sorted.map((t,i) =>
-          `<tr${i===0&&doneRounds>0?' class="rank-1"':''}><td>${i+1}</td><td>${t.name}</td><td style="text-align:right;">${rrTotalVPs(t.id)}</td></tr>`
+          `<tr${i===0&&doneRounds>0?' class="rank-1"':''}><td>${i+1}</td><td style="color:#6a1a60;font-weight:600;">T${t.id}</td><td>${t.name}</td><td style="text-align:right;">${rrTotalVPs(t.id)}</td></tr>`
         ).join('') + '</tbody></table>';
     }
 

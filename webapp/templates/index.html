@@ -815,7 +815,7 @@
             <option value="ko">KO / Duplicate</option>
           </select>
         </div>
-        <div class="match-sel-row">
+        <div class="match-sel-row" id="team-movement-row">
           <label>Score Type:</label>
           <select class="match-sel" id="team-movement" onchange="updateTeamDesc()">
             <option value="vp">VP</option>
@@ -2459,6 +2459,10 @@
       if (swPanel) swPanel.style.display = (isSwissStd || isTriple) ? '' : 'none';
       if (rrPanel) rrPanel.style.display = isRR ? '' : 'none';
       if (gtPanel) gtPanel.style.display = (!isSwissStd && !isTriple && !isRR) ? '' : 'none';
+      const movRow = document.getElementById('team-movement-row');
+      const descEl = document.getElementById('team-desc');
+      if (movRow) movRow.style.display = '';
+      if (descEl) descEl.style.display = '';
       const countEl = document.getElementById('sw-count');
       if (countEl) {
         if (isTriple) {
@@ -2605,7 +2609,7 @@
             if (p.nsId === id) vps.push(p.nsVps);
             else if (p.ewId === id) vps.push(p.ewVps);
           }
-          if (vps.length === 2) t += vps[0] + vps[1];
+          if (vps.length === 2) t += (vps[0] + vps[1]) / 2;
         } else {
           for (const p of r.pairings) {
             if (p.nsId === id) t += p.nsVps;
@@ -2722,7 +2726,7 @@
         }
       }
       const st = swissState?.scoreType || 'vp';
-      const scoreLabel = st === 'imp' ? 'IMPs' : st === 'bam' ? 'BAM' : 'VPs';
+      const scoreLabel = st === 'bam' ? 'BAM' : 'VPs';
       document.getElementById('sw-standings').innerHTML =
         `<table class="swiss-table"><thead><tr><th>#</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th><th style="text-align:center;padding:4px 2px;">Tbl NS</th><th style="text-align:center;padding:4px 2px;">Tbl EW</th></tr></thead><tbody>` +
         sorted.map((t,i)=>{
@@ -2830,14 +2834,18 @@
       const ns = parseFloat(nsEl.value);
       const ew = parseFloat(ewEl.value);
       const el = document.getElementById(`swv-${idx}`);
-      if (isNaN(ns)||isNaN(ew)) { el.textContent=''; return; }
+      if (isNaN(ns)||isNaN(ew)) { el.innerHTML=''; return; }
       const st = swissState?.scoreType || 'vp';
       if (st === 'bam') { el.textContent = `${ns}–${ew}`; return; }
-      if (st === 'imp') { const d = ns-ew; el.textContent = (d>=0?'+':'')+d; return; }
       const round = swissState?.rounds[swissState.rounds.length-1];
       const boards = (swissState?.tripleMode && round?.pairings[idx]?.tw) ? swissState.boards/2 : swissState?.boards;
-      const [nv,ev] = swGetVPs(ns-ew, boards);
-      el.textContent = `${nv}–${ev}`;
+      const d = ns - ew;
+      const [nv,ev] = swGetVPs(d, boards);
+      if (st === 'imp') {
+        el.innerHTML = `<span style="font-size:0.7rem;color:#555;">${d>=0?'+':''}${d}</span><br>${nv}–${ev}`;
+      } else {
+        el.textContent = `${nv}–${ev}`;
+      }
     }
 
     function swCompleteRound() {
@@ -2848,9 +2856,10 @@
         const ew = parseFloat(document.getElementById(`swi-ew-${idx}`)?.value);
         if (isNaN(ns)||isNaN(ew)) { ok=false; return; }
         const st = swissState.scoreType || 'vp';
-        if (st === 'imp' || st === 'bam') {
+        if (st === 'bam') {
           p.nsVps = ns; p.ewVps = ew;
         } else {
+          if (st === 'imp') { p.nsImps = ns; p.ewImps = ew; }
           const boards = (swissState.tripleMode && p.tw) ? swissState.boards/2 : swissState.boards;
           const [nv,ev] = swGetVPs(ns-ew, boards);
           p.nsVps=nv; p.ewVps=ev;
@@ -2865,7 +2874,7 @@
       const teams = swissState.teams;
       const done = swissState.rounds.filter(r=>r.completed);
       const st = swissState?.scoreType || 'vp';
-      const matrixLabel = st === 'imp' ? 'IMPs' : st === 'bam' ? 'BAM' : 'VPs';
+      const matrixLabel = st === 'bam' ? 'BAM' : 'VPs';
       let h = '<table class="matrix-table"><thead><tr><th></th>';
       teams.forEach(t => { h += `<th title="${t.name}">${t.name.length>7?t.name.slice(0,6)+'…':t.name}</th>`; });
       h += `<th style="background:#d6eaf8;">${matrixLabel}</th></tr></thead><tbody>`;
@@ -3211,7 +3220,8 @@
 
       function editVal(p, isNS, boards) {
         if (p.nsVps === undefined) return '';
-        if (st === 'imp' || st === 'bam') return isNS ? p.nsVps : p.ewVps;
+        if (st === 'bam') return isNS ? p.nsVps : p.ewVps;
+        if (st === 'imp') return isNS ? (p.nsImps ?? '') : (p.ewImps ?? '');
         return swVPsToImpApprox(isNS ? p.nsVps : p.ewVps, isNS ? p.ewVps : p.nsVps, boards);
       }
 
@@ -3278,15 +3288,19 @@
       const ns = parseFloat(nsEl.value);
       const ew = parseFloat(ewEl.value);
       const el = document.getElementById(`swev-${j}`);
-      if (isNaN(ns) || isNaN(ew)) { el.textContent = ''; return; }
+      if (isNaN(ns) || isNaN(ew)) { el.innerHTML = ''; return; }
       const st = swissState?.scoreType || 'vp';
       if (st === 'bam') { el.textContent = `${ns}–${ew}`; return; }
-      if (st === 'imp') { const d = ns-ew; el.textContent = (d>=0?'+':'')+d; return; }
       const rIdx = parseInt(document.getElementById('sw-score-edit-round').value);
       const p = swissState.rounds[rIdx]?.pairings[j];
       const boards = (swissState.tripleMode && p?.tw) ? swissState.boards/2 : swissState.boards;
-      const [nv, ev] = swGetVPs(ns - ew, boards);
-      el.textContent = `${nv}–${ev}`;
+      const d = ns - ew;
+      const [nv, ev] = swGetVPs(d, boards);
+      if (st === 'imp') {
+        el.innerHTML = `<span style="font-size:0.7rem;color:#555;">${d>=0?'+':''}${d}</span><br>${nv}–${ev}`;
+      } else {
+        el.textContent = `${nv}–${ev}`;
+      }
     }
 
     async function swScoreSaveEdit() {
@@ -3298,9 +3312,10 @@
         const ns = parseFloat(document.getElementById(`swe-ns-${j}`)?.value);
         const ew = parseFloat(document.getElementById(`swe-ew-${j}`)?.value);
         if (isNaN(ns) || isNaN(ew)) { ok = false; return; }
-        if (st === 'imp' || st === 'bam') {
+        if (st === 'bam') {
           p.nsVps = ns; p.ewVps = ew;
         } else {
+          if (st === 'imp') { p.nsImps = ns; p.ewImps = ew; }
           const boards = (swissState.tripleMode && p.tw) ? swissState.boards/2 : swissState.boards;
           const [nv, ev] = swGetVPs(ns - ew, boards);
           p.nsVps = nv; p.ewVps = ev;
@@ -3403,22 +3418,24 @@
     }
 
     function generateRRSchedule(teams) {
+      // Mitchell movement: first half NS (fixed), second half EW (rotate up each round)
       const N = teams.length;
-      const n = N % 2 === 0 ? N : N + 1;
-      const ids = teams.map(t => t.id);
-      if (N % 2 !== 0) ids.push(null); // null = bye
+      const needsBye = N % 2 !== 0;
+      const all = needsBye ? [...teams, { id: null, name: 'Bye' }] : [...teams];
+      const h = all.length / 2;
+      const nsTeams = all.slice(0, h);
+      const ewTeams = all.slice(h);
       const schedule = [];
-      for (let round = 0; round < n - 1; round++) {
+      for (let r = 0; r < h; r++) {
         const pairings = [];
-        for (let i = 0; i < n / 2; i++) {
-          const ns = ids[i], ew = ids[n - 1 - i];
-          if (ns !== null && ew !== null)
-            pairings.push({ nsId: ns, ewId: ew, nsVps: 0, ewVps: 0 });
+        for (let t = 0; t < h; t++) {
+          const nsTeam = nsTeams[t];
+          const ewIdx = ((t - r) % h + h) % h;
+          const ewTeam = ewTeams[ewIdx];
+          if (nsTeam.id !== null && ewTeam.id !== null)
+            pairings.push({ nsId: nsTeam.id, ewId: ewTeam.id, nsVps: 0, ewVps: 0, table: t + 1 });
         }
         schedule.push({ pairings, completed: false });
-        const last = ids[n - 1];
-        for (let i = n - 1; i > 1; i--) ids[i] = ids[i - 1];
-        ids[1] = last;
       }
       return schedule;
     }
@@ -3470,26 +3487,32 @@
       const sorted = [...rrState.teams].sort((a,b) => rrTotalVPs(b.id) - rrTotalVPs(a.id));
       const doneRounds = rrState.schedule.filter(r=>r.completed).length;
       const st = rrState.scoreType || 'vp';
-      const scoreLabel = st === 'imp' ? 'IMPs' : st === 'bam' ? 'BAM' : 'VPs';
+      const scoreLabel = st === 'bam' ? 'BAM' : 'VPs';
       const nextRound = !rrState.completed ? rrState.schedule[rrState.currentRound] : null;
       const nextAssign = {};
       if (nextRound) {
         nextRound.pairings.forEach((p, idx) => {
-          nextAssign[p.nsId] = { table: idx + 1, dir: 'NS' };
-          nextAssign[p.ewId] = { table: idx + 1, dir: 'EW' };
+          const tbl = p.table || idx + 1;
+          nextAssign[p.nsId] = { table: tbl, dir: 'NS' };
+          nextAssign[p.ewId] = { table: tbl, dir: 'EW' };
         });
       }
       const showNext = Object.keys(nextAssign).length > 0;
+      const dash = '<span style="color:#aaa;">—</span>';
       document.getElementById('rr-standings').innerHTML =
-        `<table class="swiss-table"><thead><tr><th>#</th><th>T</th><th>Team</th>` +
-        (showNext ? `<th style="text-align:center;">Next</th>` : '') +
-        `<th style="text-align:right;">${scoreLabel}</th></tr></thead><tbody>` +
+        `<table class="swiss-table"><thead><tr><th>#</th><th>T</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th>` +
+        (showNext ? `<th style="text-align:center;padding:4px 2px;">Tbl NS</th><th style="text-align:center;padding:4px 2px;">Tbl EW</th>` : '') +
+        `</tr></thead><tbody>` +
         sorted.map((t,i) => {
           const a = nextAssign[t.id];
-          const nextCell = showNext
-            ? (a ? `<td style="text-align:center;color:#6a1a60;font-weight:600;white-space:nowrap;">T${a.table}&nbsp;${a.dir}</td>` : '<td></td>')
+          const tblCells = showNext
+            ? (a
+                ? (a.dir === 'NS'
+                    ? `<td style="text-align:center;padding:4px 2px;"><b style="color:#1565c0;">T${a.table}</b></td><td style="text-align:center;padding:4px 2px;">${dash}</td>`
+                    : `<td style="text-align:center;padding:4px 2px;">${dash}</td><td style="text-align:center;padding:4px 2px;"><b style="color:#6a1a60;">T${a.table}</b></td>`)
+                : `<td style="text-align:center;padding:4px 2px;">${dash}</td><td style="text-align:center;padding:4px 2px;">${dash}</td>`)
             : '';
-          return `<tr${i===0&&doneRounds>0?' class="rank-1"':''}><td>${i+1}</td><td style="color:#6a1a60;font-weight:600;">T${t.id}</td><td>${t.name}</td>${nextCell}<td style="text-align:right;">${rrTotalVPs(t.id)}</td></tr>`;
+          return `<tr${i===0&&doneRounds>0?' class="rank-1"':''}><td>${i+1}</td><td style="color:#6a1a60;font-weight:600;">T${t.id}</td><td>${t.name}</td><td style="text-align:right;">${rrTotalVPs(t.id)}</td>${tblCells}</tr>`;
         }).join('') + '</tbody></table>';
     }
 
@@ -3521,16 +3544,30 @@
       const stepAttr = st === 'bam' ? ' step="0.5"' : '';
       const c = document.getElementById('rr-pairings');
       c.innerHTML = '';
+      const lastIdx = round.pairings.length - 1;
       round.pairings.forEach((p, idx) => {
+        const tbl = p.table || idx + 1;
+        const locked = idx === lastIdx && !isPaid();
         const div = document.createElement('div');
         div.className = 'pairing-row';
-        div.innerHTML =
-          `<span class="p-team">${rrName(p.nsId)}</span>` +
-          `<span class="p-vs">vs</span>` +
-          `<span class="p-team">${rrName(p.ewId)}</span>` +
-          `<input class="p-imp" type="number" min="0"${stepAttr} id="rri-ns-${idx}" placeholder="${phNS}" oninput="rrLive(${idx})">` +
-          `<input class="p-imp" type="number" min="0"${stepAttr} id="rri-ew-${idx}" placeholder="${phEW}" oninput="rrLive(${idx})">` +
-          `<span class="p-vp" id="rrv-${idx}"></span>`;
+        if (locked) {
+          div.innerHTML =
+            `<span class="p-tbl" style="font-size:0.72rem;color:#2a6496;font-weight:700;white-space:nowrap;">T${tbl}</span>` +
+            `<span class="p-team">${rrName(p.nsId)}</span>` +
+            `<span class="p-vs">vs</span>` +
+            `<span class="p-team">${rrName(p.ewId)}</span>` +
+            `<span style="flex:1;text-align:center;padding:5px 8px;background:#fff8e1;border:1px solid #ffc107;border-radius:4px;font-size:0.78rem;color:#856404;font-weight:600;">` +
+            `&#128274; PRO &mdash; <a href="#" onclick="showPromoModal();return false;" style="color:#1a6fba;text-decoration:underline;">Upgrade</a></span>`;
+        } else {
+          div.innerHTML =
+            `<span class="p-tbl" style="font-size:0.72rem;color:#2a6496;font-weight:700;white-space:nowrap;">T${tbl}</span>` +
+            `<span class="p-team">${rrName(p.nsId)}</span>` +
+            `<span class="p-vs">vs</span>` +
+            `<span class="p-team">${rrName(p.ewId)}</span>` +
+            `<input class="p-imp" type="number" min="0"${stepAttr} id="rri-ns-${idx}" placeholder="${phNS}" oninput="rrLive(${idx})">` +
+            `<input class="p-imp" type="number" min="0"${stepAttr} id="rri-ew-${idx}" placeholder="${phEW}" oninput="rrLive(${idx})">` +
+            `<span class="p-vp" id="rrv-${idx}"></span>`;
+        }
         c.appendChild(div);
       });
     }
@@ -3542,25 +3579,35 @@
       if (ewEl.value !== '' && parseFloat(ewEl.value) < 0) ewEl.value = 0;
       const ns = parseFloat(nsEl.value), ew = parseFloat(ewEl.value);
       const el = document.getElementById(`rrv-${idx}`);
-      if (isNaN(ns) || isNaN(ew)) { el.textContent = ''; return; }
+      if (isNaN(ns) || isNaN(ew)) { el.innerHTML = ''; return; }
       const st = rrState?.scoreType || 'vp';
       if (st === 'bam') { el.textContent = `${ns}–${ew}`; return; }
-      if (st === 'imp') { const d = ns-ew; el.textContent = (d>=0?'+':'')+d; return; }
-      const [nv, ev] = rrGetVPs(ns - ew, rrState.boards);
-      el.textContent = `${nv}–${ev}`;
+      const d = ns - ew;
+      const [nv, ev] = rrGetVPs(d, rrState.boards);
+      if (st === 'imp') {
+        el.innerHTML = `<span style="font-size:0.7rem;color:#555;">${d>=0?'+':''}${d}</span><br>${nv}–${ev}`;
+      } else {
+        el.textContent = `${nv}–${ev}`;
+      }
     }
 
     function rrCompleteRound() {
       const rIdx = rrState.currentRound;
       const round = rrState.schedule[rIdx];
+      const lastIdx = round.pairings.length - 1;
       let ok = true;
       round.pairings.forEach((p, idx) => {
+        const locked = idx === lastIdx && !isPaid();
+        if (locked) { p.nsVps = 10; p.ewVps = 10; return; }
         const ns = parseFloat(document.getElementById(`rri-ns-${idx}`)?.value);
         const ew = parseFloat(document.getElementById(`rri-ew-${idx}`)?.value);
         if (isNaN(ns) || isNaN(ew)) { ok = false; return; }
         const st = rrState.scoreType || 'vp';
-        if (st === 'imp' || st === 'bam') { p.nsVps = ns; p.ewVps = ew; }
-        else { const [nv, ev] = rrGetVPs(ns - ew, rrState.boards); p.nsVps = nv; p.ewVps = ev; }
+        if (st === 'bam') { p.nsVps = ns; p.ewVps = ew; }
+        else {
+          if (st === 'imp') { p.nsImps = ns; p.ewImps = ew; }
+          const [nv, ev] = rrGetVPs(ns - ew, rrState.boards); p.nsVps = nv; p.ewVps = ev;
+        }
       });
       if (!ok) { alert(`Enter ${rrState.scoreType==='bam'?'boards won':'IMPs'} for all matches before completing the round.`); return; }
       round.completed = true;
@@ -3572,7 +3619,7 @@
       const teams = rrState.teams;
       const done = rrState.schedule.filter(r=>r.completed);
       const st = rrState.scoreType || 'vp';
-      const matrixLabel = st === 'imp' ? 'IMPs' : st === 'bam' ? 'BAM' : 'VPs';
+      const matrixLabel = st === 'bam' ? 'BAM' : 'VPs';
       let h = '<table class="matrix-table"><thead><tr><th></th>';
       teams.forEach(t => { h += `<th title="${t.name}">${t.name.length>7?t.name.slice(0,6)+'…':t.name}</th>`; });
       h += `<th style="background:#d6eaf8;">${matrixLabel}</th></tr></thead><tbody>`;
@@ -3676,13 +3723,16 @@
       const editStep = st === 'bam' ? ' step="0.5"' : '';
       function editVal(p, isNS) {
         if (p.nsVps === undefined) return '';
-        if (st === 'imp' || st === 'bam') return isNS ? p.nsVps : p.ewVps;
+        if (st === 'bam') return isNS ? p.nsVps : p.ewVps;
+        if (st === 'imp') return isNS ? (p.nsImps ?? '') : (p.ewImps ?? '');
         return rrVPsToImpApprox(isNS ? p.nsVps : p.ewVps, isNS ? p.ewVps : p.nsVps, rrState.boards);
       }
       round.pairings.forEach((p, j) => {
+        const tbl = p.table || j + 1;
         const div = document.createElement('div');
         div.className = 'pairing-row';
         div.innerHTML =
+          `<span class="p-tbl" style="font-size:0.72rem;color:#2a6496;font-weight:700;white-space:nowrap;">T${tbl}</span>` +
           `<span class="p-team">${rrName(p.nsId)}</span>` +
           `<span class="p-vs">vs</span>` +
           `<span class="p-team">${rrName(p.ewId)}</span>` +
@@ -3700,12 +3750,16 @@
       if (ewEl.value !== '' && parseFloat(ewEl.value) < 0) ewEl.value = 0;
       const ns = parseFloat(nsEl.value), ew = parseFloat(ewEl.value);
       const el = document.getElementById(`rrev-${j}`);
-      if (isNaN(ns) || isNaN(ew)) { el.textContent = ''; return; }
+      if (isNaN(ns) || isNaN(ew)) { el.innerHTML = ''; return; }
       const st = rrState?.scoreType || 'vp';
       if (st === 'bam') { el.textContent = `${ns}–${ew}`; return; }
-      if (st === 'imp') { const d = ns-ew; el.textContent = (d>=0?'+':'')+d; return; }
-      const [nv, ev] = rrGetVPs(ns - ew, rrState.boards);
-      el.textContent = `${nv}–${ev}`;
+      const d = ns - ew;
+      const [nv, ev] = rrGetVPs(d, rrState.boards);
+      if (st === 'imp') {
+        el.innerHTML = `<span style="font-size:0.7rem;color:#555;">${d>=0?'+':''}${d}</span><br>${nv}–${ev}`;
+      } else {
+        el.textContent = `${nv}–${ev}`;
+      }
     }
 
     function rrScoreSaveEdit() {
@@ -3717,8 +3771,11 @@
         const ns = parseFloat(document.getElementById(`rre-ns-${j}`)?.value);
         const ew = parseFloat(document.getElementById(`rre-ew-${j}`)?.value);
         if (isNaN(ns) || isNaN(ew)) { ok = false; return; }
-        if (st === 'imp' || st === 'bam') { p.nsVps = ns; p.ewVps = ew; }
-        else { const [nv, ev] = rrGetVPs(ns - ew, rrState.boards); p.nsVps = nv; p.ewVps = ev; }
+        if (st === 'bam') { p.nsVps = ns; p.ewVps = ew; }
+        else {
+          if (st === 'imp') { p.nsImps = ns; p.ewImps = ew; }
+          const [nv, ev] = rrGetVPs(ns - ew, rrState.boards); p.nsVps = nv; p.ewVps = ev;
+        }
       });
       if (!ok) { alert('Enter scores for all matches.'); return; }
       rrRender();
@@ -3813,8 +3870,8 @@
     const TEAM_MOVEMENTS = {
       swiss:          [['vp','VP'],['imp','IMP'],['bam','BAM']],
       'swiss-triple': [['vp','VP'],['imp','IMP'],['bam','BAM']],
-      rr:             [['full','Full Round Robin']],
-      ko:             [['single','Single KO'],['double','Double KO']],
+      rr:             [['vp','VP'],['imp','IMP'],['bam','BAM']],
+      ko:             [['vp','VP'],['imp','IMP'],['bam','BAM']],
     };
     const TEAM_DESCS = {
       swiss: {
@@ -3830,10 +3887,15 @@
       'swiss-triple': {
         standard: 'Odd number of teams only. Bottom 3 play a round-robin triangle each round — half boards per match, boards/round must be even. Team VP = average of their 2 triangle match VPs.',
       },
-      rr: { full: 'Every team plays every other team. Final rank by total VPs. Used in smaller events or league play.' },
+      rr: {
+        vp:  'Every team plays every other team. Final rank by total VPs (WBF 20-pt scale). Standard for team round robins.',
+        imp: 'Every team plays every other team. Final rank by total IMPs. No VP conversion.',
+        bam: 'Every team plays every other team. Final rank by total BAM (Board-a-Match) points.',
+      },
       ko: {
-        single: 'Lose once and you are eliminated. Play a fixed set of boards; team with more IMPs advances.',
-        double: 'Teams need two losses to be eliminated — a second chance after the first loss.',
+        vp:  'KO bracket scored by VPs (WBF 20-pt scale). Higher total VP advances.',
+        imp: 'KO bracket scored by IMPs. Higher IMP total advances.',
+        bam: 'KO bracket scored by BAM (Board-a-Match). Higher BAM score advances.',
       },
     };
     function updateTeamFormat() {
@@ -3916,20 +3978,28 @@
       calcVPs();
     }
 
-    const VP_SCALE = [0,2,4,7,10,14,18,23,28,34,41];
     function calcVPs() {
       const imp = parseInt(document.getElementById('vp-imps').value);
       const res = document.getElementById('vp-result');
       if (isNaN(imp)) { res.style.display = 'none'; return; }
       const abs = Math.abs(imp);
-      let vpDiff = 0;
-      for (let i = VP_SCALE.length - 1; i >= 0; i--) { if (abs >= VP_SCALE[i]) { vpDiff = i; break; } }
+      const boards = document.querySelectorAll('#imp-list .imp-row').length || 20;
+      const tau = 0.618034;
+      const B = 15 * Math.sqrt(boards);
+      let myVp, theirVp;
+      if (abs === 0) {
+        myVp = 10; theirVp = 10;
+      } else {
+        let winnerVp = Math.min(20, 10 + 10 * (1 - Math.pow(tau, 3 * abs / B)) / (1 - Math.pow(tau, 3)));
+        winnerVp = Math.round(winnerVp * 100) / 100;
+        const loserVp = Math.round((20 - winnerVp) * 100) / 100;
+        myVp = imp > 0 ? winnerVp : loserVp;
+        theirVp = imp > 0 ? loserVp : winnerVp;
+      }
       res.style.display = '';
       if (imp === 0) {
         res.innerHTML = '<div class="vp-sides"><div class="vp-side tie"><div class="vp-num">10</div><div class="vp-label">Your VPs</div></div><div class="vp-side tie"><div class="vp-num">10</div><div class="vp-label">Their VPs</div></div></div><div class="match-sub">Tied — 10/10</div>';
       } else {
-        const myVp = imp > 0 ? 10 + vpDiff : 10 - vpDiff;
-        const theirVp = imp > 0 ? 10 - vpDiff : 10 + vpDiff;
         const myClass = imp > 0 ? 'win' : 'loss';
         const theirClass = imp > 0 ? 'loss' : 'win';
         res.innerHTML = `<div class="vp-sides"><div class="vp-side ${myClass}"><div class="vp-num">${myVp}</div><div class="vp-label">Your VPs</div></div><div class="vp-side ${theirClass}"><div class="vp-num">${theirVp}</div><div class="vp-label">Their VPs</div></div></div><div class="match-sub">${abs} IMP${abs !== 1 ? 's' : ''} &rarr; ${myVp}&ndash;${theirVp} VPs</div>`;

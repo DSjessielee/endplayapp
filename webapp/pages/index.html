@@ -3471,11 +3471,26 @@
       const doneRounds = rrState.schedule.filter(r=>r.completed).length;
       const st = rrState.scoreType || 'vp';
       const scoreLabel = st === 'imp' ? 'IMPs' : st === 'bam' ? 'BAM' : 'VPs';
+      const nextRound = !rrState.completed ? rrState.schedule[rrState.currentRound] : null;
+      const nextAssign = {};
+      if (nextRound) {
+        nextRound.pairings.forEach((p, idx) => {
+          nextAssign[p.nsId] = { table: idx + 1, dir: 'NS' };
+          nextAssign[p.ewId] = { table: idx + 1, dir: 'EW' };
+        });
+      }
+      const showNext = Object.keys(nextAssign).length > 0;
       document.getElementById('rr-standings').innerHTML =
-        `<table class="swiss-table"><thead><tr><th>#</th><th>T</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th></tr></thead><tbody>` +
-        sorted.map((t,i) =>
-          `<tr${i===0&&doneRounds>0?' class="rank-1"':''}><td>${i+1}</td><td style="color:#6a1a60;font-weight:600;">T${t.id}</td><td>${t.name}</td><td style="text-align:right;">${rrTotalVPs(t.id)}</td></tr>`
-        ).join('') + '</tbody></table>';
+        `<table class="swiss-table"><thead><tr><th>#</th><th>T</th><th>Team</th>` +
+        (showNext ? `<th style="text-align:center;">Next</th>` : '') +
+        `<th style="text-align:right;">${scoreLabel}</th></tr></thead><tbody>` +
+        sorted.map((t,i) => {
+          const a = nextAssign[t.id];
+          const nextCell = showNext
+            ? (a ? `<td style="text-align:center;color:#6a1a60;font-weight:600;white-space:nowrap;">T${a.table}&nbsp;${a.dir}</td>` : '<td></td>')
+            : '';
+          return `<tr${i===0&&doneRounds>0?' class="rank-1"':''}><td>${i+1}</td><td style="color:#6a1a60;font-weight:600;">T${t.id}</td><td>${t.name}</td>${nextCell}<td style="text-align:right;">${rrTotalVPs(t.id)}</td></tr>`;
+        }).join('') + '</tbody></table>';
     }
 
     function rrRenderPairings() {

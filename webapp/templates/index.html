@@ -4159,8 +4159,7 @@
       document.getElementById('finishModal').classList.remove('show');
     }
 
-    // Restore any in-progress session from localStorage on page load
-    localRestoreState();
+    // Auto-restore removed: page always starts empty
 
     // Listen for auth changes
     if (sb) sb.auth.onAuthStateChange(async (event, session) => {

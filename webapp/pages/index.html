@@ -1282,9 +1282,9 @@
           </div>
           <!-- KO Duplicate: results -->
           <div id="gt-dup-results-card" class="match-card" style="display:none;">
-            <div class="match-card-title" style="margin-bottom:8px;">Match Results</div>
+            <div class="match-card-title" id="gt-dup-results-title" style="margin-bottom:8px;">Match Results</div>
             <div id="gt-dup-results"></div>
-            <div style="display:flex;gap:6px;margin-top:10px;">
+            <div id="gt-dup-result-actions" style="display:flex;gap:6px;margin-top:10px;">
               <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px;" onclick="openSaveMatchModal('dup')">Save</button>
               <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px;" onclick="dupNewMatch()">New Match</button>
             </div>
@@ -2339,11 +2339,13 @@
       console.error('Supabase init failed:', e);
     }
 
+    const _PRO_BYPASS_EMAILS = ['liyvjia@gmail.com', 'team1@funbridge.cc', 'team2@funbridge.cc'];
     let currentUser = null;
     let currentSub = null;
     let authMode = 'login';
 
     function isPaid() {
+      if (currentUser && _PRO_BYPASS_EMAILS.includes(currentUser.email)) return true;
       if (!currentSub) return false;
       return currentSub.status === 'active' && new Date(currentSub.expires_at) > new Date();
     }
@@ -3168,6 +3170,33 @@
         }
         c.appendChild(row);
       }
+      if (isDup && currentUser) {
+        const cap1 = document.getElementById('dup-setup-cap-1');
+        if (cap1) {
+          if (cap1.tagName === 'SELECT') {
+            const userName = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+            const match = _dupPlayers.find(p =>
+              p.name.toLowerCase() === userName.toLowerCase() ||
+              p.name.toLowerCase() === currentUser.email.toLowerCase()
+            );
+            if (match) cap1.value = String(match.id);
+          } else {
+            cap1.value = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+          }
+        }
+        const cap2 = document.getElementById('dup-setup-cap-2');
+        if (cap2) {
+          if (cap2.tagName === 'SELECT') {
+            const match = _dupPlayers.find(p =>
+              p.name.toLowerCase() === 'team2@funbridge.cc' ||
+              p.name.toLowerCase() === 'team2'
+            );
+            if (match) cap2.value = String(match.id);
+          } else {
+            cap2.value = 'Team2@funbridge.cc';
+          }
+        }
+      }
       document.getElementById('gt-teams-card').style.display = '';
       dbRefreshPresets('gt');
     }
@@ -3201,7 +3230,7 @@
             ew: [getField(`dup-setup-e-${i}`), getField(`dup-setup-w-${i}`)].filter(Boolean),
           };
         });
-        dupState = { name, teams, boards, boardScores: Array.from({length:boards},()=>({sc1:null,sc2:null,imp:null,contract1:null,contract2:null})), completed: false };
+        dupState = { name, teams, boards, totalRounds: rounds||1, currentRound: 0, roundResults: [], boardScores: Array.from({length:boards},()=>({sc1:null,sc2:null,imp:null,contract1:null,contract2:null})), completed: false };
         document.getElementById('gt-setup-card').style.display = 'none';
         document.getElementById('gt-teams-card').style.display = 'none';
         document.getElementById('gt-dup-game-title').textContent = dupState.name;
@@ -4910,10 +4939,8 @@
           `<button class="btn-analyze" style="width:100%;padding:12px;font-size:0.92rem;" onclick="dupNextSession()">Continue — Second half →</button>`;
       } else {
         inner=
-          `<div style="font-size:0.95rem;font-weight:700;color:#2a6496;margin-bottom:10px;">${team.name} — All entries done!</div>` +
-          `<div style="font-size:0.85rem;color:#667;margin-bottom:16px;">Hand the device to <strong>${nextTeam.name}</strong> captain.</div>` +
-          `<div style="font-size:0.82rem;color:#555;margin-bottom:20px;">${nextTeam.name} will enter: <strong>${nbLabel}</strong></div>` +
-          `<button class="btn-analyze" style="width:100%;padding:12px;font-size:0.92rem;" onclick="dupNextSession()">Ready — ${nextTeam.name} Captain →</button>`;
+          `<div style="font-size:0.95rem;font-weight:700;color:#27ae60;margin-bottom:10px;">${team.name} — All boards done ✓</div>` +
+          `<div style="font-size:0.85rem;color:#667;">Waiting for ${nextTeam.name} to finish entry to see the game result.</div>`;
       }
       document.getElementById('gt-dup-boards-rows').innerHTML=`<div style="text-align:center;padding:24px 12px;">${inner}</div>`;
     }
@@ -4932,7 +4959,10 @@
         else sc.imp=null;
       }
       const total=boardScores.reduce((s,b)=>s+(b?.imp??0),0);
+      dupState.roundResults.push(total);
       dupState.totalImp=total; dupState.completed=true;
+      const isLastRound = dupState.currentRound >= (dupState.totalRounds||1) - 1;
+      const isMultiRound = (dupState.totalRounds||1) > 1;
       const t1=teams[0], t2=teams[1];
       const t1Imp=Math.max(0,total), t2Imp=Math.max(0,-total);
       const winner=total>0?t1.name:total<0?t2.name:null;
@@ -4960,7 +4990,9 @@
           `</div>` +
         `</div>`;
       });
+      const roundLabel = isMultiRound ? `Round ${dupState.currentRound+1} of ${dupState.totalRounds}` : '';
       html+=`<div style="margin-top:14px;padding:12px;background:${winner?'#e8f4fc':'#f0f0f0'};border-radius:8px;text-align:center;">` +
+        (isMultiRound?`<div style="font-size:0.78rem;color:#667;margin-bottom:4px;">${roundLabel}</div>`:'') +
         (winner?`<div style="font-size:1.05rem;font-weight:700;color:#1a3a5c;">${winner} wins!</div><div style="font-size:0.85rem;color:#555;margin-top:3px;">${Math.abs(total)} IMP${Math.abs(total)!==1?'s':''}</div>`
                :`<div style="font-size:0.95rem;font-weight:700;color:#555;">Tied — 0 IMPs</div>`) +
         `</div>` +
@@ -4968,9 +5000,40 @@
         `<div style="flex:1;padding:10px;background:#f0f7fb;border-radius:8px;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${t1.name}</div>${playerLine(t1)}<div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t1Imp} IMP</div></div>` +
         `<div style="flex:1;padding:10px;background:#f0f7fb;border-radius:8px;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${t2.name}</div>${playerLine(t2)}<div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t2Imp} IMP</div></div>` +
         `</div>`;
+      if (isMultiRound) {
+        const cumTotal = dupState.roundResults.reduce((s,r)=>s+r,0);
+        const cumT1 = dupState.roundResults.reduce((s,r)=>s+Math.max(0,r),0);
+        const cumT2 = dupState.roundResults.reduce((s,r)=>s+Math.max(0,-r),0);
+        const cumWinner = cumTotal>0?t1.name:cumTotal<0?t2.name:null;
+        const roundsDone = dupState.currentRound+1;
+        html+=`<div style="margin-top:10px;padding:10px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;">` +
+          `<div style="font-size:0.78rem;font-weight:600;color:#7a5c00;margin-bottom:4px;">Cumulative after ${roundsDone} round${roundsDone!==1?'s':''}</div>` +
+          `<div style="display:flex;gap:8px;">` +
+          `<div style="flex:1;text-align:center;"><div style="font-size:0.8rem;color:#2a6496;">${t1.name}</div><div style="font-size:1rem;font-weight:700;">${cumT1} IMP</div></div>` +
+          `<div style="flex:1;text-align:center;"><div style="font-size:0.8rem;color:#2a6496;">${t2.name}</div><div style="font-size:1rem;font-weight:700;">${cumT2} IMP</div></div>` +
+          `</div>` +
+          (cumWinner&&isLastRound?`<div style="text-align:center;margin-top:6px;font-size:0.9rem;font-weight:700;color:#1a3a5c;">${cumWinner} wins the match!</div>`:'') +
+          `</div>`;
+        if (!isLastRound) {
+          html+=`<button class="btn-analyze" style="width:100%;padding:12px;font-size:0.92rem;margin-top:10px;" onclick="dupNextRound()">Continue — Round ${dupState.currentRound+2} →</button>`;
+        }
+      }
+      document.getElementById('gt-dup-results-title').textContent = isMultiRound && isLastRound ? 'Final Results' : isMultiRound ? `Round ${dupState.currentRound+1} Results` : 'Match Results';
       document.getElementById('gt-dup-results').innerHTML=html;
+      document.getElementById('gt-dup-result-actions').style.display = isLastRound ? '' : 'none';
       document.getElementById('gt-dup-boards-card').style.display='none';
       document.getElementById('gt-dup-results-card').style.display='';
+    }
+
+    function dupNextRound() {
+      dupState.currentRound++;
+      dupState.boardScores = Array.from({length:dupState.boards},()=>({sc1:null,sc2:null,imp:null,contract1:null,contract2:null}));
+      dupState.completed = false;
+      document.getElementById('gt-dup-results-card').style.display='none';
+      document.getElementById('gt-dup-game-title').textContent=`${dupState.name} — Round ${dupState.currentRound+1}`;
+      dupInitSessions();
+      dupShowCurrentBoard();
+      document.getElementById('gt-dup-boards-card').style.display='';
     }
 
     function dupNewMatch() {
@@ -4984,7 +5047,7 @@
     // ── Shared Duplicate Match (multi-user, Supabase-backed) ─────────────────
     const DUP_ADMIN_EMAIL = 'liyvjia@gmail.com';
     const DUP_PHANTOM = { team1: 'team1@funbridge.cc', team2: 'team2@funbridge.cc' };
-    const _DUP_BYPASS_EMAILS = [DUP_ADMIN_EMAIL, DUP_PHANTOM.team1, DUP_PHANTOM.team2];
+    const _DUP_BYPASS_EMAILS = _PRO_BYPASS_EMAILS;
     let _dupSharedRole = null, _dupSharedMatch = null;
     let _dupSharedCursor = 0, _dupSharedSeq = [], _dupSharedLocalScores = {}, _dupSharedSwapAcknowledged = false;
 
@@ -5462,6 +5525,7 @@
       const fmt = document.getElementById('team-format').value;
       const sel = document.getElementById('team-movement');
       sel.innerHTML = TEAM_MOVEMENTS[fmt].map(([v,l]) => `<option value="${v}">${l}</option>`).join('');
+      if (fmt === 'ko') document.getElementById('gt-teams').value = 2;
       updateTeamDesc();
     }
     function updateTeamDesc() {

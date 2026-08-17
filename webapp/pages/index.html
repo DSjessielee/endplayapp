@@ -1187,20 +1187,7 @@
             <div id="dup-admin-card" class="match-card" style="display:none;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
                 <div class="match-card-title" style="margin-bottom:0;">Shared Duplicate</div>
-                <button class="btn-clear" style="font-size:0.78rem;padding:5px 12px;" onclick="dupSharedShowCreate()">+ New</button>
-              </div>
-              <div id="dup-create-form" style="display:none;border:1px solid #a0c4d8;border-radius:8px;padding:10px;margin-bottom:10px;background:#f8fcff;">
-                <div style="font-size:0.82rem;font-weight:600;color:#2a6496;margin-bottom:8px;">Create Match</div>
-                <div style="display:flex;flex-direction:column;gap:6px;font-size:0.82rem;">
-                  <div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Name:</label><input type="text" id="dup-create-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" placeholder="Match name" /></div>
-                  <div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Boards:</label><input type="number" id="dup-create-boards" min="1" max="32" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" placeholder="8" /></div>
-                  <div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Team 1 name:</label><input type="text" id="dup-create-t1name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" placeholder="Team 1" /></div>
-                  <div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Team 2 name:</label><input type="text" id="dup-create-t2name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" placeholder="Team 2" /></div>
-                </div>
-                <div style="display:flex;gap:6px;margin-top:8px;">
-                  <button class="btn-analyze" style="flex:1;font-size:0.8rem;padding:7px;" onclick="dupSharedCreateMatch()">Create</button>
-                  <button class="btn-clear" style="font-size:0.8rem;padding:7px 12px;" onclick="document.getElementById('dup-create-form').style.display='none'">Cancel</button>
-                </div>
+                <button class="btn-clear" style="font-size:0.78rem;padding:5px 12px;" onclick="dupSharedTeamView()">+ New</button>
               </div>
               <div id="dup-admin-match-list"></div>
             </div>
@@ -5094,65 +5081,6 @@
       } else {
         await dupSharedTeamView();
       }
-    }
-
-    function dupSharedShowCreate() {
-      const f=document.getElementById('dup-create-form');
-      f.style.display = f.style.display==='none'?'':'none';
-    }
-
-    async function dupSharedCreateMatch() {
-      const name=document.getElementById('dup-create-name').value.trim();
-      const boards=parseInt(document.getElementById('dup-create-boards').value)||8;
-      const t1name=document.getElementById('dup-create-t1name').value.trim()||'Team 1';
-      const t2name=document.getElementById('dup-create-t2name').value.trim()||'Team 2';
-      if (!name) { alert('Enter a match name'); return; }
-      let t1uid=null, t2uid=null;
-      try {
-        const [r1,r2] = await Promise.all([
-          sb.rpc('admin_get_uid_by_email',{p_email:DUP_PHANTOM.team1}),
-          sb.rpc('admin_get_uid_by_email',{p_email:DUP_PHANTOM.team2}),
-        ]);
-        t1uid=r1.data; t2uid=r2.data;
-      } catch(e) {}
-      if (!t1uid||!t2uid) { alert('Team player accounts not found. Create team1@funbridge.cc and team2@funbridge.cc in Supabase Auth first.'); return; }
-      const {error}=await sb.from('dup_matches').insert({
-        creator_id:currentUser.id,name,boards,
-        team1_name:t1name,team2_name:t2name,
-        team1_uid:t1uid,team2_uid:t2uid,
-        team1_scores:[],team2_scores:[],completed:false
-      });
-      if (error) { alert('Error: '+error.message); return; }
-      document.getElementById('dup-create-form').style.display='none';
-      ['dup-create-name','dup-create-boards','dup-create-t1name','dup-create-t2name'].forEach(id=>{document.getElementById(id).value='';});
-      await dupSharedAdminView();
-    }
-
-    async function dupSharedTeam1Create() {
-      const name=document.getElementById('dup-t1-name')?.value.trim();
-      const boards=parseInt(document.getElementById('dup-t1-boards')?.value)||8;
-      const totalRounds=parseInt(document.getElementById('dup-t1-rounds')?.value)||1;
-      const t1name=document.getElementById('dup-t1-t1name')?.value.trim()||'Team 1';
-      const t2name=document.getElementById('dup-t1-t2name')?.value.trim()||'Team 2';
-      if(!name){alert('Enter a match name');return;}
-      let t1uid=null,t2uid=null;
-      try{
-        const[r1,r2]=await Promise.all([
-          sb.rpc('admin_get_uid_by_email',{p_email:DUP_PHANTOM.team1}),
-          sb.rpc('admin_get_uid_by_email',{p_email:DUP_PHANTOM.team2}),
-        ]);
-        t1uid=r1.data;t2uid=r2.data;
-      }catch(e){}
-      if(!t1uid||!t2uid){alert('Team player accounts not found.');return;}
-      const{error}=await sb.from('dup_matches').insert({
-        creator_id:currentUser.id,name,boards,
-        total_rounds:totalRounds,current_round:0,round_results:[],
-        team1_name:t1name,team2_name:t2name,
-        team1_uid:t1uid,team2_uid:t2uid,
-        team1_scores:[],team2_scores:[],completed:false
-      });
-      if(error){alert('Error: '+error.message);return;}
-      await dupSharedTeamView();
     }
 
     async function dupSharedCreateNewMatch() {

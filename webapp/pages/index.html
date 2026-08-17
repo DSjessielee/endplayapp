@@ -5068,7 +5068,6 @@
     const _DUP_BYPASS_EMAILS = _PRO_BYPASS_EMAILS;
     let _dupSharedRole = null, _dupSharedMatch = null;
     let _dupSharedCursor = 0, _dupSharedSeq = [], _dupSharedLocalScores = {}, _dupSharedSwapAcknowledged = false;
-    let _dupNewMatchSetup = null;
 
     async function dupSharedInit() {
       const sec = document.getElementById('dup-shared-section');
@@ -5156,36 +5155,15 @@
       await dupSharedTeamView();
     }
 
-    function dupSharedSetupTeams() {
-      const name=document.getElementById('dup-new-name')?.value.trim();
-      const rounds=parseInt(document.getElementById('dup-new-rounds')?.value)||1;
-      const boards=parseInt(document.getElementById('dup-new-boards')?.value)||8;
-      if(!name){alert('Enter a game name');return;}
-      _dupNewMatchSetup={name,rounds,boards};
-      const myName=currentUser.user_metadata?.full_name||currentUser.email.split('@')[0];
-      document.getElementById('dup-team-boards').innerHTML=
-        `<div style="font-size:0.85rem;font-weight:600;color:#2a6496;margin-bottom:10px;">Team Info</div>`+
-        `<div style="display:flex;flex-direction:column;gap:8px;font-size:0.82rem;">`+
-          `<div style="font-size:0.78rem;color:#667;font-weight:600;padding:4px 0 2px;">Team 1 — My Team</div>`+
-          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:90px;">Team name:</label><input type="text" id="dup-new-myteam" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${myName}" /></div>`+
-          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:90px;">Captain:</label><input type="email" style="flex:1;padding:5px 8px;border:1px solid #d0dde8;border-radius:4px;font-size:0.82rem;background:#eef2f7;color:#667;" value="${currentUser.email}" disabled /></div>`+
-          `<div style="font-size:0.78rem;color:#667;font-weight:600;padding:8px 0 2px;border-top:1px solid #e8f0f8;margin-top:4px;">Team 2</div>`+
-          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:90px;">Team name:</label><input type="text" id="dup-new-otherteam" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="Team 2" /></div>`+
-          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:90px;">Captain:</label><input type="email" id="dup-new-otheremail" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" placeholder="their email" /></div>`+
-        `</div>`+
-        `<div style="display:flex;gap:6px;margin-top:12px;">`+
-          `<button class="btn-clear" style="font-size:0.82rem;padding:8px 14px;" onclick="dupSharedTeamView()">← Back</button>`+
-          `<button class="btn-analyze" style="flex:1;font-size:0.85rem;padding:9px;" onclick="dupSharedCreateNewMatch()">Create Match</button>`+
-        `</div>`;
-    }
-
     async function dupSharedCreateNewMatch() {
-      if(!_dupNewMatchSetup){alert('Setup info missing — go back and try again.');return;}
-      const{name,rounds:totalRounds,boards}=_dupNewMatchSetup;
+      const name=document.getElementById('dup-new-name')?.value.trim();
+      const totalRounds=parseInt(document.getElementById('dup-new-rounds')?.value)||1;
+      const boards=parseInt(document.getElementById('dup-new-boards')?.value)||8;
       const myTeamName=document.getElementById('dup-new-myteam')?.value.trim()||'Team 1';
       const otherEmail=document.getElementById('dup-new-otheremail')?.value.trim();
       const otherTeamName=document.getElementById('dup-new-otherteam')?.value.trim()||'Team 2';
-      if(!otherEmail){alert("Enter the other captain's email");return;}
+      if(!name){alert('Enter a match name');return;}
+      if(!otherEmail){alert("Enter Team 2 captain's email");return;}
       let otherUid=null;
       try{
         const r=await sb.rpc('admin_get_uid_by_email',{p_email:otherEmail});
@@ -5204,7 +5182,6 @@
         updated_at:new Date().toISOString()
       });
       if(error){if(btn){btn.disabled=false;btn.textContent='Create Match';}alert('Error creating match: '+error.message);return;}
-      _dupNewMatchSetup=null;
       showToast('Match created! '+otherEmail+' can now see it in their Shared Duplicate.','ok',5000);
       await dupSharedTeamView();
     }
@@ -5378,17 +5355,21 @@
       document.getElementById('dup-team-card').style.display='';
       document.getElementById('dup-shared-results-card').style.display='none';
       if(!active){
-        _dupNewMatchSetup=null;
-        const today=new Date().toLocaleDateString('en-CA');
+        const now=new Date();
+        const mon=now.toLocaleString('en-US',{month:'short'});
+        const ampm=now.getHours()<12?'AM':'PM';
+        const defaultName=`${mon} ${now.getDate()} ${ampm}`;
         document.getElementById('dup-team-title').textContent='Shared Duplicate';
         document.getElementById('dup-team-boards').innerHTML=
-          `<div style="font-size:0.85rem;font-weight:600;color:#2a6496;margin-bottom:10px;">Match Setup</div>`+
+          `<div style="font-size:0.85rem;font-weight:600;color:#2a6496;margin-bottom:10px;">Create Match</div>`+
           `<div style="display:flex;flex-direction:column;gap:8px;font-size:0.82rem;">`+
-            `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:110px;">Game name:</label><input type="text" id="dup-new-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${today} Match" /></div>`+
-            `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:110px;"># of Rounds:</label><input type="number" id="dup-new-rounds" min="1" max="10" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="1" /></div>`+
-            `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:110px;">Boards / Round:</label><input type="number" id="dup-new-boards" min="4" max="28" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="8" /></div>`+
+            `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:110px;">Match name:</label><input type="text" id="dup-new-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${defaultName}" /></div>`+
+            `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:110px;"># of Rounds:</label><input type="number" id="dup-new-rounds" min="1" max="10" style="width:50px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="1" /></div>`+
+            `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:110px;">Boards / Round:</label><input type="number" id="dup-new-boards" min="4" max="28" style="width:50px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="8" /></div>`+
+            `<div style="display:flex;align-items:center;gap:6px;margin-top:4px;"><input type="text" id="dup-new-myteam" style="width:80px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="Team 1" placeholder="Team 1" /><input type="email" style="flex:1;padding:5px 8px;border:1px solid #d0dde8;border-radius:4px;font-size:0.82rem;background:#eef2f7;color:#667;" value="${currentUser.email}" disabled title="Team 1 captain (you)" /></div>`+
+            `<div style="display:flex;align-items:center;gap:6px;"><input type="text" id="dup-new-otherteam" style="width:80px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="Team 2" placeholder="Team 2" /><input type="email" id="dup-new-otheremail" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" placeholder="Team 2 captain email" /></div>`+
           `</div>`+
-          `<button class="btn-analyze" style="width:100%;font-size:0.85rem;padding:9px;margin-top:12px;" onclick="dupSharedSetupTeams()">Set Up Teams →</button>`;
+          `<button class="btn-analyze" style="width:100%;font-size:0.85rem;padding:9px;margin-top:12px;" onclick="dupSharedCreateNewMatch()">Create Match</button>`;
         return;
       }
       _dupSharedMatch=active;

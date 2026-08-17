@@ -939,9 +939,9 @@
         <div class="match-sel-row" id="team-movement-row">
           <label>Score Type:</label>
           <select class="match-sel" id="team-movement" onchange="updateTeamDesc()">
-            <option value="standard">Standard Swiss</option>
-            <option value="rr">Round Robin</option>
-            <option value="mixed">Mixed Swiss</option>
+            <option value="vp">VP</option>
+            <option value="imp">IMP</option>
+            <option value="bam">BAM</option>
           </select>
         </div>
         <div class="match-desc" id="team-desc">Teams paired by similar VP standing each round. Best for 8+ teams over 5&#8211;7 rounds.</div>
@@ -3293,7 +3293,7 @@
       if (type === 'swiss') {
         if (!swissState) return;
         stateRef = swissState;
-        payload = { user_id: currentUser.id, name: stateRef.name, format: 'swiss', movement: 'standard',
+        payload = { user_id: currentUser.id, name: stateRef.name, format: 'swiss', movement: stateRef.scoreType || 'vp',
           boards_per_round: stateRef.boards, round_count: stateRef.rounds.length,
           teams: stateRef.teams, rounds: stateRef.rounds, status: stateRef.completed ? 'completed' : 'active' };
       } else {
@@ -3377,11 +3377,12 @@
         const { data, error } = await sb.from('bridge_games').select('*').eq('id', id).single();
         if (error) throw error;
         selectMatchType('team');
-        if (data.format === 'swiss' && data.movement === 'standard') {
-          swissState = { dbId: data.id, name: data.name, boards: data.boards_per_round, teams: data.teams, rounds: data.rounds, completed: data.status === 'completed' };
+        if (data.format === 'swiss') {
+          const scoreType = ['vp','imp','bam'].includes(data.movement) ? data.movement : 'vp';
+          swissState = { dbId: data.id, name: data.name, boards: data.boards_per_round, teams: data.teams, rounds: data.rounds, completed: data.status === 'completed', scoreType };
           document.getElementById('team-format').value = 'swiss';
           updateTeamFormat();
-          document.getElementById('team-movement').value = 'standard';
+          document.getElementById('team-movement').value = scoreType;
           swShowPanel();
           document.getElementById('swiss-setup-card').style.display = 'none';
           document.getElementById('swiss-active').style.display = '';
@@ -5814,7 +5815,7 @@
           switchTab('match');
           document.getElementById('team-format').value = 'swiss';
           updateTeamFormat();
-          document.getElementById('team-movement').value = 'standard';
+          document.getElementById('team-movement').value = swissState.scoreType || 'vp';
           swShowPanel();
           document.getElementById('swiss-setup-card').style.display = 'none';
           document.getElementById('swiss-active').style.display = '';
@@ -5852,7 +5853,7 @@
           switchTab('match');
           document.getElementById('team-format').value = gtState.format || 'swiss';
           updateTeamFormat();
-          document.getElementById('team-movement').value = gtState.movement || 'standard';
+          document.getElementById('team-movement').value = gtState.movement || 'vp';
           swShowPanel();
           document.getElementById('gt-setup-card').style.display = 'none';
           document.getElementById('gt-teams-card').style.display = 'none';

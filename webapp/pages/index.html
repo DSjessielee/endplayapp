@@ -5154,16 +5154,22 @@
       if(!name){alert('Enter a match name');return;}
       if(!otherEmail){alert("Enter the other captain's email");return;}
       let otherUid=null;
-      try{const r=await sb.rpc('admin_get_uid_by_email',{p_email:otherEmail});otherUid=r.data;}catch(e){}
-      if(!otherUid){alert("Captain not found — make sure they have an account on this site.");return;}
+      try{
+        const r=await sb.rpc('admin_get_uid_by_email',{p_email:otherEmail});
+        if(r.error){alert('Lookup error: '+r.error.message);return;}
+        otherUid=r.data;
+      }catch(e){alert('Lookup failed: '+e.message);return;}
+      if(!otherUid){alert("Captain not found: no account for "+otherEmail+"\nMake sure they have signed up on this site first.");return;}
       const{error}=await sb.from('dup_matches').insert({
         creator_id:currentUser.id,name,boards,
         total_rounds:totalRounds,current_round:0,round_results:[],
         team1_name:myTeamName,team2_name:otherTeamName,
         team1_uid:currentUser.id,team2_uid:otherUid,
-        team1_scores:[],team2_scores:[],completed:false
+        team1_scores:[],team2_scores:[],completed:false,
+        updated_at:new Date().toISOString()
       });
-      if(error){alert('Error: '+error.message);return;}
+      if(error){alert('Error creating match: '+error.message);return;}
+      showToast('Match created! '+otherEmail+' can now see it in their Shared Duplicate.','ok',5000);
       await dupSharedTeamView();
     }
 
@@ -5323,6 +5329,12 @@
         sb.from('dup_matches').select('*').eq('team1_uid',uid).order('updated_at',{ascending:false}).limit(5),
         sb.from('dup_matches').select('*').eq('team2_uid',uid).order('updated_at',{ascending:false}).limit(5),
       ]);
+      if(r1.error||r2.error){
+        document.getElementById('dup-team-title').textContent='Shared Duplicate';
+        document.getElementById('dup-team-boards').innerHTML=`<div style="color:#c0392b;font-size:0.82rem;padding:8px 0;">Error loading matches: ${(r1.error||r2.error).message}</div>`;
+        document.getElementById('dup-team-card').style.display='';
+        return;
+      }
       const allMatches=[...(r1.data||[]),...(r2.data||[])];
       allMatches.sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
       const active=allMatches.find(m=>!m.completed);

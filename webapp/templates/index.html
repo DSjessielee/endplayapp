@@ -5127,6 +5127,7 @@
     async function dupSharedTeam1Create() {
       const name=document.getElementById('dup-t1-name')?.value.trim();
       const boards=parseInt(document.getElementById('dup-t1-boards')?.value)||8;
+      const totalRounds=parseInt(document.getElementById('dup-t1-rounds')?.value)||1;
       const t1name=document.getElementById('dup-t1-t1name')?.value.trim()||'Team 1';
       const t2name=document.getElementById('dup-t1-t2name')?.value.trim()||'Team 2';
       if(!name){alert('Enter a match name');return;}
@@ -5141,6 +5142,7 @@
       if(!t1uid||!t2uid){alert('Team player accounts not found.');return;}
       const{error}=await sb.from('dup_matches').insert({
         creator_id:currentUser.id,name,boards,
+        total_rounds:totalRounds,current_round:0,round_results:[],
         team1_name:t1name,team2_name:t2name,
         team1_uid:t1uid,team2_uid:t2uid,
         team1_scores:[],team2_scores:[],completed:false
@@ -5315,6 +5317,7 @@
             `<div style="display:flex;flex-direction:column;gap:6px;font-size:0.82rem;">`+
               `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Name:</label><input type="text" id="dup-t1-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${today} Match" /></div>`+
               `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Boards:</label><input type="number" id="dup-t1-boards" min="1" max="32" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="8" /></div>`+
+              `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Rounds:</label><input type="number" id="dup-t1-rounds" min="1" max="10" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="1" /></div>`+
               `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Team 1:</label><input type="text" id="dup-t1-t1name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="Team 1" /></div>`+
               `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:80px;">Team 2:</label><input type="text" id="dup-t1-t2name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="Team 2" /></div>`+
             `</div>`+
@@ -5372,16 +5375,45 @@
 
       if (cur >= _dupSharedSeq.length) {
         const allDone = otherDone >= boards;
-        document.getElementById('dup-team-boards').innerHTML = allDone
-          ? `<div style="text-align:center;padding:24px 8px;">
+        const roundResults = m.round_results || [];
+        const currentRound = m.current_round || 0;
+        const totalRounds = m.total_rounds || 1;
+        const roundJustComplete = roundResults.length > currentRound;
+        if (roundJustComplete) {
+          const rData = roundResults[currentRound];
+          const isLastRound = currentRound + 1 >= totalRounds;
+          const rImp = rData?.imp || 0;
+          const rWin = rImp > 0 ? team1_name : rImp < 0 ? team2_name : null;
+          let html = `<div style="font-size:0.9rem;font-weight:700;color:#2a6496;margin-bottom:8px;">Round ${currentRound+1} of ${totalRounds} Complete</div>`;
+          html += `<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:2px;padding:3px 0 5px;border-bottom:1px solid #d0e6f0;font-size:0.7rem;font-weight:600;color:#2a6496;"><span>Bd</span><span>${team1_name}</span><span>${team2_name}</span><span style="text-align:right;">IMP</span></div>`;
+          (rData?.boards||[]).forEach(bd=>{
+            html+=`<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:2px;align-items:center;padding:2px 0;border-bottom:1px solid #eef4f8;font-size:0.76rem;">
+              <span style="color:#555;">${bd.b}</span>
+              <span>${bd.c1}<br><span style="font-size:0.67rem;color:#667;">${bd.s1sc>=0?'+':''}${bd.s1sc}</span></span>
+              <span>${bd.c2}<br><span style="font-size:0.67rem;color:#667;">${bd.s2sc>=0?'+':''}${bd.s2sc}</span></span>
+              <span style="text-align:right;font-weight:600;color:${bd.imp>0?'#2a82bd':bd.imp<0?'#c0392b':'#888'}">${bd.imp>=0?'+':''}${bd.imp}</span></div>`;
+          });
+          html+=`<div style="margin:10px 0;padding:10px;background:${rWin?'#e8f4fc':'#f0f0f0'};border-radius:7px;text-align:center;">${rWin?`<div style="font-size:0.95rem;font-weight:700;color:#1a3a5c;">${rWin} wins round ${currentRound+1}!</div><div style="font-size:0.82rem;color:#555;">${Math.abs(rImp)} IMP${Math.abs(rImp)!==1?'s':''}</div>`:'<div style="font-size:0.88rem;color:#555;">Round tied — 0 IMPs</div>'}</div>`;
+          if(!isLastRound){
+            html+=`<button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" onclick="dupSharedContinueRound()">Continue — Round ${currentRound+2} →</button>`;
+          } else {
+            html+=`<button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" onclick="dupSharedRefreshResults()">See Final Results →</button>`;
+          }
+          document.getElementById('dup-team-boards').innerHTML = html;
+        } else if (allDone) {
+          document.getElementById('dup-team-boards').innerHTML =
+            `<div style="text-align:center;padding:24px 8px;">
               <div style="font-size:1rem;font-weight:700;color:#27ae60;margin-bottom:10px;">Both rooms finished ✓</div>
               <button class="btn-analyze" style="font-size:0.9rem;padding:10px 24px;margin-top:4px;" onclick="dupSharedRefreshResults()">See Results →</button>
-             </div>`
-          : `<div style="text-align:center;padding:24px 8px;">
+             </div>`;
+        } else {
+          document.getElementById('dup-team-boards').innerHTML =
+            `<div style="text-align:center;padding:24px 8px;">
               <div style="font-size:1rem;font-weight:700;color:#2a6496;margin-bottom:10px;">Your boards complete ✓</div>
               <div style="font-size:0.85rem;color:#667;margin-bottom:14px;">Waiting for ${otherName} to finish…<br><span style="font-size:0.78rem;color:#999;">(${otherDone} / ${boards} boards entered)</span></div>
               <button class="btn-clear" style="font-size:0.8rem;padding:7px 14px;" onclick="dupSharedRefreshResults()">↺ Refresh</button>
              </div>`;
+        }
         return;
       }
 
@@ -5397,7 +5429,9 @@
 
       const bi = _dupSharedSeq[cur], b = bi + 1, vul = dupVulLabel(b);
       const saved = _dupSharedLocalScores[b] || {};
-      const phaseLabel = cur < h ? 'First half' : 'Second half';
+      const currentRound = m.current_round || 0, totalRounds = m.total_rounds || 1;
+      const roundPrefix = totalRounds > 1 ? `Round ${currentRound+1}/${totalRounds} · ` : '';
+      const phaseLabel = roundPrefix + (cur < h ? 'First half' : 'Second half');
       const phasePos = (cur < h ? cur : cur - h) + 1;
       const phaseTotal = cur < h ? h : boards - h;
       const canEdit = cur > 0 && cur !== h;
@@ -5490,9 +5524,18 @@
       const {boards} = updated;
       const t1n = (updated.team1_scores || []).length, t2n = (updated.team2_scores || []).length;
       if (t1n === boards && t2n === boards && !updated.completed) {
-        await sb.from('dup_matches').update({completed: true, updated_at: new Date().toISOString()}).eq('id', _dupSharedMatch.id);
-        const {data: final} = await sb.from('dup_matches').select('*').eq('id', _dupSharedMatch.id).single();
-        if (final) _dupSharedMatch = final;
+        const roundData = _dupSharedCalcRoundData(updated);
+        const newRoundResults = [...(updated.round_results || []), roundData];
+        const currentRound = updated.current_round || 0;
+        const totalRounds = updated.total_rounds || 1;
+        const isLastRound = currentRound + 1 >= totalRounds;
+        if (isLastRound) {
+          await sb.from('dup_matches').update({completed:true,round_results:newRoundResults,updated_at:new Date().toISOString()}).eq('id',_dupSharedMatch.id);
+        } else {
+          await sb.from('dup_matches').update({round_results:newRoundResults,updated_at:new Date().toISOString()}).eq('id',_dupSharedMatch.id);
+        }
+        const {data:final}=await sb.from('dup_matches').select('*').eq('id',_dupSharedMatch.id).single();
+        if(final) _dupSharedMatch=final;
       }
       if (_dupSharedMatch.completed) {
         _dupSharedRenderFullResults(_dupSharedMatch);
@@ -5510,6 +5553,37 @@
       _dupSharedShowBoard();
     }
 
+    function _dupSharedCalcRoundData(m) {
+      const t1map={},t2map={};
+      (m.team1_scores||[]).forEach(s=>{t1map[s.b]=s;});
+      (m.team2_scores||[]).forEach(s=>{t2map[s.b]=s;});
+      let imp=0;
+      const boards=[];
+      for(let b=1;b<=m.boards;b++){
+        const s1=t1map[b],s2=t2map[b];
+        if(s1?.sc!=null&&s2?.sc!=null){
+          const i=dupCalcImp(s1.sc-s2.sc); imp+=i;
+          boards.push({b,s1sc:s1.sc,s2sc:s2.sc,imp:i,c1:`${s1.lv}${s1.su==='N'?'NT':s1.su}${s1.mx>2?'××':s1.mx>1?'×':''}`,c2:`${s2.lv}${s2.su==='N'?'NT':s2.su}${s2.mx>2?'××':s2.mx>1?'×':''}`});
+        }
+      }
+      return {imp, boards};
+    }
+
+    async function dupSharedContinueRound() {
+      if(!_dupSharedMatch) return;
+      const m=_dupSharedMatch;
+      const roundResults=m.round_results||[];
+      const currentRound=m.current_round||0;
+      if(roundResults.length<=currentRound) return;
+      const nextRound=roundResults.length;
+      const{data:next}=await sb.from('dup_matches')
+        .update({current_round:nextRound,team1_scores:[],team2_scores:[],updated_at:new Date().toISOString()})
+        .eq('id',m.id).select().single();
+      if(!next){await dupSharedRefreshResults();return;}
+      _dupSharedMatch=next;
+      _dupSharedRenderTeamBoards(next,_dupSharedRole);
+    }
+
     async function dupSharedRefreshResults() {
       if (!_dupSharedMatch) return;
       const {data: m} = await sb.from('dup_matches').select('*').eq('id', _dupSharedMatch.id).single();
@@ -5525,32 +5599,52 @@
     }
 
     function _dupSharedRenderFullResults(m) {
-      const {boards,team1_name,team2_name,team1_scores,team2_scores}=m;
-      const t1map={},t2map={};
-      (team1_scores||[]).forEach(s=>{t1map[s.b]=s;}); (team2_scores||[]).forEach(s=>{t2map[s.b]=s;});
-      let total=0;
-      let html=`<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:3px;padding:3px 0 6px;border-bottom:1px solid #d0e6f0;font-size:0.72rem;font-weight:600;color:#2a6496;">
-        <span>Bd</span><span>${team1_name}</span><span>${team2_name}</span><span style="text-align:right;">IMP</span></div>`;
-      for(let b=1;b<=boards;b++){
-        const s1=t1map[b],s2=t2map[b];
-        if(!s1||!s2||s1.sc===null||s1.sc===undefined||s2.sc===null||s2.sc===undefined) continue;
-        const imp=dupCalcImp(s1.sc-s2.sc); total+=imp;
-        const c1=`${s1.lv}${s1.su==='N'?'NT':s1.su}${s1.mx>2?'××':s1.mx>1?'×':''}`,c2=`${s2.lv}${s2.su==='N'?'NT':s2.su}${s2.mx>2?'××':s2.mx>1?'×':''}`;
-        html+=`<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:3px;align-items:center;padding:3px 0;border-bottom:1px solid #eef4f8;font-size:0.78rem;">
-          <span style="color:#555;">${b}</span>
-          <span>${c1} ${s1.by}<br><span style="font-size:0.68rem;color:#667;">${s1.sc>=0?'+':''}${s1.sc}</span></span>
-          <span>${c2} ${s2.by}<br><span style="font-size:0.68rem;color:#667;">${s2.sc>=0?'+':''}${s2.sc}</span></span>
-          <span style="text-align:right;font-weight:600;color:${imp>0?'#2a82bd':imp<0?'#c0392b':'#888'}">${imp>=0?'+':''}${imp}</span>
-        </div>`;
+      const {boards,team1_name,team2_name,round_results,total_rounds}=m;
+      const rr=round_results||[];
+      const isMulti=(total_rounds||1)>1;
+      let html='';
+      if(isMulti && rr.length>1){
+        let cumImp=0;
+        html+=`<div style="font-size:0.82rem;font-weight:700;color:#2a6496;margin-bottom:6px;">Round Summary</div>`;
+        html+=`<div style="display:grid;grid-template-columns:60px 1fr 1fr 55px;gap:2px;padding:2px 0 5px;border-bottom:1px solid #d0e6f0;font-size:0.7rem;font-weight:600;color:#2a6496;"><span>Round</span><span>${team1_name}</span><span>${team2_name}</span><span style="text-align:right;">IMP</span></div>`;
+        rr.forEach((rd,i)=>{
+          const ri=rd.imp||0; cumImp+=ri;
+          const t1pts=Math.max(0,ri),t2pts=Math.max(0,-ri);
+          html+=`<div style="display:grid;grid-template-columns:60px 1fr 1fr 55px;gap:2px;align-items:center;padding:3px 0;border-bottom:1px solid #eef4f8;font-size:0.78rem;">
+            <span style="color:#555;font-weight:600;">R${i+1}</span>
+            <span style="color:#2a6496;">+${t1pts}</span>
+            <span style="color:#2a6496;">+${t2pts}</span>
+            <span style="text-align:right;font-weight:600;color:${ri>0?'#2a82bd':ri<0?'#c0392b':'#888'}">${ri>=0?'+':''}${ri}</span></div>`;
+        });
+        const cumT1=Math.max(0,cumImp),cumT2=Math.max(0,-cumImp),cumWin=cumImp>0?team1_name:cumImp<0?team2_name:null;
+        html+=`<div style="margin:10px 0 14px;padding:12px;background:${cumWin?'#e8f4fc':'#f0f0f0'};border-radius:8px;text-align:center;">${cumWin?`<div style="font-size:1rem;font-weight:700;color:#1a3a5c;">${cumWin} wins the match!</div><div style="font-size:0.82rem;color:#555;margin-top:2px;">${Math.abs(cumImp)} IMP total</div>`:'<div style="font-size:0.95rem;font-weight:700;color:#555;">Match tied — 0 IMPs</div>'}</div>`;
+        html+=`<div style="display:flex;gap:8px;margin-bottom:14px;"><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.8rem;font-weight:600;color:#2a6496;">${team1_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${cumT1}</div></div><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.8rem;font-weight:600;color:#2a6496;">${team2_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${cumT2}</div></div></div>`;
+        rr.forEach((rd,i)=>{
+          html+=`<div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin:8px 0 4px;">Round ${i+1} Boards</div>`;
+          html+=`<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:2px;padding:2px 0 4px;border-bottom:1px solid #d0e6f0;font-size:0.68rem;font-weight:600;color:#2a6496;"><span>Bd</span><span>${team1_name}</span><span>${team2_name}</span><span style="text-align:right;">IMP</span></div>`;
+          (rd.boards||[]).forEach(bd=>{
+            html+=`<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:2px;align-items:center;padding:2px 0;border-bottom:1px solid #eef4f8;font-size:0.74rem;">
+              <span style="color:#555;">${bd.b}</span>
+              <span>${bd.c1}<br><span style="font-size:0.66rem;color:#667;">${bd.s1sc>=0?'+':''}${bd.s1sc}</span></span>
+              <span>${bd.c2}<br><span style="font-size:0.66rem;color:#667;">${bd.s2sc>=0?'+':''}${bd.s2sc}</span></span>
+              <span style="text-align:right;font-weight:600;color:${bd.imp>0?'#2a82bd':bd.imp<0?'#c0392b':'#888'}">${bd.imp>=0?'+':''}${bd.imp}</span></div>`;
+          });
+        });
+      } else {
+        const rd=rr[0]||{imp:0,boards:[]};
+        const total=rd.imp||0;
+        html+=`<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:3px;padding:3px 0 6px;border-bottom:1px solid #d0e6f0;font-size:0.72rem;font-weight:600;color:#2a6496;"><span>Bd</span><span>${team1_name}</span><span>${team2_name}</span><span style="text-align:right;">IMP</span></div>`;
+        (rd.boards||[]).forEach(bd=>{
+          html+=`<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:3px;align-items:center;padding:3px 0;border-bottom:1px solid #eef4f8;font-size:0.78rem;">
+            <span style="color:#555;">${bd.b}</span>
+            <span>${bd.c1}<br><span style="font-size:0.68rem;color:#667;">${bd.s1sc>=0?'+':''}${bd.s1sc}</span></span>
+            <span>${bd.c2}<br><span style="font-size:0.68rem;color:#667;">${bd.s2sc>=0?'+':''}${bd.s2sc}</span></span>
+            <span style="text-align:right;font-weight:600;color:${bd.imp>0?'#2a82bd':bd.imp<0?'#c0392b':'#888'}">${bd.imp>=0?'+':''}${bd.imp}</span></div>`;
+        });
+        const t1I=Math.max(0,total),t2I=Math.max(0,-total),win=total>0?team1_name:total<0?team2_name:null;
+        html+=`<div style="margin-top:12px;padding:12px;background:${win?'#e8f4fc':'#f0f0f0'};border-radius:8px;text-align:center;">${win?`<div style="font-size:1rem;font-weight:700;color:#1a3a5c;">${win} wins!</div><div style="font-size:0.85rem;color:#555;margin-top:2px;">${Math.abs(total)} IMP${Math.abs(total)!==1?'s':''}</div>`:'<div style="font-size:0.95rem;font-weight:700;color:#555;">Tied — 0 IMPs</div>'}</div>
+        <div style="display:flex;gap:8px;margin-top:8px;"><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team1_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t1I} IMP</div></div><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team2_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t2I} IMP</div></div></div>`;
       }
-      const t1I=Math.max(0,total),t2I=Math.max(0,-total),win=total>0?team1_name:total<0?team2_name:null;
-      html+=`<div style="margin-top:12px;padding:12px;background:${win?'#e8f4fc':'#f0f0f0'};border-radius:8px;text-align:center;">
-        ${win?`<div style="font-size:1rem;font-weight:700;color:#1a3a5c;">${win} wins!</div><div style="font-size:0.85rem;color:#555;margin-top:2px;">${Math.abs(total)} IMP${Math.abs(total)!==1?'s':''}</div>`:`<div style="font-size:0.95rem;font-weight:700;color:#555;">Tied — 0 IMPs</div>`}
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team1_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t1I} IMP</div></div>
-        <div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team2_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t2I} IMP</div></div>
-      </div>`;
       document.getElementById('dup-shared-results').innerHTML=html;
     }
 

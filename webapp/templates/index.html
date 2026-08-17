@@ -2462,6 +2462,7 @@
           await loadSubscription();
           updateAuthUI();
           closeAuthModal();
+          checkPendingDupMatch();
         } catch (e) {
           msgEl.textContent = 'Login error: ' + (e?.message || String(e));
           msgEl.className = 'auth-msg err';
@@ -5030,6 +5031,21 @@
       document.getElementById('gt-dup-result-actions').style.display = isLastRound ? '' : 'none';
       document.getElementById('gt-dup-boards-card').style.display='none';
       document.getElementById('gt-dup-results-card').style.display='';
+    }
+
+    async function checkPendingDupMatch() {
+      if (!sb || !currentUser || currentUser.email !== DUP_PHANTOM.team2) return;
+      try {
+        const { data: matches } = await sb.from('dup_matches')
+          .select('id, team1_name, team2_name, boards')
+          .eq('completed', false)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (!matches || !matches.length) return;
+        const m = matches[0];
+        showToast(`Game waiting: ${m.team1_name} vs ${m.team2_name} — enter your boards!`, 'ok', 6000);
+        setTimeout(() => switchTab('match'), 700);
+      } catch(e) {}
     }
 
     function dupNextRound() {

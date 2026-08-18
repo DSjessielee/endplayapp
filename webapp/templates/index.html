@@ -971,6 +971,7 @@
                 <select id="sw-preset-sel" class="match-sel" style="flex:1;font-size:0.78rem;min-width:100px;"></select>
                 <button class="btn-clear" style="font-size:0.75rem;padding:5px 10px;" onclick="dbLoadPreset('sw')">Load</button>
                 <button class="btn-clear" style="font-size:0.75rem;padding:5px 10px;" onclick="dbSavePreset('sw')">Save Preset</button>
+                <button class="btn-clear" style="font-size:0.75rem;padding:5px 10px;color:#c0392b;border-color:#c0392b;" onclick="dbDeletePreset('sw')">Delete</button>
               </div>
             </div>
             <div id="sw-team-list" style="display:none;">
@@ -1245,6 +1246,7 @@
                 <select id="gt-preset-sel" class="match-sel" style="flex:1;font-size:0.78rem;min-width:100px;"></select>
                 <button class="btn-clear" style="font-size:0.75rem;padding:5px 10px;" onclick="dbLoadPreset('gt')">Load</button>
                 <button class="btn-clear" style="font-size:0.75rem;padding:5px 10px;" onclick="dbSavePreset('gt')">Save Preset</button>
+                <button class="btn-clear" style="font-size:0.75rem;padding:5px 10px;color:#c0392b;border-color:#c0392b;" onclick="dbDeletePreset('gt')">Delete</button>
               </div>
             </div>
             <button class="btn-analyze" style="margin-top:8px;width:100%;font-size:0.88rem;padding:10px;" onclick="gtStartGame()">Start Game</button>
@@ -3423,6 +3425,20 @@
         const { error } = await sb.from('bridge_games').delete().eq('id', id);
         if (error) throw error;
         await dbRefreshHistory();
+      } catch (e) { alert('Delete failed: ' + e.message); }
+    }
+
+    async function dbDeletePreset(forType) {
+      const sel = document.getElementById(forType === 'sw' ? 'sw-preset-sel' : 'gt-preset-sel');
+      const id = sel?.value;
+      const name = sel?.options[sel.selectedIndex]?.text;
+      if (!id) { alert('Select a preset to delete.'); return; }
+      if (!confirm(`Delete preset "${name}"?`)) return;
+      try {
+        const { error } = await sb.from('bridge_preset_teams').delete().eq('id', id);
+        if (error) throw error;
+        await dbRefreshPresets(forType);
+        showToast('Preset deleted.', 'ok');
       } catch (e) { alert('Delete failed: ' + e.message); }
     }
 

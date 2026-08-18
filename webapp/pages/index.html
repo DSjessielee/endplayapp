@@ -3468,8 +3468,16 @@
         teams.push({ id: i, name: document.getElementById(prefix + i).value || `Team ${i}` });
       }
       try {
-        await sb.from('bridge_preset_teams').insert({ user_id: currentUser.id, name, teams });
+        const { data: existing } = await sb.from('bridge_preset_teams')
+          .select('id').eq('user_id', currentUser.id).eq('name', name).limit(1);
+        if (existing && existing.length > 0) {
+          if (!confirm(`"${name}" already exists. Overwrite?`)) return;
+          await sb.from('bridge_preset_teams').update({ teams }).eq('id', existing[0].id);
+        } else {
+          await sb.from('bridge_preset_teams').insert({ user_id: currentUser.id, name, teams });
+        }
         await dbRefreshPresets(forType);
+        showToast('Preset saved.', 'ok');
       } catch (e) { alert('Save failed: ' + e.message); }
     }
 

@@ -966,6 +966,7 @@
               <input type="number" id="sw-count" class="match-num" min="2" max="32" value="8" />
               <button class="btn-analyze" style="font-size:0.82rem;padding:7px 14px;" onclick="swSetupTeams()">Set Up Teams</button>
             </div>
+            <button class="btn-clear" style="width:100%;margin-top:6px;font-size:0.82rem;padding:8px;" onclick="openLoadGame()">Load Previous Game</button>
             <div id="sw-preset-row" style="display:none;margin-top:8px;border-top:1px solid #e8f0f8;padding-top:8px;">
               <div style="font-size:0.78rem;color:#667;margin-bottom:4px;">Load Team Preset:</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -1236,6 +1237,7 @@
               <input type="number" id="gt-boards" class="match-num" min="4" max="28" placeholder="e.g. 8" />
             </div>
             <button class="btn-analyze" style="width:100%;margin-top:4px;font-size:0.88rem;padding:10px;" onclick="gtSetupTeams()">Set Up Teams</button>
+            <button class="btn-clear" style="width:100%;margin-top:6px;font-size:0.82rem;padding:8px;" onclick="openLoadGame()">Load Previous Game</button>
           </div>
           <div id="gt-teams-card" class="match-card" style="display:none;">
             <div class="match-card-title">Team Names</div>
@@ -2322,7 +2324,9 @@
     let sb = null;
     try {
       if (typeof supabase !== 'undefined') {
-        sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+        });
       }
     } catch (e) {
       console.error('Supabase init failed:', e);
@@ -3316,7 +3320,10 @@
     function openLoadGame() {
       switchTab('match');
       document.getElementById('db-history-card').style.display = '';
-      dbRefreshHistory();
+      dbRefreshHistory().then(() => {
+        const el = document.getElementById('db-history-card');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     }
 
     async function dbRefreshHistory() {
@@ -4764,11 +4771,15 @@
       document.getElementById('gt-dup-boards-card').style.display = '';
     }
 
+    function dupSuitColor(sel) {
+      sel.style.color = (sel.value==='D'||sel.value==='H') ? '#c0392b' : '#1a1a2e';
+    }
+
     function dupRenderBoards() {
       const { teams, boards } = dupState;
       const ss = 'padding:3px 2px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.75rem;';
       const lvOpts = Array.from({length:7},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
-      const suitOpts = '<option value="">—</option><option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S">♠</option><option value="N">NT</option>';
+      const suitOpts = '<option value="">—</option><option value="C" style="color:#111;">♣</option><option value="D" style="color:#c0392b;">♦</option><option value="H" style="color:#c0392b;">♥</option><option value="S" style="color:#111;">♠</option><option value="N">NT</option>';
       const mxOpts = '<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
       const decOpts = '<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
       const rsOpts = '<option value="">Res</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+
@@ -4786,7 +4797,7 @@
           html += `<div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-bottom:4px;">` +
             `<span style="font-size:0.72rem;color:#555;min-width:50px;flex-shrink:0;">${teams[t].name}<br><span style="color:#2a6496;">NS</span></span>` +
             `<select id="dup-lv-${t}-${b}" style="${ss}width:34px;" onchange="dupUpdateBoard(${t},${b})" title="Level"><option value="">Lv</option>${lvOpts}</select>` +
-            `<select id="dup-su-${t}-${b}" style="${ss}width:42px;" onchange="dupUpdateBoard(${t},${b})" title="Suit">${suitOpts}</select>` +
+            `<select id="dup-su-${t}-${b}" style="${ss}width:42px;" onchange="dupSuitColor(this);dupUpdateBoard(${t},${b})" title="Suit">${suitOpts}</select>` +
             `<select id="dup-mx-${t}-${b}" style="${ss}width:38px;" onchange="dupUpdateBoard(${t},${b})" title="Doubled">${mxOpts}</select>` +
             `<select id="dup-by-${t}-${b}" style="${ss}width:38px;" onchange="dupUpdateBoard(${t},${b})" title="Declarer">${decOpts}</select>` +
             `<select id="dup-rs-${t}-${b}" style="${ss}width:62px;" onchange="dupUpdateBoard(${t},${b})" title="Result">${rsOpts}</select>` +

@@ -5494,11 +5494,10 @@
       }
 
       const ss = 'padding:4px 2px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.78rem;';
-      const lvO = '<option value="">Lv</option>' + Array.from({length:7},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
-      const suO = '<option value="">—</option><option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S">♠</option><option value="N">NT</option>';
+      const ctO = (()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r}of S) o+=`<option value="${l}${v}"${r?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
       const mxO = '<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
       const byO = '<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
-      const rsO = '<option value="">Res</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+      const rsO = '<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
       const roundLabel = totalRounds > 1 ? `Round ${currentRound+1}/${totalRounds} · ` : '';
 
       let html = `<div style="font-size:0.75rem;color:#667;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
@@ -5513,13 +5512,15 @@
           html += `<div style="margin:8px 0;padding:3px 8px;text-align:center;font-size:0.72rem;color:#2a6496;font-weight:600;border-top:1px dashed #a0c4d8;border-bottom:1px dashed #a0c4d8;">— Swap boards with other table —</div>`;
         }
         if (saved) {
-          const suSym={'C':'♣','D':'♦','H':'♥','S':'♠','N':'NT'}[saved.su]||saved.su;
-          const mxSym=saved.mx===2?'×':saved.mx===4?'××':'';
+          const isAP=saved.ct==='AP';
+          const suSym=isAP?'':({'C':'♣','D':'♦','H':'♥','S':'♠','N':'NT'}[saved.su]||saved.su);
+          const mxSym=isAP?'':(saved.mx===2?'×':saved.mx===4?'××':'');
           const scDisp=saved.sc>=0?'+'+saved.sc:String(saved.sc);
+          const ctDisp=isAP?'All Pass':`${saved.lv}${suSym}${mxSym} by ${saved.by}`;
           html+=`<div id="dup-board-row-${b}" style="display:flex;align-items:center;gap:4px;padding:5px 0;border-bottom:1px solid #e0eef6;">
             <span style="font-size:0.8rem;font-weight:700;color:#1a3a5c;min-width:38px;">Bd ${b}</span>
             <span style="font-size:0.7rem;color:#888;min-width:22px;">${vul}</span>
-            <span style="font-size:0.78rem;flex:1;color:#444;">${saved.lv}${suSym}${mxSym} by ${saved.by}</span>
+            <span style="font-size:0.78rem;flex:1;color:#444;">${ctDisp}</span>
             <span style="font-size:0.8rem;font-weight:700;min-width:36px;text-align:right;color:${saved.sc>=0?'#2a82bd':'#c0392b'};">${scDisp}</span>
             <button class="btn-clear" style="font-size:0.68rem;padding:2px 7px;margin-left:4px;" onclick="dupSharedEditBoard(${b})">Edit</button>
           </div>`;
@@ -5531,11 +5532,10 @@
               <span id="dup-sc-${b}" style="font-size:0.82rem;font-weight:600;color:#888;">—</span>
             </div>
             <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-bottom:6px;">
-              <select id="dup-lv-${b}" style="${ss}width:36px;" onchange="dupSharedRecalcBoard(${b})">${lvO}</select>
-              <select id="dup-su-${b}" style="${ss}width:44px;" onchange="dupSharedRecalcBoard(${b})">${suO}</select>
+              <select id="dup-ct-${b}" style="${ss}width:88px;" onchange="dupContractColor(this);dupSharedRecalcBoard(${b})">${ctO}</select>
               <select id="dup-mx-${b}" style="${ss}width:40px;" onchange="dupSharedRecalcBoard(${b})">${mxO}</select>
-              <select id="dup-by-${b}" style="${ss}width:40px;" onchange="dupSharedRecalcBoard(${b})">${byO}</select>
-              <select id="dup-rs-${b}" style="${ss}width:68px;" onchange="dupSharedRecalcBoard(${b})">${rsO}</select>
+              <select id="dup-by-${b}" style="${ss}width:42px;" onchange="dupSharedRecalcBoard(${b})">${byO}</select>
+              <select id="dup-rs-${b}" style="${ss}width:78px;" onchange="dupSharedRecalcBoard(${b})">${rsO}</select>
             </div>
             <button class="btn-analyze" style="width:100%;font-size:0.82rem;padding:7px;" onclick="dupSharedConfirmBoardN(${b})">Confirm Board ${b} →</button>
           </div>`;
@@ -5559,27 +5559,39 @@
     }
 
     function dupSharedRecalcBoard(b) {
-      const lv=parseInt(document.getElementById(`dup-lv-${b}`)?.value);
-      const su=document.getElementById(`dup-su-${b}`)?.value;
+      const ctVal=document.getElementById(`dup-ct-${b}`)?.value;
+      const rsEl=document.getElementById(`dup-rs-${b}`);
+      const scEl=document.getElementById(`dup-sc-${b}`);
+      const isAP=ctVal==='AP';
+      ['mx','by','rs'].forEach(id=>{const el=document.getElementById(`dup-${id}-${b}`);if(el){el.disabled=isAP;el.style.opacity=isAP?'0.35':'';}});
+      if(isAP){if(scEl)scEl.textContent='0';return;}
+      if(!ctVal){if(scEl)scEl.textContent='—';return;}
+      const lv=parseInt(ctVal),su=ctVal.slice(1);
+      dupSetResultOpts(rsEl,lv,rsEl?.value);
       const mx=parseInt(document.getElementById(`dup-mx-${b}`)?.value)||1;
       const by=document.getElementById(`dup-by-${b}`)?.value;
-      const rs=document.getElementById(`dup-rs-${b}`)?.value;
-      const scEl=document.getElementById(`dup-sc-${b}`);
-      if(!lv||!su||!by||rs===''||rs==null){if(scEl)scEl.textContent='—';return;}
+      const rs=rsEl?.value;
+      if(!by||rs===''||rs==null){if(scEl)scEl.textContent='—';return;}
       const sc=dupContractScore(lv,su,mx,by,parseInt(rs),b);
-      if(scEl) scEl.textContent=sc>=0?`+${sc}`:`${sc}`;
+      if(scEl)scEl.textContent=sc>=0?`+${sc}`:`${sc}`;
     }
 
     async function dupSharedConfirmBoardN(b) {
-      const lv=parseInt(document.getElementById(`dup-lv-${b}`)?.value)||null;
-      const su=document.getElementById(`dup-su-${b}`)?.value||null;
-      const mx=parseInt(document.getElementById(`dup-mx-${b}`)?.value)||1;
-      const by=document.getElementById(`dup-by-${b}`)?.value||null;
-      const rsv=document.getElementById(`dup-rs-${b}`)?.value;
-      const rs=rsv!==''&&rsv!=null?parseInt(rsv):null;
-      if(!lv||!su||!by||rs===null){alert('Please fill in all fields for Board '+b+'.');return;}
-      const sc=dupContractScore(lv,su,mx,by,rs,b);
-      _dupSharedLocalScores[b]={b,lv,su,mx,by,rs,sc};
+      const ctVal=document.getElementById(`dup-ct-${b}`)?.value;
+      if(!ctVal){alert('Please fill in all fields for Board '+b+'.');return;}
+      let lv,su,mx,by,rs,sc;
+      if(ctVal==='AP'){
+        lv=null;su=null;mx=1;by=null;rs=0;sc=0;
+      }else{
+        lv=parseInt(ctVal);su=ctVal.slice(1);
+        mx=parseInt(document.getElementById(`dup-mx-${b}`)?.value)||1;
+        by=document.getElementById(`dup-by-${b}`)?.value||null;
+        const rsv=document.getElementById(`dup-rs-${b}`)?.value;
+        rs=rsv!==''&&rsv!=null?parseInt(rsv):null;
+        if(!lv||!by||rs===null){alert('Please fill in all fields for Board '+b+'.');return;}
+        sc=dupContractScore(lv,su,mx,by,rs,b);
+      }
+      _dupSharedLocalScores[b]={b,ct:ctVal,lv,su,mx,by,rs,sc};
       const allScores=Object.values(_dupSharedLocalScores);
       const col=_dupSharedRole==='team1'?'team1_scores':'team2_scores';
       const btn=document.querySelector(`#dup-board-row-${b} .btn-analyze`);
@@ -5613,11 +5625,10 @@
       if(!saved) return;
       const vul=dupVulLabel(b);
       const ss='padding:4px 2px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.78rem;';
-      const lvO='<option value="">Lv</option>'+Array.from({length:7},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
-      const suO='<option value="">—</option><option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S">♠</option><option value="N">NT</option>';
+      const ctO=(()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r}of S) o+=`<option value="${l}${v}"${r?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
       const mxO='<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
       const byO='<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
-      const rsO='<option value="">Res</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+      const rsO='<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
       const row=document.getElementById(`dup-board-row-${b}`);
       if(!row) return;
       const scDisp=saved.sc>=0?'+'+saved.sc:String(saved.sc);
@@ -5628,15 +5639,18 @@
           <span id="dup-sc-${b}" style="font-size:0.82rem;font-weight:600;color:#1a3a5c;">${scDisp}</span>
         </div>
         <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-bottom:6px;">
-          <select id="dup-lv-${b}" style="${ss}width:36px;" onchange="dupSharedRecalcBoard(${b})">${lvO}</select>
-          <select id="dup-su-${b}" style="${ss}width:44px;" onchange="dupSharedRecalcBoard(${b})">${suO}</select>
+          <select id="dup-ct-${b}" style="${ss}width:88px;" onchange="dupContractColor(this);dupSharedRecalcBoard(${b})">${ctO}</select>
           <select id="dup-mx-${b}" style="${ss}width:40px;" onchange="dupSharedRecalcBoard(${b})">${mxO}</select>
-          <select id="dup-by-${b}" style="${ss}width:40px;" onchange="dupSharedRecalcBoard(${b})">${byO}</select>
-          <select id="dup-rs-${b}" style="${ss}width:68px;" onchange="dupSharedRecalcBoard(${b})">${rsO}</select>
+          <select id="dup-by-${b}" style="${ss}width:42px;" onchange="dupSharedRecalcBoard(${b})">${byO}</select>
+          <select id="dup-rs-${b}" style="${ss}width:78px;" onchange="dupSharedRecalcBoard(${b})">${rsO}</select>
         </div>
         <button class="btn-analyze" style="width:100%;font-size:0.82rem;padding:7px;" onclick="dupSharedConfirmBoardN(${b})">Update Board ${b} ✓</button>`;
+      const savedCt=saved.ct||(saved.lv?`${saved.lv}${saved.su}`:'');
+      const ctEl=document.getElementById(`dup-ct-${b}`);
+      if(ctEl&&savedCt){ctEl.value=savedCt;dupContractColor(ctEl);}
       const sv=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=String(val);};
-      sv(`dup-lv-${b}`,saved.lv); sv(`dup-su-${b}`,saved.su); sv(`dup-mx-${b}`,saved.mx!=null?saved.mx:1); sv(`dup-by-${b}`,saved.by); sv(`dup-rs-${b}`,saved.rs);
+      sv(`dup-mx-${b}`,saved.mx!=null?saved.mx:1); sv(`dup-by-${b}`,saved.by); sv(`dup-rs-${b}`,saved.rs);
+      dupSharedRecalcBoard(b);
     }
 
     function _dupSharedCalcRoundData(m) {
@@ -5649,7 +5663,8 @@
         const s1=t1map[b],s2=t2map[b];
         if(s1?.sc!=null&&s2?.sc!=null){
           const i=dupCalcImp(s1.sc-s2.sc); imp+=i;
-          boards.push({b,s1sc:s1.sc,s2sc:s2.sc,imp:i,c1:`${s1.lv}${s1.su==='N'?'NT':s1.su}${s1.mx>2?'××':s1.mx>1?'×':''}`,c2:`${s2.lv}${s2.su==='N'?'NT':s2.su}${s2.mx>2?'××':s2.mx>1?'×':''}`});
+          const fmtC=s=>s.ct==='AP'?'AP':`${s.lv}${s.su==='N'?'NT':s.su}${s.mx>2?'××':s.mx>1?'×':''}`;
+          boards.push({b,s1sc:s1.sc,s2sc:s2.sc,imp:i,c1:fmtC(s1),c2:fmtC(s2)});
         }
       }
       return {imp, boards};

@@ -947,11 +947,26 @@
         <div class="match-desc" id="team-desc">Teams paired by similar VP standing each round. Best for 8+ teams over 5&#8211;7 rounds.</div>
         <!-- Saved games (shown when logged in and games exist) -->
         <div id="db-history-card" class="match-card" style="display:none;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <div class="match-card-title">My Saved Games</div>
-            <button class="btn-clear" style="font-size:0.75rem;padding:4px 10px;" onclick="dbRefreshHistory()">&#8635; Refresh</button>
+          <!-- List view -->
+          <div id="db-history-list-view">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div class="match-card-title">My Saved Games</div>
+              <button class="btn-clear" style="font-size:0.75rem;padding:4px 10px;" onclick="dbRefreshHistory()">&#8635; Refresh</button>
+            </div>
+            <div class="db-history-section" id="db-history-list"></div>
           </div>
-          <div class="db-history-section" id="db-history-list"></div>
+          <!-- Summary view -->
+          <div id="db-history-detail-view" style="display:none;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+              <button class="btn-clear" style="font-size:0.75rem;padding:4px 10px;" onclick="dbShowHistoryList()">&#8592; Back</button>
+              <div class="match-card-title" style="margin:0;">Game Summary</div>
+            </div>
+            <div id="db-game-summary"></div>
+            <div style="display:flex;gap:8px;margin-top:14px;">
+              <button class="btn-analyze" style="flex:1;font-size:0.85rem;padding:9px;" onclick="dbEditCurrentGame()">Edit Game</button>
+              <button class="btn-clear" style="font-size:0.82rem;padding:9px 14px;color:#c0392b;border-color:#c0392b;" onclick="dbDeleteCurrentGame()">Delete</button>
+            </div>
+          </div>
         </div>
         <!-- Swiss Standard Tournament Manager -->
         <div id="swiss-panel" style="display:none;" class="swiss-section">
@@ -3335,6 +3350,7 @@
       }
       el.innerHTML = '<div style="color:#889;font-size:0.8rem;text-align:center;padding:8px;">Loading…</div>';
       document.getElementById('db-history-card').style.display = '';
+      dbShowHistoryList();
       try {
         const { data, error } = await sb.from('bridge_games')
           .select('id,name,format,movement,created_at,status')
@@ -3357,7 +3373,7 @@
           return `<div class="db-history-row">
             <div style="min-width:0;"><div style="font-weight:600;font-size:0.82rem;">${g.name}</div><div style="font-size:0.72rem;color:#889;margin-top:2px;">${f} · ${d}</div><div style="margin-top:3px;">${badge}</div></div>
             <div style="display:flex;gap:6px;flex-shrink:0;align-items:flex-start;">
-              <button class="btn-clear" style="font-size:0.72rem;padding:4px 10px;" onclick="dbLoadGame('${g.id}')">Load</button>
+              <button class="btn-clear" style="font-size:0.72rem;padding:4px 10px;" onclick="dbShowGameSummary('${g.id}')">View</button>
               <button class="btn-remove" style="padding:2px 8px;" onclick="dbDeleteGame('${g.id}')">&#10005;</button>
             </div>
           </div>`;
@@ -3426,8 +3442,62 @@
       try {
         const { error } = await sb.from('bridge_games').delete().eq('id', id);
         if (error) throw error;
+        _loadGameSummaryId = null;
         await dbRefreshHistory();
       } catch (e) { alert('Delete failed: ' + e.message); }
+    }
+
+    let _loadGameSummaryId = null;
+
+    function dbShowHistoryList() {
+      document.getElementById('db-history-list-view').style.display = '';
+      document.getElementById('db-history-detail-view').style.display = 'none';
+    }
+
+    function dbEditCurrentGame() { if (_loadGameSummaryId) dbLoadGame(_loadGameSummaryId); }
+    function dbDeleteCurrentGame() { if (_loadGameSummaryId) dbDeleteGame(_loadGameSummaryId); }
+
+    async function dbShowGameSummary(id) {
+      _loadGameSummaryId = id;
+      document.getElementById('db-history-list-view').style.display = 'none';
+      document.getElementById('db-history-detail-view').style.display = '';
+      const el = document.getElementById('db-game-summary');
+      el.innerHTML = '<div style="color:#889;font-size:0.8rem;text-align:center;padding:12px;">Loading…</div>';
+      try {
+        const { data, error } = await sb.from('bridge_games').select('*').eq('id', id).single();
+        if (error) throw error;
+        const fmtLabel = { swiss:'Swiss Teams', rr:'Round Robin', ko:'KO / Duplicate' };
+        const movLabel = { vp:'VP', imp:'IMP', bam:'BAM' };
+        const created = new Date(data.created_at).toLocaleDateString();
+        const updated = new Date(data.updated_at || data.created_at).toLocaleDateString();
+        const statusBadge = data.status === 'completed'
+          ? `<span style="color:#27ae60;font-weight:600;">Completed</span>`
+          : `<span style="color:#e67e22;font-weight:600;">In Progress</span>`;
+        const roundsPlayed = Array.isArray(data.rounds) ? data.rounds.filter(r=>r.completed).length : 0;
+        const row = (label, val) =>
+          `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e8f0f8;">` +
+          `<span style="color:#667;font-size:0.82rem;">${label}</span>` +
+          `<span style="font-size:0.82rem;font-weight:500;">${val}</span></div>`;
+        let html =
+          `<div style="font-size:1rem;font-weight:700;color:#1a1a2e;margin-bottom:12px;">${data.name}</div>` +
+          row('Format', fmtLabel[data.format] || data.format) +
+          row('Score Type', movLabel[data.movement] || data.movement) +
+          row('Status', statusBadge) +
+          row('Created', created) +
+          row('Last Updated', updated) +
+          row('Teams', data.teams?.length || 0) +
+          row('Boards / Round', data.boards_per_round) +
+          row('Total Rounds', data.round_count);
+        if (data.format === 'swiss' && Array.isArray(data.rounds) && data.rounds.length > 0)
+          html += row('Rounds Completed', `${roundsPlayed} of ${data.round_count || '?'}`);
+        if (data.teams?.length) {
+          html += `<div style="margin-top:10px;font-size:0.78rem;color:#667;margin-bottom:5px;">Teams</div>` +
+            `<div style="font-size:0.82rem;line-height:2;">${data.teams.map((t,i)=>`${i+1}. ${t.name}`).join('&emsp;')}</div>`;
+        }
+        el.innerHTML = html;
+      } catch(e) {
+        el.innerHTML = `<div style="color:#c0392b;font-size:0.8rem;">Error: ${e.message}</div>`;
+      }
     }
 
     async function dbDeletePreset(forType) {

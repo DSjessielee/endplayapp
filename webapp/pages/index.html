@@ -4841,18 +4841,28 @@
       document.getElementById('gt-dup-boards-card').style.display = '';
     }
 
-    function dupSuitColor(sel) {
-      sel.style.color = (sel.value==='D'||sel.value==='H') ? '#c0392b' : '#1a1a2e';
+    function dupContractColor(sel) {
+      const su = sel.value && sel.value !== 'AP' ? sel.value.slice(1) : '';
+      sel.style.color = (su === 'D' || su === 'H') ? '#c0392b' : '#1a1a2e';
+    }
+
+    function dupSetResultOpts(rsEl, lv, keepVal) {
+      if (!rsEl || !lv || isNaN(lv)) return;
+      const maxDown = 6 + lv, maxUp = 7 - lv;
+      rsEl.innerHTML = '<option value="">Result</option>' +
+        [...Array(maxDown)].map((_,i) => `<option value="${-(maxDown-i)}">−${maxDown-i}</option>`).join('') +
+        '<option value="0">= made</option>' +
+        (maxUp > 0 ? [...Array(maxUp)].map((_,i) => `<option value="${i+1}">+${i+1}</option>`).join('') : '');
+      if (keepVal != null && keepVal !== '' && rsEl.querySelector(`option[value="${keepVal}"]`)) rsEl.value = keepVal;
     }
 
     function dupRenderBoards() {
       const { teams, boards } = dupState;
       const ss = 'padding:3px 2px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.75rem;';
-      const lvOpts = Array.from({length:7},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
-      const suitOpts = '<option value="">—</option><option value="C" style="color:#111;">♣</option><option value="D" style="color:#c0392b;">♦</option><option value="H" style="color:#c0392b;">♥</option><option value="S" style="color:#111;">♠</option><option value="N">NT</option>';
+      const ctOpts = (()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r}of S) o+=`<option value="${l}${v}"${r?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
       const mxOpts = '<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
       const decOpts = '<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
-      const rsOpts = '<option value="">Res</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+
+      const rsOpts = '<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+
         '<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
       let html = '';
       for (let b=0; b<boards; b++) {
@@ -4866,11 +4876,10 @@
         [0,1].forEach(t => {
           html += `<div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-bottom:4px;">` +
             `<span style="font-size:0.72rem;color:#555;min-width:50px;flex-shrink:0;">${teams[t].name}<br><span style="color:#2a6496;">NS</span></span>` +
-            `<select id="dup-lv-${t}-${b}" style="${ss}width:34px;" onchange="dupUpdateBoard(${t},${b})" title="Level"><option value="">Lv</option>${lvOpts}</select>` +
-            `<select id="dup-su-${t}-${b}" style="${ss}width:42px;" onchange="dupSuitColor(this);dupUpdateBoard(${t},${b})" title="Suit">${suitOpts}</select>` +
-            `<select id="dup-mx-${t}-${b}" style="${ss}width:38px;" onchange="dupUpdateBoard(${t},${b})" title="Doubled">${mxOpts}</select>` +
-            `<select id="dup-by-${t}-${b}" style="${ss}width:38px;" onchange="dupUpdateBoard(${t},${b})" title="Declarer">${decOpts}</select>` +
-            `<select id="dup-rs-${t}-${b}" style="${ss}width:62px;" onchange="dupUpdateBoard(${t},${b})" title="Result">${rsOpts}</select>` +
+            `<select id="dup-ct-${t}-${b}" style="${ss}width:88px;" onchange="dupContractColor(this);dupUpdateBoard(${t},${b})" title="Contract">${ctOpts}</select>` +
+            `<select id="dup-mx-${t}-${b}" style="${ss}width:40px;" onchange="dupUpdateBoard(${t},${b})" title="Doubled">${mxOpts}</select>` +
+            `<select id="dup-by-${t}-${b}" style="${ss}width:42px;" onchange="dupUpdateBoard(${t},${b})" title="Declarer">${decOpts}</select>` +
+            `<select id="dup-rs-${t}-${b}" style="${ss}width:78px;" onchange="dupUpdateBoard(${t},${b})" title="Result">${rsOpts}</select>` +
             `<span id="dup-sc-${t}-${b}" style="font-size:0.78rem;font-weight:600;color:#1a3a5c;min-width:38px;text-align:right;">—</span>` +
           `</div>`;
         });
@@ -4880,20 +4889,31 @@
     }
 
     function dupUpdateBoard(t, b) {
-      const lv=parseInt(document.getElementById(`dup-lv-${t}-${b}`)?.value);
-      const su=document.getElementById(`dup-su-${t}-${b}`)?.value;
+      const ctVal=document.getElementById(`dup-ct-${t}-${b}`)?.value;
       const mx=parseInt(document.getElementById(`dup-mx-${t}-${b}`)?.value)||1;
       const by=document.getElementById(`dup-by-${t}-${b}`)?.value;
       const rsEl=document.getElementById(`dup-rs-${t}-${b}`);
-      const rs=rsEl?.value;
       const scEl=document.getElementById(`dup-sc-${t}-${b}`);
       const key=t===0?'sc1':'sc2';
-      if (!lv||!su||!by||rs===''||rs===undefined||rs===null) {
-        if(scEl) scEl.textContent='—';
+      const isAP=ctVal==='AP';
+      ['mx','by','rs'].forEach(id=>{const el=document.getElementById(`dup-${id}-${t}-${b}`);if(el){el.disabled=isAP;el.style.opacity=isAP?'0.35':'';}});
+      if(isAP){
+        if(scEl)scEl.textContent='0';
+        dupState.boardScores[b][key]=0;dupUpdateImp(b);return;
+      }
+      if(!ctVal){
+        if(scEl)scEl.textContent='—';
+        dupState.boardScores[b][key]=null;dupUpdateImp(b);return;
+      }
+      const lv=parseInt(ctVal),su=ctVal.slice(1);
+      dupSetResultOpts(rsEl,lv,rsEl?.value);
+      const rs=rsEl?.value;
+      if(!by||rs===''||rs===undefined||rs===null){
+        if(scEl)scEl.textContent='—';
         dupState.boardScores[b][key]=null;
-      } else {
+      }else{
         const score=dupContractScore(lv,su,mx,by,parseInt(rs),b+1);
-        if(scEl) { scEl.textContent=score>=0?`+${score}`:`${score}`; }
+        if(scEl){scEl.textContent=score>=0?`+${score}`:`${score}`;}
         dupState.boardScores[b][key]=score;
       }
       dupUpdateImp(b);
@@ -4936,11 +4956,10 @@
       const isLast=dupState.sessionCursor===sess.boards.length-1;
       const phaseLabel=sess.phaseLabel;
       const ss='padding:5px 4px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.82rem;';
-      const lvOpts=Array.from({length:7},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
-      const suitOpts='<option value="">—</option><option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S">♠</option><option value="N">NT</option>';
+      const ctOpts=(()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r}of S) o+=`<option value="${l}${v}"${r?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
       const mxOpts='<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
       const decOpts='<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
-      const rsOpts='<option value="">Res</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+      const rsOpts='<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
       const capName=team.captain?.name||'';
       document.getElementById('gt-dup-boards-rows').innerHTML=
         `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">` +
@@ -4951,11 +4970,10 @@
         `<div style="background:#f8fafd;border:1px solid #d0e6f0;border-radius:8px;padding:14px 10px;margin-bottom:14px;">` +
           `<div style="font-size:1.05rem;font-weight:700;color:#1a3a5c;margin-bottom:12px;text-align:center;">Board ${b1}</div>` +
           `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;">` +
-            `<select id="dup-b-lv" style="${ss}width:46px;" onchange="dupLiveScore(${t},${b})" title="Level"><option value="">Lv</option>${lvOpts}</select>` +
-            `<select id="dup-b-su" style="${ss}width:52px;" onchange="dupLiveScore(${t},${b})" title="Suit">${suitOpts}</select>` +
-            `<select id="dup-b-mx" style="${ss}width:46px;" onchange="dupLiveScore(${t},${b})" title="Doubled">${mxOpts}</select>` +
-            `<select id="dup-b-by" style="${ss}width:46px;" onchange="dupLiveScore(${t},${b})" title="Declarer">${decOpts}</select>` +
-            `<select id="dup-b-rs" style="${ss}width:72px;" onchange="dupLiveScore(${t},${b})" title="Result">${rsOpts}</select>` +
+            `<select id="dup-b-ct" style="${ss}width:100px;" onchange="dupContractColor(this);dupLiveScore(${t},${b})" title="Contract">${ctOpts}</select>` +
+            `<select id="dup-b-mx" style="${ss}width:48px;" onchange="dupLiveScore(${t},${b})" title="Doubled">${mxOpts}</select>` +
+            `<select id="dup-b-by" style="${ss}width:48px;" onchange="dupLiveScore(${t},${b})" title="Declarer">${decOpts}</select>` +
+            `<select id="dup-b-rs" style="${ss}width:85px;" onchange="dupLiveScore(${t},${b})" title="Result">${rsOpts}</select>` +
           `</div>` +
           `<div id="dup-b-score" style="text-align:center;font-size:1.15rem;font-weight:700;color:#888;margin-top:12px;">—</div>` +
         `</div>` +
@@ -4965,32 +4983,47 @@
         `</div>`;
       const stored=dupState.boardScores[b][`contract${t+1}`];
       if(stored){
-        ['lv','su','mx','by','rs'].forEach(k=>{const el=document.getElementById(`dup-b-${k}`);if(el)el.value=stored[k];});
+        const ctEl=document.getElementById('dup-b-ct');if(ctEl&&stored.ct){ctEl.value=stored.ct;dupContractColor(ctEl);}
+        ['mx','by','rs'].forEach(k=>{const el=document.getElementById(`dup-b-${k}`);if(el&&stored[k]!=null)el.value=stored[k];});
         dupLiveScore(t,b);
       }
     }
 
     function dupLiveScore(t,b){
-      const lv=parseInt(document.getElementById('dup-b-lv')?.value);
-      const su=document.getElementById('dup-b-su')?.value;
+      const ctEl=document.getElementById('dup-b-ct');
+      const ctVal=ctEl?.value;
+      const rsEl=document.getElementById('dup-b-rs');
+      const scEl=document.getElementById('dup-b-score');
+      const isAP=ctVal==='AP';
+      ['dup-b-mx','dup-b-by','dup-b-rs'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=isAP;el.style.opacity=isAP?'0.35':'';}});
+      if(isAP){if(scEl){scEl.textContent='0';scEl.style.color='#888';}return;}
+      if(!ctVal){if(scEl){scEl.textContent='—';scEl.style.color='#888';}return;}
+      const lv=parseInt(ctVal),su=ctVal.slice(1);
+      dupSetResultOpts(rsEl,lv,rsEl?.value);
       const mx=parseInt(document.getElementById('dup-b-mx')?.value)||1;
       const by=document.getElementById('dup-b-by')?.value;
-      const rs=document.getElementById('dup-b-rs')?.value;
-      const scEl=document.getElementById('dup-b-score');
-      if(!lv||!su||!by||rs===''||rs===undefined){if(scEl){scEl.textContent='—';scEl.style.color='#888';}return;}
+      const rs=rsEl?.value;
+      if(!by||rs===''||rs===undefined){if(scEl){scEl.textContent='—';scEl.style.color='#888';}return;}
       const sc=dupContractScore(lv,su,mx,by,parseInt(rs),b+1);
       if(scEl){scEl.textContent=(sc>=0?'+':'')+sc;scEl.style.color=sc>0?'#2a82bd':sc<0?'#c0392b':'#888';}
     }
 
     function dupConfirmBoard(t,b){
-      const lv=document.getElementById('dup-b-lv')?.value;
-      const su=document.getElementById('dup-b-su')?.value;
-      const by=document.getElementById('dup-b-by')?.value;
-      const rs=document.getElementById('dup-b-rs')?.value;
-      if(!lv||!su||!by||rs===''||rs===undefined){alert('Please complete the contract entry before confirming.');return;}
-      const mx=parseInt(document.getElementById('dup-b-mx')?.value)||1;
-      const score=dupContractScore(parseInt(lv),su,mx,by,parseInt(rs),b+1);
-      dupState.boardScores[b][`contract${t+1}`]={lv,su,mx:String(mx),by,rs};
+      const ctVal=document.getElementById('dup-b-ct')?.value;
+      if(!ctVal){alert('Please select a contract before confirming.');return;}
+      let score;
+      if(ctVal==='AP'){
+        score=0;
+        dupState.boardScores[b][`contract${t+1}`]={ct:'AP',mx:'1',by:'',rs:'0'};
+      }else{
+        const by=document.getElementById('dup-b-by')?.value;
+        const rs=document.getElementById('dup-b-rs')?.value;
+        if(!by||rs===''||rs===undefined){alert('Please complete the contract entry before confirming.');return;}
+        const lv=parseInt(ctVal),su=ctVal.slice(1);
+        const mx=parseInt(document.getElementById('dup-b-mx')?.value)||1;
+        score=dupContractScore(lv,su,mx,by,parseInt(rs),b+1);
+        dupState.boardScores[b][`contract${t+1}`]={ct:ctVal,mx:String(mx),by,rs};
+      }
       dupState.boardScores[b][t===0?'sc1':'sc2']=score;
       const sess=dupState.sessions[dupState.sessionIdx];
       if(dupState.sessionCursor<sess.boards.length-1){

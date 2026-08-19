@@ -4861,6 +4861,7 @@
         '<option value="0">= made</option>' +
         (maxUp > 0 ? [...Array(maxUp)].map((_,i) => `<option value="${i+1}">+${i+1}</option>`).join('') : '');
       if (keepVal != null && keepVal !== '' && rsEl.querySelector(`option[value="${keepVal}"]`)) rsEl.value = keepVal;
+      else rsEl.value = '0';
     }
 
     function dupRenderBoards() {
@@ -4870,7 +4871,7 @@
       const mxOpts = '<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
       const decOpts = '<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
       const rsOpts = '<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+
-        '<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+        '<option value="0" selected>= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
       let html = '';
       for (let b=0; b<boards; b++) {
         const b1=b+1, vul=dupVulLabel(b1);
@@ -4966,7 +4967,7 @@
       const ctOpts=(()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r}of S) o+=`<option value="${l}${v}"${r?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
       const mxOpts='<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
       const decOpts='<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
-      const rsOpts='<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+      const rsOpts='<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0" selected>= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
       const capName=team.captain?.name||'';
       document.getElementById('gt-dup-boards-rows').innerHTML=
         `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">` +
@@ -5528,7 +5529,7 @@
       const ctO=(()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r}of S) o+=`<option value="${l}${v}"${r?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
       const mxO='<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
       const byO='<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
-      const rsO='<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+      const rsO='<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0" selected>= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
       let html=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
         <div style="font-size:0.82rem;font-weight:700;color:#2a6496;">${myName}</div>
         <div style="font-size:0.72rem;color:#667;">${roundLabel}${confirmedCount}/${m.boards} done</div>

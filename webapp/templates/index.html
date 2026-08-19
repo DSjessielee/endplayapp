@@ -950,7 +950,10 @@
           <div id="db-history-list-view">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
               <div class="match-card-title">My Saved Games</div>
-              <button class="btn-clear" style="font-size:0.75rem;padding:4px 10px;" onclick="dbRefreshHistory()">&#8635; Refresh</button>
+              <div style="display:flex;gap:6px;">
+                <button class="btn-clear" style="font-size:0.75rem;padding:4px 10px;" onclick="dbRefreshHistory()">&#8635; Refresh</button>
+                <button class="btn-clear" style="font-size:0.75rem;padding:4px 10px;" onclick="document.getElementById('db-history-card').style.display='none'">&#10005; Close</button>
+              </div>
             </div>
             <div class="db-history-section" id="db-history-list"></div>
           </div>
@@ -958,7 +961,8 @@
           <div id="db-history-detail-view" style="display:none;">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
               <button class="btn-clear" style="font-size:0.75rem;padding:4px 10px;" onclick="dbShowHistoryList()">&#8592; Back</button>
-              <div class="match-card-title" style="margin:0;">Game Summary</div>
+              <div class="match-card-title" style="margin:0;flex:1;">Game Summary</div>
+              <button class="btn-clear" style="font-size:0.75rem;padding:4px 10px;" onclick="document.getElementById('db-history-card').style.display='none'">&#10005; Close</button>
             </div>
             <div id="db-game-summary"></div>
             <div style="display:flex;gap:8px;margin-top:14px;">
@@ -3359,7 +3363,6 @@
         return;
       }
       el.innerHTML = '<div style="color:#889;font-size:0.8rem;text-align:center;padding:8px;">Loading…</div>';
-      document.getElementById('db-history-card').style.display = '';
       dbShowHistoryList();
       try {
         let q = sb.from('bridge_games')

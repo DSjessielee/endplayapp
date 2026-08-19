@@ -5515,7 +5515,7 @@
       }
       const allMatches=[...(r1.data||[]),...(r2.data||[])];
       allMatches.sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
-      const active=allMatches.find(m=>!m.completed);
+      const active=allMatches.find(m=>!m.completed&&(m.round_results||[]).length<(m.total_rounds||1));
       document.getElementById('dup-team-submit-btn').style.display='none';
       document.getElementById('dup-team-card').style.display='';
       document.getElementById('dup-shared-results-card').style.display='none';

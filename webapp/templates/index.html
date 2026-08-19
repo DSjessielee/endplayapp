@@ -5517,14 +5517,15 @@
         html += isLastRound
           ? `<button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" onclick="dupSharedRefreshResults()">See Final Results →</button>`
           : `<button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" onclick="dupSharedContinueRound()">Continue — Round ${currentRound+2} →</button>`;
+        html += `<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:8px;" onclick="dupSharedInit()">✕ Exit / New Game</button>`;
         document.getElementById('dup-team-boards').innerHTML = html;
         return;
       }
 
       if (allMyDone) {
         document.getElementById('dup-team-boards').innerHTML = otherDone >= m.boards
-          ? `<div style="text-align:center;padding:16px 8px;"><div style="font-size:1rem;font-weight:700;color:#27ae60;margin-bottom:10px;">Both rooms finished ✓</div><button class="btn-analyze" style="font-size:0.9rem;padding:10px 24px;" onclick="dupSharedRefreshResults()">See Results →</button></div>`
-          : `<div style="text-align:center;padding:16px 8px;background:#f0f7fb;border-radius:8px;margin-top:8px;"><div style="font-size:0.95rem;font-weight:700;color:#2a6496;margin-bottom:6px;">Your boards complete ✓</div><div style="font-size:0.82rem;color:#667;">${otherName}: ${otherDone}/${m.boards} boards ⏳</div><button class="btn-clear" style="font-size:0.8rem;padding:7px 14px;margin-top:10px;" onclick="dupSharedRefreshResults()">↺ Refresh</button></div>`;
+          ? `<div style="text-align:center;padding:16px 8px;"><div style="font-size:1rem;font-weight:700;color:#27ae60;margin-bottom:10px;">Both rooms finished ✓</div><button class="btn-analyze" style="font-size:0.9rem;padding:10px 24px;" onclick="dupSharedRefreshResults()">See Results →</button><br><button class="btn-clear" style="font-size:0.8rem;padding:8px;margin-top:8px;width:100%;" onclick="dupSharedInit()">✕ Exit / New Game</button></div>`
+          : `<div style="text-align:center;padding:16px 8px;background:#f0f7fb;border-radius:8px;margin-top:8px;"><div style="font-size:0.95rem;font-weight:700;color:#2a6496;margin-bottom:6px;">Your boards complete ✓</div><div style="font-size:0.82rem;color:#667;">${otherName}: ${otherDone}/${m.boards} boards ⏳</div><button class="btn-clear" style="font-size:0.8rem;padding:7px 14px;margin-top:10px;" onclick="dupSharedRefreshResults()">↺ Refresh</button><button class="btn-clear" style="font-size:0.8rem;padding:7px 14px;margin-top:10px;margin-left:8px;" onclick="dupSharedInit()">✕ Exit / New Game</button></div>`;
         return;
       }
 

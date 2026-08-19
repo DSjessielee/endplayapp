@@ -5501,69 +5501,90 @@
         return;
       }
 
-      const ss = 'padding:4px 2px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.78rem;';
-      const ctO = (()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r}of S) o+=`<option value="${l}${v}"${r?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
-      const mxO = '<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
-      const byO = '<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
-      const rsO = '<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
-      const roundLabel = totalRounds > 1 ? `Round ${currentRound+1}/${totalRounds} · ` : '';
-
-      let html = `<div style="font-size:0.75rem;color:#667;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-weight:600;color:#2a6496;">${myName}</span>
-        <span>${roundLabel}${confirmedCount}/${m.boards} done</span>
-      </div>`;
-
-      _dupSharedSeq.forEach((bi, idx) => {
-        const b = bi + 1, vul = dupVulLabel(b);
-        const saved = myMap[b];
-        if (idx === h) {
-          html += `<div style="margin:8px 0;padding:3px 8px;text-align:center;font-size:0.72rem;color:#2a6496;font-weight:600;border-top:1px dashed #a0c4d8;border-bottom:1px dashed #a0c4d8;">— Swap boards with other table —</div>`;
-        }
-        if (saved) {
-          const isAP=saved.ct==='AP';
-          const suSym=isAP?'':({'C':'♣','D':'♦','H':'♥','S':'♠','N':'NT'}[saved.su]||saved.su);
-          const mxSym=isAP?'':(saved.mx===2?'×':saved.mx===4?'××':'');
-          const scDisp=saved.sc>=0?'+'+saved.sc:String(saved.sc);
-          const ctDisp=isAP?'All Pass':`${saved.lv}${suSym}${mxSym} by ${saved.by}`;
-          html+=`<div id="dup-board-row-${b}" style="display:flex;align-items:center;gap:4px;padding:5px 0;border-bottom:1px solid #e0eef6;">
-            <span style="font-size:0.8rem;font-weight:700;color:#1a3a5c;min-width:38px;">Bd ${b}</span>
-            <span style="font-size:0.7rem;color:#888;min-width:22px;">${vul}</span>
-            <span style="font-size:0.78rem;flex:1;color:#444;">${ctDisp}</span>
-            <span style="font-size:0.8rem;font-weight:700;min-width:36px;text-align:right;color:${saved.sc>=0?'#2a82bd':'#c0392b'};">${scDisp}</span>
-            <button class="btn-clear" style="font-size:0.68rem;padding:2px 7px;margin-left:4px;" onclick="dupSharedEditBoard(${b})">Edit</button>
-          </div>`;
-        } else {
-          html+=`<div id="dup-board-row-${b}" style="padding:8px 0;border-bottom:1px solid #d0e6f0;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-              <span style="font-size:0.82rem;font-weight:700;color:#2a6496;">Board ${b}</span>
-              <span style="font-size:0.7rem;color:#667;background:#e8f4fc;border-radius:4px;padding:1px 6px;">Vul: ${vul}</span>
-              <span id="dup-sc-${b}" style="font-size:0.82rem;font-weight:600;color:#888;">—</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-bottom:6px;">
-              <select id="dup-ct-${b}" style="${ss}width:88px;" onchange="dupContractColor(this);dupSharedRecalcBoard(${b})">${ctO}</select>
-              <select id="dup-mx-${b}" style="${ss}width:40px;" onchange="dupSharedRecalcBoard(${b})">${mxO}</select>
-              <select id="dup-by-${b}" style="${ss}width:42px;" onchange="dupSharedRecalcBoard(${b})">${byO}</select>
-              <select id="dup-rs-${b}" style="${ss}width:78px;" onchange="dupSharedRecalcBoard(${b})">${rsO}</select>
-            </div>
-            <button class="btn-analyze" style="width:100%;font-size:0.82rem;padding:7px;" onclick="dupSharedConfirmBoardN(${b})">Confirm Board ${b} →</button>
-          </div>`;
-        }
-      });
-
       if (allMyDone) {
-        html += otherDone >= m.boards
+        document.getElementById('dup-team-boards').innerHTML = otherDone >= m.boards
           ? `<div style="text-align:center;padding:16px 8px;"><div style="font-size:1rem;font-weight:700;color:#27ae60;margin-bottom:10px;">Both rooms finished ✓</div><button class="btn-analyze" style="font-size:0.9rem;padding:10px 24px;" onclick="dupSharedRefreshResults()">See Results →</button></div>`
           : `<div style="text-align:center;padding:16px 8px;background:#f0f7fb;border-radius:8px;margin-top:8px;"><div style="font-size:0.95rem;font-weight:700;color:#2a6496;margin-bottom:6px;">Your boards complete ✓</div><div style="font-size:0.82rem;color:#667;">${otherName}: ${otherDone}/${m.boards} boards ⏳</div><button class="btn-clear" style="font-size:0.8rem;padding:7px 14px;margin-top:10px;" onclick="dupSharedRefreshResults()">↺ Refresh</button></div>`;
-      } else {
-        html += `<div style="margin-top:8px;font-size:0.75rem;color:#999;text-align:center;">${otherName}: ${otherDone}/${m.boards} boards ${otherDone>=m.boards?'✓':'⏳'}</div>`;
+        return;
       }
 
-      document.getElementById('dup-team-boards').innerHTML = html;
+      const firstUnfilledIdx = _dupSharedSeq.findIndex(bi => !myMap[bi+1]);
+      _dupSharedCursor = firstUnfilledIdx >= 0 ? firstUnfilledIdx : 0;
+      _dupSharedShowBoard();
+    }
 
-      const firstUnfilled = _dupSharedSeq.find(bi => !myMap[bi+1]);
-      if (firstUnfilled !== undefined) {
-        setTimeout(() => { const el=document.getElementById(`dup-board-row-${firstUnfilled+1}`); if(el) el.scrollIntoView({behavior:'smooth',block:'nearest'}); }, 150);
+    function _dupSharedShowBoard() {
+      const m=_dupSharedMatch, cursor=_dupSharedCursor;
+      const bi=_dupSharedSeq[cursor], b=bi+1;
+      const h=Math.floor(m.boards/2), vul=dupVulLabel(b);
+      const isFirst=cursor===0, isLast=cursor===_dupSharedSeq.length-1;
+      const confirmedCount=Object.keys(_dupSharedLocalScores).length;
+      const currentRound=m.current_round||0, totalRounds=m.total_rounds||1;
+      const roundLabel=totalRounds>1?`Round ${currentRound+1}/${totalRounds} · `:'';
+      const myName=_dupSharedRole==='team1'?m.team1_name:m.team2_name;
+      const otherName=_dupSharedRole==='team1'?m.team2_name:m.team1_name;
+      const otherDone=(_dupSharedRole==='team1'?(m.team2_scores||[]):(m.team1_scores||[])).length;
+      const ss='padding:5px 4px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.82rem;';
+      const ctO=(()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r}of S) o+=`<option value="${l}${v}"${r?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
+      const mxO='<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
+      const byO='<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
+      const rsO='<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+      let html=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:0.82rem;font-weight:700;color:#2a6496;">${myName}</div>
+        <div style="font-size:0.72rem;color:#667;">${roundLabel}${confirmedCount}/${m.boards} done</div>
+      </div>`;
+      if(cursor===h)
+        html+=`<div style="margin-bottom:10px;padding:8px;background:#fff8e1;border:1px solid #f0c040;border-radius:6px;text-align:center;font-size:0.78rem;font-weight:600;color:#7a5c00;">⇄ Swap boards with the other table now</div>`;
+      html+=`<div style="background:#f8fafd;border:1px solid #d0e6f0;border-radius:8px;padding:14px 10px;margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <span style="font-size:1.05rem;font-weight:700;color:#1a3a5c;">Board ${b}</span>
+          <span style="font-size:0.72rem;color:#667;background:#e8f4fc;border-radius:4px;padding:2px 8px;">Vul: ${vul}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;">
+          <select id="dup-ct-${b}" style="${ss}width:100px;" onchange="dupContractColor(this);dupSharedRecalcBoard(${b})">${ctO}</select>
+          <select id="dup-mx-${b}" style="${ss}width:48px;" onchange="dupSharedRecalcBoard(${b})">${mxO}</select>
+          <select id="dup-by-${b}" style="${ss}width:48px;" onchange="dupSharedRecalcBoard(${b})">${byO}</select>
+          <select id="dup-rs-${b}" style="${ss}width:85px;" onchange="dupSharedRecalcBoard(${b})">${rsO}</select>
+        </div>
+        <div id="dup-sc-${b}" style="text-align:center;font-size:1.1rem;font-weight:700;color:#888;margin-bottom:12px;">—</div>
+        <div style="display:flex;gap:8px;">
+          ${!isFirst?`<button class="btn-clear" style="flex:1;padding:9px;font-size:0.82rem;" onclick="_dupSharedPrevBoard()">← Board ${_dupSharedSeq[cursor-1]+1}</button>`:`<div style="flex:1;"></div>`}
+          <button id="dup-shared-confirm-btn" class="btn-analyze" style="flex:2;padding:10px;font-size:0.88rem;" onclick="dupSharedConfirmBoardN(${b})">${isLast?'Confirm & Done ✓':'Confirm →'}</button>
+        </div>
+      </div>`;
+      const confirmedBoards=_dupSharedSeq.filter(bi2=>_dupSharedLocalScores[bi2+1]);
+      if(confirmedBoards.length>0){
+        html+=`<div style="font-size:0.72rem;font-weight:600;color:#667;margin-bottom:4px;">Confirmed boards</div>`;
+        confirmedBoards.forEach(bi2=>{
+          const b2=bi2+1,sv2=_dupSharedLocalScores[b2];
+          const ap2=sv2.ct==='AP';
+          const suS=ap2?'':({'C':'♣','D':'♦','H':'♥','S':'♠','N':'NT'}[sv2.su]||sv2.su);
+          const mxS=ap2?'':(sv2.mx===2?'×':sv2.mx===4?'××':'');
+          const ctD=ap2?'All Pass':`${sv2.lv}${suS}${mxS} by ${sv2.by}`;
+          const scD=sv2.sc>=0?'+'+sv2.sc:String(sv2.sc);
+          html+=`<div style="display:flex;align-items:center;gap:4px;padding:4px 0;border-bottom:1px solid #eef4f8;font-size:0.75rem;">
+            <span style="font-weight:700;color:#1a3a5c;min-width:30px;">Bd ${b2}</span>
+            <span style="flex:1;color:#444;">${ctD}</span>
+            <span style="font-weight:600;min-width:36px;text-align:right;color:${sv2.sc>=0?'#2a82bd':'#c0392b'};">${scD}</span>
+            <button class="btn-clear" style="font-size:0.65rem;padding:2px 6px;margin-left:4px;" onclick="dupSharedEditBoard(${b2})">Edit</button>
+          </div>`;
+        });
       }
+      html+=`<div style="margin-top:10px;font-size:0.72rem;color:#999;text-align:center;">${otherName}: ${otherDone}/${m.boards} boards ${otherDone>=m.boards?'✓':'⏳'}</div>`;
+      document.getElementById('dup-team-boards').innerHTML=html;
+      const saved=_dupSharedLocalScores[b];
+      if(saved){
+        const savedCt=saved.ct||(saved.lv?`${saved.lv}${saved.su}`:'');
+        const ctEl=document.getElementById(`dup-ct-${b}`);
+        if(ctEl&&savedCt){ctEl.value=savedCt;dupContractColor(ctEl);}
+        const sv=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=String(val);};
+        sv(`dup-mx-${b}`,saved.mx!=null?saved.mx:1); sv(`dup-by-${b}`,saved.by); sv(`dup-rs-${b}`,saved.rs);
+        dupSharedRecalcBoard(b);
+      }
+    }
+
+    function _dupSharedPrevBoard() {
+      if(_dupSharedCursor>0){_dupSharedCursor--;_dupSharedShowBoard();}
     }
 
     function dupSharedRecalcBoard(b) {
@@ -5602,10 +5623,10 @@
       _dupSharedLocalScores[b]={b,ct:ctVal,lv,su,mx,by,rs,sc};
       const allScores=Object.values(_dupSharedLocalScores);
       const col=_dupSharedRole==='team1'?'team1_scores':'team2_scores';
-      const btn=document.querySelector(`#dup-board-row-${b} .btn-analyze`);
+      const btn=document.getElementById('dup-shared-confirm-btn');
       if(btn){btn.textContent='Saving…';btn.disabled=true;}
       const{data:updated,error}=await sb.from('dup_matches').update({[col]:allScores,updated_at:new Date().toISOString()}).eq('id',_dupSharedMatch.id).select().single();
-      if(error){alert('Save failed: '+error.message);if(btn){btn.disabled=false;btn.textContent=`Confirm Board ${b} →`;}return;}
+      if(error){alert('Save failed: '+error.message);if(btn){btn.disabled=false;btn.textContent='Confirm →';}return;}
       _dupSharedMatch=updated;
       const{boards}=updated;
       const t1n=(updated.team1_scores||[]).length,t2n=(updated.team2_scores||[]).length;
@@ -5625,62 +5646,18 @@
         document.getElementById('dup-team-card').style.display='none';
         return;
       }
-      _dupSharedRenderTeamBoards(_dupSharedMatch,_dupSharedRole);
+      if(Object.keys(_dupSharedLocalScores).length>=(_dupSharedMatch.boards||_dupSharedSeq.length)){
+        _dupSharedRenderTeamBoards(_dupSharedMatch,_dupSharedRole);
+      }else{
+        _dupSharedCursor++;
+        _dupSharedShowBoard();
+      }
     }
 
     function dupSharedEditBoard(b) {
-      const saved=_dupSharedLocalScores[b];
-      if(!saved) return;
-      const vul=dupVulLabel(b);
-      const ss='padding:4px 2px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.78rem;';
-      const ctO=(()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r}of S) o+=`<option value="${l}${v}"${r?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
-      const mxO='<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
-      const byO='<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
-      const rsO='<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
-      const row=document.getElementById(`dup-board-row-${b}`);
-      if(!row) return;
-      const scDisp=saved.sc>=0?'+'+saved.sc:String(saved.sc);
-      row.innerHTML=`
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-          <span style="font-size:0.82rem;font-weight:700;color:#2a6496;">Board ${b}</span>
-          <span style="font-size:0.7rem;color:#667;background:#e8f4fc;border-radius:4px;padding:1px 6px;">Vul: ${vul}</span>
-          <span id="dup-sc-${b}" style="font-size:0.82rem;font-weight:600;color:#1a3a5c;">${scDisp}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-bottom:6px;">
-          <select id="dup-ct-${b}" style="${ss}width:88px;" onchange="dupContractColor(this);dupSharedRecalcBoard(${b})">${ctO}</select>
-          <select id="dup-mx-${b}" style="${ss}width:40px;" onchange="dupSharedRecalcBoard(${b})">${mxO}</select>
-          <select id="dup-by-${b}" style="${ss}width:42px;" onchange="dupSharedRecalcBoard(${b})">${byO}</select>
-          <select id="dup-rs-${b}" style="${ss}width:78px;" onchange="dupSharedRecalcBoard(${b})">${rsO}</select>
-        </div>
-        <button class="btn-analyze" style="width:100%;font-size:0.82rem;padding:7px;" onclick="dupSharedConfirmBoardN(${b})">Update Board ${b} ✓</button>`;
-      const savedCt=saved.ct||(saved.lv?`${saved.lv}${saved.su}`:'');
-      const ctEl=document.getElementById(`dup-ct-${b}`);
-      if(ctEl&&savedCt){ctEl.value=savedCt;dupContractColor(ctEl);}
-      const sv=(id,val)=>{const el=document.getElementById(id);if(el&&val!=null)el.value=String(val);};
-      sv(`dup-mx-${b}`,saved.mx!=null?saved.mx:1); sv(`dup-by-${b}`,saved.by); sv(`dup-rs-${b}`,saved.rs);
-      dupSharedRecalcBoard(b);
+      const idx=_dupSharedSeq.indexOf(b-1);
+      if(idx>=0){_dupSharedCursor=idx;_dupSharedShowBoard();}
     }
-
-    function _dupSharedShowBoard() {
-      const m = _dupSharedMatch;
-      const {boards, team1_name, team2_name, team1_scores, team2_scores} = m;
-      const role = _dupSharedRole;
-      const myName = role === 'team1' ? team1_name : team2_name;
-      const otherName = role === 'team1' ? team2_name : team1_name;
-      const otherScores = role === 'team1' ? team2_scores : team1_scores;
-      const otherDone = (otherScores || []).length;
-      const h = Math.floor(boards / 2);
-      const cur = _dupSharedCursor;
-      document.getElementById('dup-team-submit-btn').style.display = 'none';
-
-      if (cur >= _dupSharedSeq.length) {
-        const allDone = otherDone >= boards;
-        const roundResults = m.round_results || [];
-        const currentRound = m.current_round || 0;
-        const totalRounds = m.total_rounds || 1;
-    }
-    // (old cursor-based _dupSharedShowBoard, dupSharedRecalc, dupSharedConfirmBoard,
-    //  dupSharedContinueAfterSwap, dupSharedEditPrev removed — replaced by per-board functions above)
 
     function _dupSharedCalcRoundData(m) {
       const t1map={},t2map={};

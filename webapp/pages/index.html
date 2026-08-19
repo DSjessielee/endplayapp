@@ -5287,12 +5287,11 @@
       const {boards,team1_name,team2_name,team1_scores,team2_scores,completed}=m;
       const t1map={},t2map={};
       (team1_scores||[]).forEach(s=>{t1map[s.b]=s;}); (team2_scores||[]).forEach(s=>{t2map[s.b]=s;});
-      const ss='padding:2px 2px;border:1px solid #a0c4d8;border-radius:3px;background:#f0f7fb;color:#1a1a2e;font-size:0.72rem;box-sizing:border-box;';
-      const lvO='<option value="">Lv</option>'+Array.from({length:7},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
-      const suO='<option value="">—</option><option value="C">♣</option><option value="D">♦</option><option value="H">♥</option><option value="S">♠</option><option value="N">NT</option>';
+      const ss='padding:3px 2px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.78rem;';
+      const ctO=(()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r}of S) o+=`<option value="${l}${v}"${r?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
       const mxO='<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
       const byO='<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
-      const rsO='<option value="">Res</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0">=</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
+      const rsO='<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0" selected>= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
       let html=`<div style="padding:4px 8px;background:${completed?'#e8f5e9':'#fff3e0'};border-radius:6px;margin-bottom:10px;font-size:0.78rem;color:${completed?'#27ae60':'#e67e22'};font-weight:600;">${completed?'✓ Complete':'In progress'}</div>`;
       for(let b=1;b<=boards;b++){
         const s1=t1map[b]||{},s2=t2map[b]||{},vul=dupVulLabel(b);
@@ -5306,14 +5305,13 @@
           </div>`;
         [[0,team1_name,s1],[1,team2_name,s2]].forEach(([t,tn,s])=>{
           const p=`dup-adm-${t}-${b}`;
-          html+=`<div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap;margin-bottom:2px;">
+          html+=`<div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-bottom:3px;">
             <span style="font-size:0.7rem;color:#555;width:44px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${tn}</span>
-            <select id="${p}-lv" style="${ss}width:30px;">${lvO}</select>
-            <select id="${p}-su" style="${ss}width:38px;">${suO}</select>
-            <select id="${p}-mx" style="${ss}width:34px;">${mxO}</select>
-            <select id="${p}-by" style="${ss}width:34px;">${byO}</select>
-            <select id="${p}-rs" style="${ss}width:56px;">${rsO}</select>
-            <span id="${p}-sc" style="font-size:0.74rem;font-weight:600;color:#1a3a5c;min-width:34px;text-align:right;">${s.sc!==undefined&&s.sc!==null?(s.sc>=0?'+':'')+s.sc:'—'}</span>
+            <select id="${p}-ct" style="${ss}width:88px;" onchange="dupContractColor(this);_dupAdminRecalc(${t},${b})">${ctO}</select>
+            <select id="${p}-mx" style="${ss}width:40px;" onchange="_dupAdminRecalc(${t},${b})">${mxO}</select>
+            <select id="${p}-by" style="${ss}width:42px;" onchange="_dupAdminRecalc(${t},${b})">${byO}</select>
+            <select id="${p}-rs" style="${ss}width:78px;" onchange="_dupAdminRecalc(${t},${b})">${rsO}</select>
+            <span id="${p}-sc" style="font-size:0.78rem;font-weight:600;color:#1a3a5c;min-width:36px;text-align:right;">${s.sc!==undefined&&s.sc!==null?(s.sc>=0?'+':'')+s.sc:'—'}</span>
           </div>`;
         });
         html+=`</div>`;
@@ -5324,30 +5322,39 @@
         <button class="btn-clear" style="font-size:0.78rem;padding:8px 10px;color:#c0392b;border-color:#c0392b;" onclick="dupSharedAdminDelete()">Delete</button>
       </div>`;
       document.getElementById('dup-admin-boards').innerHTML=html;
-      const sv=(id,val)=>{const el=document.getElementById(id);if(el&&val!==undefined&&val!==null)el.value=String(val);};
       for(let b=1;b<=boards;b++){
-        const s1=t1map[b]||{},s2=t2map[b]||{};
-        ['lv','su','mx','by','rs'].forEach(f=>{sv(`dup-adm-0-${b}-${f}`,s1[f]);sv(`dup-adm-1-${b}-${f}`,s2[f]);});
-        if(!t1map[b]?.mx) {const el=document.getElementById(`dup-adm-0-${b}-mx`);if(el)el.value='1';}
-        if(!t2map[b]?.mx) {const el=document.getElementById(`dup-adm-1-${b}-mx`);if(el)el.value='1';}
-      }
-      for(let b=1;b<=boards;b++) for(let t=0;t<2;t++) {
-        const p=`dup-adm-${t}-${b}`;
-        ['lv','su','mx','by','rs'].forEach(f=>{const el=document.getElementById(`${p}-${f}`);if(el)el.onchange=()=>_dupAdminRecalc(t,b);});
+        [[0,t1map[b]||{}],[1,t2map[b]||{}]].forEach(([t,s])=>{
+          const p=`dup-adm-${t}-${b}`;
+          const ctVal=s.ct||(s.lv?`${s.lv}${s.su}`:'');
+          const ctEl=document.getElementById(`${p}-ct`);
+          if(ctEl&&ctVal){ctEl.value=ctVal;dupContractColor(ctEl);}
+          const sv2=(suf,val)=>{const el=document.getElementById(`${p}-${suf}`);if(el&&val!=null)el.value=String(val);};
+          sv2('mx',s.mx!=null?s.mx:1); sv2('by',s.by);
+          const rsEl=document.getElementById(`${p}-rs`);
+          if(ctVal&&ctVal!=='AP'){const lv=parseInt(ctVal);dupSetResultOpts(rsEl,lv,s.rs!=null?String(s.rs):null);}
+          else if(s.rs!=null&&rsEl)rsEl.value=String(s.rs);
+          _dupAdminRecalc(t,b);
+        });
       }
     }
 
     function _dupAdminRecalc(t,b) {
       const p=`dup-adm-${t}-${b}`;
-      const lv=parseInt(document.getElementById(`${p}-lv`)?.value);
-      const su=document.getElementById(`${p}-su`)?.value;
+      const ctVal=document.getElementById(`${p}-ct`)?.value;
+      const rsEl=document.getElementById(`${p}-rs`);
+      const scEl=document.getElementById(`${p}-sc`);
+      const isAP=ctVal==='AP';
+      ['mx','by','rs'].forEach(id=>{const el=document.getElementById(`${p}-${id}`);if(el){el.disabled=isAP;el.style.opacity=isAP?'0.35':'';}});
+      if(isAP){if(scEl)scEl.textContent='0';return 0;}
+      if(!ctVal){if(scEl)scEl.textContent='—';return null;}
+      const lv=parseInt(ctVal),su=ctVal.slice(1);
+      dupSetResultOpts(rsEl,lv,rsEl?.value);
       const mx=parseInt(document.getElementById(`${p}-mx`)?.value)||1;
       const by=document.getElementById(`${p}-by`)?.value;
-      const rs=document.getElementById(`${p}-rs`)?.value;
-      const scEl=document.getElementById(`${p}-sc`);
-      if(!lv||!su||!by||rs===''||rs===undefined){if(scEl)scEl.textContent='—';return null;}
+      const rs=rsEl?.value;
+      if(!by||rs===''||rs===undefined){if(scEl)scEl.textContent='—';return null;}
       const sc=dupContractScore(lv,su,mx,by,parseInt(rs),b);
-      if(scEl) scEl.textContent=sc>=0?`+${sc}`:`${sc}`;
+      if(scEl)scEl.textContent=sc>=0?`+${sc}`:`${sc}`;
       return sc;
     }
 
@@ -5357,15 +5364,17 @@
       const t1s=[],t2s=[];
       for(let b=1;b<=boards;b++){
         for(let t=0;t<2;t++){
-          const sc=_dupAdminRecalc(t,b);
           const p=`dup-adm-${t}-${b}`;
-          const lv=parseInt(document.getElementById(`${p}-lv`)?.value)||null;
-          const su=document.getElementById(`${p}-su`)?.value||null;
+          const ctVal=document.getElementById(`${p}-ct`)?.value||null;
+          const isAP=ctVal==='AP';
+          const lv=isAP?null:(parseInt(ctVal)||null);
+          const su=isAP?null:(ctVal?.slice(1)||null);
           const mx=parseInt(document.getElementById(`${p}-mx`)?.value)||1;
-          const by=document.getElementById(`${p}-by`)?.value||null;
+          const by=isAP?null:(document.getElementById(`${p}-by`)?.value||null);
           const rsv=document.getElementById(`${p}-rs`)?.value;
-          const rs=rsv!==''&&rsv!==undefined?parseInt(rsv):null;
-          if(lv&&su&&by&&rs!==null) (t===0?t1s:t2s).push({b,lv,su,mx,by,rs,sc});
+          const rs=isAP?0:(rsv!==''&&rsv!==undefined?parseInt(rsv):null);
+          const sc=_dupAdminRecalc(t,b);
+          if(isAP||(lv&&su&&by&&rs!==null)) (t===0?t1s:t2s).push({b,ct:ctVal,lv,su,mx,by,rs,sc});
         }
       }
       for(let b=1;b<=boards;b++){

@@ -979,8 +979,8 @@
               <label># of teams:</label>
               <input type="number" id="sw-count" class="match-num" min="2" max="32" value="8" />
               <button class="btn-analyze" style="font-size:0.82rem;padding:7px 14px;" onclick="swSetupTeams()">Set Up Teams</button>
+              <button class="btn-clear" style="font-size:0.8rem;padding:7px 10px;" onclick="openLoadGame('swiss')">Load Previous</button>
             </div>
-            <button class="btn-clear" style="width:100%;margin-top:6px;font-size:0.82rem;padding:8px;" onclick="openLoadGame()">Load Previous Game</button>
             <div id="sw-preset-row" style="display:none;margin-top:8px;border-top:1px solid #e8f0f8;padding-top:8px;">
               <div style="font-size:0.78rem;color:#667;margin-bottom:4px;">Load Team Preset:</div>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -1250,8 +1250,10 @@
               <label>Boards / round:</label>
               <input type="number" id="gt-boards" class="match-num" min="4" max="28" placeholder="e.g. 8" />
             </div>
-            <button class="btn-analyze" style="width:100%;margin-top:4px;font-size:0.88rem;padding:10px;" onclick="gtSetupTeams()">Set Up Teams</button>
-            <button class="btn-clear" style="width:100%;margin-top:6px;font-size:0.82rem;padding:8px;" onclick="openLoadGame()">Load Previous Game</button>
+            <div style="display:flex;gap:6px;margin-top:4px;">
+              <button class="btn-analyze" style="flex:2;font-size:0.88rem;padding:10px;" onclick="gtSetupTeams()">Set Up Teams</button>
+              <button class="btn-clear" style="flex:1;font-size:0.82rem;padding:9px;" onclick="openLoadGame('ko')">Load Previous</button>
+            </div>
           </div>
           <div id="gt-teams-card" class="match-card" style="display:none;">
             <div class="match-card-title">Team Names</div>
@@ -3337,7 +3339,10 @@
       }
     }
 
-    function openLoadGame() {
+    let _historyFilter = null;
+
+    function openLoadGame(fmt) {
+      _historyFilter = fmt || null;
       switchTab('match');
       document.getElementById('db-history-card').style.display = '';
       dbRefreshHistory().then(() => {
@@ -3357,17 +3362,19 @@
       document.getElementById('db-history-card').style.display = '';
       dbShowHistoryList();
       try {
-        const { data, error } = await sb.from('bridge_games')
+        let q = sb.from('bridge_games')
           .select('id,name,format,movement,created_at,status')
           .eq('user_id', currentUser.id)
           .order('created_at', { ascending: false })
           .limit(20);
+        if (_historyFilter) q = q.eq('format', _historyFilter);
+        const { data, error } = await q;
         if (error) throw error;
         if (!data || !data.length) {
-          document.getElementById('db-history-card').style.display = 'none';
+          el.innerHTML = '<div style="font-size:0.82rem;color:#888;padding:8px 0;">No saved games found.</div>';
           return;
         }
-        const fmtLabel = { swiss:'Swiss', rr:'Round Robin', ko:'KO' };
+        const fmtLabel = { swiss:'Swiss', rr:'Round Robin', ko:'KO', 'swiss-triple':'Swiss Triple' };
         el.innerHTML = data.map(g => {
           const d = new Date(g.created_at).toLocaleDateString();
           const movText = g.movement.charAt(0).toUpperCase() + g.movement.slice(1);
@@ -3377,9 +3384,9 @@
             : `<span style="font-size:0.65rem;font-weight:600;padding:2px 7px;border-radius:10px;background:#fff3e0;color:#e67e22;white-space:nowrap;">In Progress</span>`;
           return `<div class="db-history-row">
             <div style="min-width:0;"><div style="font-weight:600;font-size:0.82rem;">${g.name}</div><div style="font-size:0.72rem;color:#889;margin-top:2px;">${f} · ${d}</div><div style="margin-top:3px;">${badge}</div></div>
-            <div style="display:flex;gap:6px;flex-shrink:0;align-items:flex-start;">
+            <div style="display:flex;gap:5px;flex-shrink:0;align-items:center;">
               <button class="btn-clear" style="font-size:0.72rem;padding:4px 10px;" onclick="dbShowGameSummary('${g.id}')">View</button>
-              <button class="btn-remove" style="padding:2px 8px;" onclick="dbDeleteGame('${g.id}')">&#10005;</button>
+              <button class="btn-clear" style="font-size:0.72rem;padding:4px 8px;color:#c0392b;border-color:#c0392b;" onclick="if(confirm('Delete this game?'))dbDeleteGame('${g.id}')">Delete</button>
             </div>
           </div>`;
         }).join('');

@@ -1858,6 +1858,7 @@
 
     function uploadImage(input) {
       if (!input.files || !input.files[0]) return;
+      if (!isPaid()) { showPromoModal(); input.value = ''; return; }
       singleHandDir = null;
       openCropModal(input.files[0]);
     }
@@ -1869,6 +1870,7 @@
 
     function handleSingleHandFile(input) {
       if (!input.files || !input.files[0]) return;
+      if (!isPaid()) { showPromoModal(); input.value = ''; return; }
       openCropModal(input.files[0]);
     }
 

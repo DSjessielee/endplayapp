@@ -80,6 +80,16 @@ DENOM_NAMES = {
 }
 
 
+def get_anthropic_model() -> str:
+    """Return the default Claude model used for a full board image."""
+    return os.environ.get("ANTHROPIC_IMAGE_MODEL") or "claude-3-5-haiku-latest"
+
+
+def get_single_hand_model() -> str:
+    """Return the Claude model used for a single-hand image extraction."""
+    return os.environ.get("ANTHROPIC_SINGLE_HAND_MODEL") or "claude-3-5-sonnet-latest"
+
+
 # ---------------------------------------------------------------------------
 # Claude Vision API extraction
 # ---------------------------------------------------------------------------
@@ -142,7 +152,7 @@ def extract_hands_via_claude(image_bytes: bytes, media_type: str) -> Optional[di
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
 
     body = json.dumps({
-        "model": "claude-haiku-4-5",
+        "model": get_anthropic_model(),
         "max_tokens": 300,
         "messages": [{"role": "user", "content": [
             {"type": "image", "source": {
@@ -194,7 +204,7 @@ def _extract_single_hand(image_bytes: bytes, media_type: str, direction: str) ->
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
 
     body = json.dumps({
-        "model": "claude-sonnet-4-6",
+        "model": get_single_hand_model(),
         "max_tokens": 1000,
         "messages": [{"role": "user", "content": [
             {"type": "image", "source": {

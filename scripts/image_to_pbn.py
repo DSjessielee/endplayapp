@@ -41,6 +41,11 @@ CLOCKWISE = {"N": ["N", "E", "S", "W"], "E": ["E", "S", "W", "N"],
               "S": ["S", "W", "N", "E"], "W": ["W", "N", "E", "S"]}
 
 
+def get_anthropic_model() -> str:
+    """Return the Claude model used for the general image-extraction flow."""
+    return os.environ.get("ANTHROPIC_IMAGE_MODEL") or "claude-3-5-haiku-latest"
+
+
 def normalize_hand(raw: str) -> Optional[str]:
     """Normalize a hand string to PBN suit format (spades.hearts.diamonds.clubs).
 
@@ -212,7 +217,7 @@ def extract_hands_via_claude(image_path: Path) -> Optional[dict[str, str]]:
             "content-type": "application/json",
         },
         json={
-            "model": "claude-sonnet-4-6",
+            "model": get_anthropic_model(),
             "max_tokens": 300,
             "messages": [{
                 "role": "user",
@@ -255,7 +260,7 @@ def _extract_hands_via_claude_urllib(image_path: Path, api_key: str) -> Optional
     )
 
     body = json.dumps({
-        "model": "claude-sonnet-4-6",
+        "model": get_anthropic_model(),
         "max_tokens": 300,
         "messages": [{
             "role": "user",

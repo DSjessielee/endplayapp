@@ -1764,6 +1764,10 @@
     var singleHandDir = null;
     var imageLoadedDirs = new Set();
 
+    const IMAGE_EXTRACTOR_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? '/extract-image'
+      : 'https://bridge-dds-worker.jessie-lee-tx.workers.dev/extract-image';
+
     async function sendImageForExtraction(blob) {
       showError(null);
       showSpinner(true);
@@ -1776,7 +1780,7 @@
       if (targetDir) formData.append('direction', targetDir);
 
       try {
-        const resp = await fetch('https://bridge-dds-worker.jessie-lee-tx.workers.dev/extract-image', { method: 'POST', body: formData });
+        const resp = await fetch(IMAGE_EXTRACTOR_URL, { method: 'POST', body: formData });
         const data = await resp.json();
 
         if (!resp.ok) {

@@ -444,10 +444,10 @@
     .swiss-table td { padding: 6px 8px; border-bottom: 1px solid #d6eaf8; }
     .swiss-table tr:last-child td { border-bottom: none; }
     .swiss-table tr.rank-1 td { font-weight: 700; background: #fffbe6; }
-    .matrix-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .matrix-table { border-collapse: collapse; font-size: 0.78rem; }
-    .matrix-table th, .matrix-table td { padding: 4px 8px; border: 1px solid #c8dde8; text-align: center; min-width: 36px; }
-    .matrix-table th { background: #e8f4fc; font-weight: 600; color: #2a6496; max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .matrix-wrap { width: 100%; }
+    .matrix-table { border-collapse: collapse; font-size: 0.78rem; width: 100%; table-layout: fixed; }
+    .matrix-table th, .matrix-table td { padding: 4px 4px; border: 1px solid #c8dde8; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .matrix-table th { background: #e8f4fc; font-weight: 600; color: #2a6496; }
     .matrix-table td.self { background: #d6eaf8; }
     .matrix-table td.win { color: #1a8040; font-weight: 700; }
     .db-history-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #e8f0f8; gap:8px; }
@@ -515,8 +515,7 @@
       #rr-completed-banner, #rr-edit-section, #rr-score-edit-section, #rr-matrix-card {
         grid-column: 1 / -1;
       }
-      .matrix-table th, .matrix-table td { padding: 6px 14px; font-size: 0.85rem; min-width: 54px; }
-      .matrix-table th { max-width: 140px; }
+      .matrix-table th, .matrix-table td { padding: 6px 8px; font-size: 0.85rem; }
       .pairing-row { flex-wrap: nowrap; }
       .pairing-row .p-imp { width: 80px; }
     }
@@ -2956,7 +2955,7 @@
       const st = swissState?.scoreType || 'vp';
       const scoreLabel = st === 'bam' ? 'BAM' : 'VPs';
       document.getElementById('sw-standings').innerHTML =
-        `<table class="swiss-table"><thead><tr><th>#</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th><th style="text-align:center;padding:4px 2px;">Tbl NS</th><th style="text-align:center;padding:4px 2px;">Tbl EW</th></tr></thead><tbody>` +
+        `<table class="swiss-table"><thead><tr><th>Rank</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th><th style="text-align:center;padding:4px 2px;">Tbl NS</th><th style="text-align:center;padding:4px 2px;">Tbl EW</th></tr></thead><tbody>` +
         sorted.map((t,i)=>{
           const a = assignMap[t.id];
           const isTriple = tripleTeamIds.has(t.id);
@@ -3924,7 +3923,7 @@
       const showNext = Object.keys(nextAssign).length > 0;
       const dash = '<span style="color:#aaa;">—</span>';
       document.getElementById('rr-standings').innerHTML =
-        `<table class="swiss-table"><thead><tr><th>#</th><th>T</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th>` +
+        `<table class="swiss-table"><thead><tr><th>Rank</th><th>T</th><th>Team</th><th style="text-align:right;">${scoreLabel}</th>` +
         (showNext ? `<th style="text-align:center;padding:4px 2px;">Tbl NS</th><th style="text-align:center;padding:4px 2px;">Tbl EW</th>` : '') +
         `</tr></thead><tbody>` +
         sorted.map((t,i) => {

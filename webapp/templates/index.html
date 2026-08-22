@@ -885,7 +885,10 @@
             <input class="match-num" type="number" id="mit-boards" min="1" max="40" placeholder="e.g. 2" oninput="updateMitchellInfo()" />
           </div>
           <div id="mitchell-info" style="font-size:0.82rem;color:#1a5276;background:#e8f4fc;border-radius:6px;padding:8px 12px;line-height:1.7;"></div>
-          <button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;margin-top:4px;" onclick="startMitchell()">Start Game</button>
+          <div style="display:flex;gap:6px;margin-top:4px;">
+            <button class="btn-analyze" style="flex:1;font-size:0.88rem;padding:10px;" onclick="startMitchell()">Local Game</button>
+            <button class="btn-clear" style="flex:1;font-size:0.88rem;padding:10px;" onclick="mitSharedOpen()">Shared Game</button>
+          </div>
         </div>
         <div id="mit-saved-card" class="match-card" style="display:none;">
           <div class="match-card-title" style="margin-bottom:6px;">My Saved Games</div>
@@ -920,6 +923,14 @@
               <button class="btn-clear" style="font-size:0.75rem;padding:7px;" onclick="mitchellNewGame()">New Game</button>
             </div>
           </div>
+        </div>
+
+        <!-- Shared Mitchell (multi-user, Supabase-backed) -->
+        <div id="mit-shared-section" style="display:none;flex-direction:column;gap:10px;">
+          <div id="mit-dir-card" class="match-card" style="display:none;"></div>
+          <div id="mit-dir-game-card" class="match-card" style="display:none;"></div>
+          <div id="mit-north-card" class="match-card" style="display:none;"></div>
+          <div id="mit-results-shared-card" class="match-card" style="display:none;"></div>
         </div>
       </div>
 
@@ -1378,7 +1389,7 @@
       if (tab === 'match') {
         if (!currentUser) { showAuthModal(); return; }
         if (!isPaid() && !_DUP_BYPASS_EMAILS.includes(currentUser.email)) { showPromoModal(); return; }
-        setTimeout(()=>dupSharedInit().catch(()=>{}),0);
+        setTimeout(()=>{dupSharedInit().catch(()=>{});mitSharedInit().catch(()=>{});},0);
       }
       document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', TABS[i] === tab));
       TABS.forEach(t => {
@@ -5852,6 +5863,421 @@
       document.getElementById('dup-shared-results').innerHTML=html;
     }
 
+    // ── Shared Mitchell (multi-user, Supabase-backed) ─────────────────────
+    let _mitGame = null, _mitTableIdx = null, _mitLocalScores = {}, _mitBoardCursor = 0, _mitCurrentRound = 0;
+
+    function _mitMovement(T, r, t) {
+      return { nsIdx: t, ewIdx: (t - r % T + T * 100) % T, boardSetIdx: (t + r) % T };
+    }
+    function _mitBoardRange(game, boardSetIdx) {
+      const B = game.boards_per_round;
+      return { first: boardSetIdx * B + 1, last: (boardSetIdx + 1) * B };
+    }
+
+    function mitSharedOpen() {
+      if (!currentUser) { showAuthModal(); return; }
+      document.getElementById('mitchell-setup').style.display = 'none';
+      const active = document.getElementById('mitchell-active');
+      if (active) active.style.display = 'none';
+      const sec = document.getElementById('mit-shared-section');
+      sec.style.display = 'flex';
+      mitSharedShowCreate();
+    }
+    function mitSharedClose() {
+      document.getElementById('mit-shared-section').style.display = 'none';
+      document.getElementById('mitchell-setup').style.display = '';
+    }
+
+    async function mitSharedInit() {
+      const sec = document.getElementById('mit-shared-section');
+      if (!sec || !currentUser || !sb) return;
+      const uid = currentUser.id;
+      const [rP, rD] = await Promise.all([
+        sb.from('mitchell_shared_games').select('*').filter('table_uids','cs',`{${uid}}`).eq('completed',false).limit(5),
+        sb.from('mitchell_shared_games').select('*').eq('creator_id',uid).eq('completed',false).limit(5),
+      ]);
+      let northGame = null, northTableIdx = null;
+      for (const g of (rP.data||[])) {
+        const tIdx = (g.table_uids||[]).indexOf(uid);
+        if (tIdx < 0) continue;
+        for (let r = 0; r < g.rounds; r++) {
+          if (!((g.board_results||{})[`r${r}_t${tIdx}`])) { northGame = g; northTableIdx = tIdx; break; }
+        }
+        if (northGame) break;
+      }
+      if (northGame) {
+        sec.style.display = 'flex';
+        document.getElementById('mitchell-setup').style.display = 'none';
+        await mitSharedNorthView(northGame, northTableIdx);
+      } else if ((rD.data||[]).length > 0) {
+        sec.style.display = 'flex';
+        document.getElementById('mitchell-setup').style.display = 'none';
+        await mitSharedDirectorView(rD.data[0]);
+      }
+    }
+
+    function mitSharedShowCreate() {
+      _mitGame = null; _mitTableIdx = null;
+      ['mit-dir-game-card','mit-north-card','mit-results-shared-card'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+      const card = document.getElementById('mit-dir-card');
+      card.style.display = '';
+      const now = new Date();
+      const mon = now.toLocaleString('en-US',{month:'short'});
+      const ampm = now.getHours() < 12 ? 'AM' : 'PM';
+      card.innerHTML =
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div class="match-card-title" style="margin-bottom:0;">Shared Mitchell</div>
+          <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="mitSharedClose()">← Local</button>
+        </div>`+
+        `<div style="display:flex;flex-direction:column;gap:8px;font-size:0.82rem;">`+
+          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Game name:</label><input type="text" id="mit-s-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${mon} ${now.getDate()} Mitchell" /></div>`+
+          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Tables:</label><input type="number" id="mit-s-tables" min="2" max="20" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="4" /></div>`+
+          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Rounds:</label><input type="number" id="mit-s-rounds" min="1" max="20" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="4" /></div>`+
+          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Boards / Round:</label><input type="number" id="mit-s-boards" min="1" max="28" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="2" /></div>`+
+        `</div>`+
+        `<div style="display:flex;gap:6px;margin-top:12px;">`+
+          `<button class="btn-analyze" style="flex:2;font-size:0.85rem;padding:9px;" onclick="mitSharedNextStep()">Next: Enter Pairs →</button>`+
+          `<button class="btn-clear" style="flex:1;font-size:0.82rem;padding:9px;" onclick="mitSharedShowPrevious()">Load Previous</button>`+
+        `</div>`;
+    }
+
+    function mitSharedNextStep() {
+      const name = document.getElementById('mit-s-name')?.value.trim();
+      const T = parseInt(document.getElementById('mit-s-tables')?.value);
+      const R = parseInt(document.getElementById('mit-s-rounds')?.value);
+      const B = parseInt(document.getElementById('mit-s-boards')?.value);
+      if (!name) { alert('Enter a game name'); return; }
+      if (!T || T < 2) { alert('Need at least 2 tables'); return; }
+      if (!R || R < 1) { alert('Enter number of rounds'); return; }
+      if (!B || B < 1) { alert('Enter boards per round'); return; }
+      const card = document.getElementById('mit-dir-card');
+      let html =
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div class="match-card-title" style="margin-bottom:0;">Pairs & Contacts</div>
+          <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="mitSharedShowCreate()">← Back</button>
+        </div>`+
+        `<div style="font-size:0.78rem;color:#2a6496;margin-bottom:10px;">${name} · ${T} tables · ${R} rounds · ${B} boards/round</div>`+
+        `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:0.74rem;font-weight:600;color:#667;padding:0 2px;margin-bottom:4px;"><span>N/S Pair</span><span>E/W Pair</span><span>North Email</span></div>`;
+      for (let t = 0; t < T; t++) {
+        html +=
+          `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px;align-items:center;">`+
+            `<input type="text" id="mit-s-ns-${t}" placeholder="N/S ${t+1}" style="padding:4px 5px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.76rem;background:#f0f7fb;" />`+
+            `<input type="text" id="mit-s-ew-${t}" placeholder="E/W ${t+1}" style="padding:4px 5px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.76rem;background:#f0f7fb;" />`+
+            `<input type="email" id="mit-s-email-${t}" placeholder="north@email" style="padding:4px 5px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.76rem;background:#f0f7fb;" />`+
+          `</div>`;
+      }
+      html +=
+        `<input type="hidden" id="mit-s-save-name" value="${name.replace(/"/g,'&quot;')}" />`+
+        `<input type="hidden" id="mit-s-save-T" value="${T}" />`+
+        `<input type="hidden" id="mit-s-save-R" value="${R}" />`+
+        `<input type="hidden" id="mit-s-save-B" value="${B}" />`+
+        `<button class="btn-analyze" style="width:100%;font-size:0.85rem;padding:9px;margin-top:10px;" id="mit-create-btn" onclick="mitSharedCreate()">Create Game</button>`;
+      card.innerHTML = html;
+    }
+
+    async function mitSharedCreate() {
+      const name = document.getElementById('mit-s-save-name')?.value;
+      const T = parseInt(document.getElementById('mit-s-save-T')?.value);
+      const R = parseInt(document.getElementById('mit-s-save-R')?.value);
+      const B = parseInt(document.getElementById('mit-s-save-B')?.value);
+      const ns_pairs = [], ew_pairs = [], table_emails = [];
+      for (let t = 0; t < T; t++) {
+        ns_pairs.push({name: document.getElementById(`mit-s-ns-${t}`)?.value.trim() || `N/S ${t+1}`});
+        ew_pairs.push({name: document.getElementById(`mit-s-ew-${t}`)?.value.trim() || `E/W ${t+1}`});
+        const email = document.getElementById(`mit-s-email-${t}`)?.value.trim();
+        if (!email) { alert(`Enter email for North player at Table ${t+1}`); return; }
+        table_emails.push(email);
+      }
+      const btn = document.getElementById('mit-create-btn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+      const table_uids = [];
+      for (const email of table_emails) {
+        const {data: uid, error: ue} = await sb.rpc('admin_get_uid_by_email', {p_email: email});
+        if (ue || !uid) {
+          alert(`No account found for ${email}. They must sign up first.`);
+          if (btn) { btn.disabled = false; btn.textContent = 'Create Game'; }
+          return;
+        }
+        table_uids.push(uid);
+      }
+      const {data: game, error} = await sb.from('mitchell_shared_games').insert({
+        creator_id: currentUser.id, name, num_tables: T, rounds: R, boards_per_round: B,
+        ns_pairs, ew_pairs, table_emails, table_uids, board_results: {}, completed: false
+      }).select().single();
+      if (error) {
+        alert('Create failed: ' + error.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'Create Game'; }
+        return;
+      }
+      await mitSharedDirectorView(game);
+    }
+
+    async function mitSharedDirectorView(game) {
+      _mitGame = game;
+      ['mit-dir-card','mit-north-card','mit-results-shared-card'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+      const card = document.getElementById('mit-dir-game-card');
+      card.style.display = '';
+      const T = game.num_tables, R = game.rounds, B = game.boards_per_round;
+      const results = game.board_results || {};
+      let allDone = true;
+      let html =
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">`+
+          `<div class="match-card-title" style="margin-bottom:0;">${game.name}</div>`+
+          `<button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="mitSharedDirectorRefresh()">↺</button>`+
+        `</div>`+
+        `<div style="font-size:0.78rem;color:#555;margin-bottom:10px;">${T} tables · ${R} rounds · ${B} boards/round — Standard Mitchell</div>`+
+        `<div style="display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;font-size:0.78rem;align-items:center;margin-bottom:10px;">`+
+        `<div style="font-weight:600;color:#667;">Table</div><div style="font-weight:600;color:#667;">Pairs</div><div style="font-weight:600;color:#667;">Progress</div>`;
+      for (let t = 0; t < T; t++) {
+        let submitted = 0;
+        for (let r = 0; r < R; r++) { if (results[`r${r}_t${t}`]) submitted++; }
+        if (submitted < R) allDone = false;
+        const ns = (game.ns_pairs[t]||{}).name || `N/S ${t+1}`;
+        const ew = (game.ew_pairs[t]||{}).name || `E/W ${t+1}`;
+        html +=
+          `<div style="font-weight:600;color:#1a3a5c;">T${t+1}</div>`+
+          `<div style="color:#333;font-size:0.76rem;">${ns} / ${ew}</div>`+
+          `<div style="font-size:0.75rem;font-weight:600;color:${submitted>=R?'#27ae60':'#e67e22'};">${submitted}/${R}</div>`;
+      }
+      html += `</div>`;
+      if (allDone) {
+        html += `<button class="btn-analyze" style="width:100%;font-size:0.85rem;padding:9px;" onclick="mitSharedFinish('${game.id}')">Calculate Results</button>`;
+      } else {
+        html +=
+          `<div style="font-size:0.78rem;color:#888;text-align:center;padding:6px;">Waiting for North players to submit scores…</div>`+
+          `<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:6px;" onclick="mitSharedDirectorRefresh()">↺ Refresh</button>`;
+      }
+      html += `<button class="btn-clear" style="width:100%;font-size:0.75rem;padding:7px;margin-top:6px;" onclick="mitSharedShowCreate()">+ New Game</button>`;
+      card.innerHTML = html;
+    }
+
+    async function mitSharedDirectorRefresh() {
+      if (!_mitGame) return;
+      const {data: game} = await sb.from('mitchell_shared_games').select('*').eq('id',_mitGame.id).single();
+      if (game) await mitSharedDirectorView(game);
+    }
+
+    async function mitSharedFinish(gameId) {
+      const {data: game} = await sb.from('mitchell_shared_games').select('*').eq('id',gameId).single();
+      if (!game) { alert('Could not load game'); return; }
+      await sb.from('mitchell_shared_games').update({completed:true, updated_at: new Date().toISOString()}).eq('id',gameId);
+      game.completed = true;
+      mitSharedShowResults(game);
+    }
+
+    async function mitSharedNorthView(game, tableIdx) {
+      _mitGame = game; _mitTableIdx = tableIdx;
+      ['mit-dir-card','mit-dir-game-card','mit-results-shared-card'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+      const card = document.getElementById('mit-north-card');
+      card.style.display = '';
+      const T = game.num_tables, R = game.rounds;
+      const results = game.board_results || {};
+      let currentRound = R;
+      for (let r = 0; r < R; r++) {
+        if (!results[`r${r}_t${tableIdx}`]) { currentRound = r; break; }
+      }
+      _mitCurrentRound = currentRound;
+      _mitLocalScores = {};
+      _mitBoardCursor = 0;
+      if (currentRound >= R) {
+        const ns = (game.ns_pairs[tableIdx]||{}).name || `N/S ${tableIdx+1}`;
+        card.innerHTML =
+          `<div class="match-card-title" style="margin-bottom:8px;">Table ${tableIdx+1} — ${ns}</div>`+
+          `<div style="font-size:0.85rem;color:#27ae60;text-align:center;padding:16px;">✓ All ${R} rounds submitted!<br><span style="font-size:0.8rem;color:#555;margin-top:4px;display:block;">Waiting for other tables…</span></div>`+
+          `<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:8px;" onclick="mitSharedInit()">↺ Refresh</button>`;
+        return;
+      }
+      mitSharedRenderBoard();
+    }
+
+    function mitSharedRenderBoard() {
+      const game = _mitGame, tableIdx = _mitTableIdx;
+      const T = game.num_tables, R = game.rounds, B = game.boards_per_round;
+      const r = _mitCurrentRound;
+      const card = document.getElementById('mit-north-card');
+      const {ewIdx, boardSetIdx} = _mitMovement(T, r, tableIdx);
+      const {first: boardFirst} = _mitBoardRange(game, boardSetIdx);
+      const boardNum = boardFirst + _mitBoardCursor;
+      const ns = (game.ns_pairs[tableIdx]||{}).name || `N/S ${tableIdx+1}`;
+      const ew = (game.ew_pairs[ewIdx]||{}).name || `E/W ${ewIdx+1}`;
+      const existing = _mitLocalScores[_mitBoardCursor];
+      let html =
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">`+
+          `<div class="match-card-title" style="margin-bottom:0;">Table ${tableIdx+1} · Round ${r+1}</div>`+
+          `<span style="font-size:0.72rem;color:#667;">Board ${_mitBoardCursor+1}/${B}</span>`+
+        `</div>`+
+        `<div style="font-size:0.8rem;color:#555;margin-bottom:10px;"><span style="font-weight:600;color:#1a3a5c;">${ns}</span> (N/S) vs <span style="font-weight:600;color:#1a3a5c;">${ew}</span> (E/W)</div>`+
+        `<div style="background:#e8f4fc;border-radius:6px;padding:10px;margin-bottom:12px;">`+
+          `<div style="font-size:0.82rem;font-weight:600;color:#2a6496;margin-bottom:8px;">Board ${boardNum}</div>`+
+          `<div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">`+
+            `<label style="min-width:80px;">N/S Score:</label>`+
+            `<input type="number" id="mit-ns-score" style="width:80px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.88rem;background:#fff;text-align:center;" value="${existing!==undefined?existing:''}" placeholder="e.g. 420" />`+
+            `<span style="font-size:0.74rem;color:#888;">(neg = EW wins)</span>`+
+          `</div>`+
+        `</div>`;
+      const entered = Object.keys(_mitLocalScores);
+      if (entered.length) {
+        html += `<div style="font-size:0.74rem;color:#667;margin-bottom:8px;">Entered: `;
+        entered.forEach(i => { html += `<span style="margin-right:6px;">B${boardFirst+parseInt(i)}:<b>${_mitLocalScores[i]}</b></span>`; });
+        html += `</div>`;
+      }
+      html += `<div style="display:flex;gap:6px;">`;
+      if (_mitBoardCursor > 0) html += `<button class="btn-clear" style="font-size:0.82rem;padding:9px;" onclick="mitSharedPrevBoard()">← Prev</button>`;
+      if (_mitBoardCursor < B - 1) {
+        html += `<button class="btn-analyze" style="flex:1;font-size:0.85rem;padding:9px;" onclick="mitSharedNextBoard()">Next →</button>`;
+      } else {
+        html += `<button class="btn-analyze" style="flex:1;font-size:0.85rem;padding:9px;background:#27ae60;" onclick="mitSharedSubmitRound()">Submit Round ${r+1}</button>`;
+      }
+      html += `</div>`;
+      card.innerHTML = html;
+      document.getElementById('mit-ns-score')?.focus();
+    }
+
+    function mitSharedNextBoard() {
+      const v = document.getElementById('mit-ns-score')?.value;
+      if (v===''||v===null||v===undefined) { alert('Enter a score (or 0)'); return; }
+      _mitLocalScores[_mitBoardCursor] = parseInt(v);
+      _mitBoardCursor++;
+      mitSharedRenderBoard();
+    }
+    function mitSharedPrevBoard() {
+      const v = document.getElementById('mit-ns-score')?.value;
+      if (v!==''&&v!==null&&v!==undefined) _mitLocalScores[_mitBoardCursor] = parseInt(v);
+      _mitBoardCursor--;
+      mitSharedRenderBoard();
+    }
+
+    async function mitSharedSubmitRound() {
+      const v = document.getElementById('mit-ns-score')?.value;
+      if (v===''||v===null||v===undefined) { alert('Enter a score'); return; }
+      _mitLocalScores[_mitBoardCursor] = parseInt(v);
+      const game = _mitGame, tableIdx = _mitTableIdx, r = _mitCurrentRound;
+      const T = game.num_tables, B = game.boards_per_round;
+      const {boardSetIdx} = _mitMovement(T, r, tableIdx);
+      const {first: boardFirst} = _mitBoardRange(game, boardSetIdx);
+      const roundData = [];
+      for (let i = 0; i < B; i++) roundData.push({board: boardFirst+i, ns: _mitLocalScores[i]||0});
+      const {data: latest} = await sb.from('mitchell_shared_games').select('board_results').eq('id',game.id).single();
+      const allResults = latest?.board_results || {};
+      allResults[`r${r}_t${tableIdx}`] = roundData;
+      const {error} = await sb.from('mitchell_shared_games')
+        .update({board_results: allResults, updated_at: new Date().toISOString()}).eq('id',game.id);
+      if (error) { alert('Submit failed: '+error.message); return; }
+      const {data: updated} = await sb.from('mitchell_shared_games').select('*').eq('id',game.id).single();
+      if (updated) await mitSharedNorthView(updated, tableIdx);
+    }
+
+    function mitSharedCalcMPs(game) {
+      const T = game.num_tables, R = game.rounds, B = game.boards_per_round;
+      const results = game.board_results || {};
+      const nsMPs = new Array(T).fill(0), ewMPs = new Array(T).fill(0);
+      for (let setIdx = 0; setIdx < T; setIdx++) {
+        for (let pos = 0; pos < B; pos++) {
+          const plays = [];
+          for (let r = 0; r < R; r++) {
+            for (let t = 0; t < T; t++) {
+              if ((t + r) % T === setIdx) {
+                const td = (results[`r${r}_t${t}`]||[])[pos];
+                if (td !== undefined) {
+                  const ewIdx = (t - r % T + T * 100) % T;
+                  plays.push({nsIdx: t, ewIdx, nsScore: td.ns});
+                }
+              }
+            }
+          }
+          if (plays.length < 2) continue;
+          const top = 2 * (plays.length - 1);
+          plays.forEach(play => {
+            let mp = 0;
+            plays.forEach(other => {
+              if (other === play) return;
+              if (play.nsScore > other.nsScore) mp += 2;
+              else if (play.nsScore === other.nsScore) mp += 1;
+            });
+            nsMPs[play.nsIdx] += mp;
+            ewMPs[play.ewIdx] += (top - mp);
+          });
+        }
+      }
+      return {nsMPs, ewMPs};
+    }
+
+    function mitSharedShowResults(game) {
+      ['mit-dir-card','mit-dir-game-card','mit-north-card'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+      const card = document.getElementById('mit-results-shared-card');
+      card.style.display = '';
+      const {nsMPs, ewMPs} = mitSharedCalcMPs(game);
+      const T = game.num_tables;
+      const nsRanked = game.ns_pairs.map((p,i)=>({name:p.name||`N/S ${i+1}`,mps:nsMPs[i]})).sort((a,b)=>b.mps-a.mps);
+      const ewRanked = game.ew_pairs.map((p,i)=>({name:p.name||`E/W ${i+1}`,mps:ewMPs[i]})).sort((a,b)=>b.mps-a.mps);
+      let html =
+        `<div class="match-card-title" style="margin-bottom:4px;">${game.name}</div>`+
+        `<div style="font-size:0.78rem;color:#555;margin-bottom:12px;">${T} tables · ${game.rounds} rounds · Matchpoints</div>`+
+        `<div style="font-size:0.85rem;font-weight:600;color:#2a6496;margin-bottom:6px;">N/S Standings</div>`+
+        `<table class="swiss-table" style="width:100%;margin-bottom:14px;"><thead><tr><th>Rank</th><th>Pair</th><th style="text-align:right;">MPs</th></tr></thead><tbody>`;
+      nsRanked.forEach((p,i)=>{ html+=`<tr class="${i===0?'rank-1':''}"><td>${i+1}</td><td>${p.name}</td><td style="text-align:right;">${p.mps}</td></tr>`; });
+      html +=
+        `</tbody></table>`+
+        `<div style="font-size:0.85rem;font-weight:600;color:#2a6496;margin-bottom:6px;">E/W Standings</div>`+
+        `<table class="swiss-table" style="width:100%;margin-bottom:12px;"><thead><tr><th>Rank</th><th>Pair</th><th style="text-align:right;">MPs</th></tr></thead><tbody>`;
+      ewRanked.forEach((p,i)=>{ html+=`<tr class="${i===0?'rank-1':''}"><td>${i+1}</td><td>${p.name}</td><td style="text-align:right;">${p.mps}</td></tr>`; });
+      html +=
+        `</tbody></table>`+
+        `<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;" onclick="mitSharedShowCreate()">+ New Game</button>`;
+      card.innerHTML = html;
+    }
+
+    async function mitSharedShowPrevious() {
+      const card = document.getElementById('mit-dir-card');
+      card.innerHTML = '<div style="color:#889;font-size:0.8rem;padding:8px;">Loading…</div>';
+      const uid = currentUser?.id;
+      const [r1,r2] = await Promise.all([
+        sb.from('mitchell_shared_games').select('*').eq('creator_id',uid).order('updated_at',{ascending:false}).limit(10),
+        sb.from('mitchell_shared_games').select('*').filter('table_uids','cs',`{${uid}}`).order('updated_at',{ascending:false}).limit(10),
+      ]);
+      const seen = new Set();
+      const all = [...(r1.data||[]),...(r2.data||[])].filter(g=>{if(seen.has(g.id))return false;seen.add(g.id);return true;});
+      all.sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at));
+      if (!all.length) {
+        card.innerHTML =
+          '<div style="font-size:0.82rem;color:#888;padding:8px 0;">No previous games found.</div>'+
+          '<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:8px;" onclick="mitSharedShowCreate()">← Back</button>';
+        return;
+      }
+      let html = '<div style="font-size:0.85rem;font-weight:600;color:#2a6496;margin-bottom:10px;">Previous Games</div>';
+      all.forEach(g=>{
+        const stat=g.completed?'✓ Complete':'In Progress';
+        const sc=g.completed?'#27ae60':'#e67e22';
+        const d=new Date(g.updated_at).toLocaleDateString();
+        html+=`<div style="padding:10px 12px;border:1px solid #a0c4d8;border-radius:8px;margin-bottom:8px;background:#f0f7fb;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <div style="min-width:0;"><div style="font-size:0.85rem;font-weight:700;color:#1a3a5c;">${g.name}</div>
+          <div style="font-size:0.74rem;color:#555;margin-top:2px;">${g.num_tables} tables · ${g.rounds} rounds · ${d}</div>
+          <span style="font-size:0.72rem;font-weight:600;color:${sc};">${stat}</span></div>
+          <button class="btn-clear" style="font-size:0.72rem;padding:4px 10px;flex-shrink:0;" onclick="mitSharedLoadGame('${g.id}')">View</button>
+        </div>`;
+      });
+      html+='<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:4px;" onclick="mitSharedShowCreate()">← Back</button>';
+      card.innerHTML=html;
+    }
+
+    async function mitSharedLoadGame(id) {
+      const {data:game}=await sb.from('mitchell_shared_games').select('*').eq('id',id).single();
+      if(!game){alert('Could not load game');return;}
+      document.getElementById('mit-shared-section').style.display='flex';
+      document.getElementById('mitchell-setup').style.display='none';
+      if(game.completed){mitSharedShowResults(game);}
+      else if(game.creator_id===currentUser?.id){await mitSharedDirectorView(game);}
+      else{const tIdx=(game.table_uids||[]).indexOf(currentUser?.id);if(tIdx>=0)await mitSharedNorthView(game,tIdx);}
+    }
+
     const TEAM_MOVEMENTS = {
       swiss:          [['vp','VP'],['imp','IMP'],['bam','BAM']],
       'swiss-triple': [['vp','VP'],['imp','IMP'],['bam','BAM']],
@@ -6188,12 +6614,12 @@
         }
         await loadSubscription();
         dbRefreshHistory();
-        dupSharedInit().catch(()=>{});
+        dupSharedInit().catch(()=>{}); mitSharedInit().catch(()=>{});
       } else {
         currentSub = null;
         const card = document.getElementById('db-history-card');
         if (card) card.style.display = 'none';
-        dupSharedInit().catch(()=>{});
+        dupSharedInit().catch(()=>{}); mitSharedInit().catch(()=>{});
       }
       updateAuthUI();
     });

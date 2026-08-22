@@ -6090,7 +6090,7 @@
 
     function mitSharedRenderBoard() {
       const game = _mitGame, tableIdx = _mitTableIdx;
-      const T = game.num_tables, R = game.rounds, B = game.boards_per_round;
+      const T = game.num_tables, B = game.boards_per_round;
       const r = _mitCurrentRound;
       const card = document.getElementById('mit-north-card');
       const {ewIdx, boardSetIdx} = _mitMovement(T, r, tableIdx);
@@ -6098,63 +6098,126 @@
       const boardNum = boardFirst + _mitBoardCursor;
       const ns = (game.ns_pairs[tableIdx]||{}).name || `N/S ${tableIdx+1}`;
       const ew = (game.ew_pairs[ewIdx]||{}).name || `E/W ${ewIdx+1}`;
-      const existing = _mitLocalScores[_mitBoardCursor];
+      const confirmedCount = Object.keys(_mitLocalScores).length;
+      const allConfirmed = confirmedCount === B;
+      const vul = dupVulLabel(boardNum);
+      const ss = 'padding:5px 4px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.82rem;';
+      const ctO = (()=>{ const S=[{v:'C',s:'♣',r:0},{v:'D',s:'♦',r:1},{v:'H',s:'♥',r:1},{v:'S',s:'♠',r:0},{v:'N',s:'NT',r:0}]; let o='<option value="">Contract</option><option value="AP">All Pass</option>'; for(let l=1;l<=7;l++) for(const{v,s,r2}of S) o+=`<option value="${l}${v}"${r2?' style="color:#c0392b;"':''}>${l}${s}</option>`; return o; })();
+      const mxO = '<option value="1">—</option><option value="2">×</option><option value="4">××</option>';
+      const byO = '<option value="">By</option><option value="N">N</option><option value="S">S</option><option value="E">E</option><option value="W">W</option>';
+      const rsO = '<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0" selected>= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
       let html =
-        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">`+
-          `<div class="match-card-title" style="margin-bottom:0;">Table ${tableIdx+1} · Round ${r+1}</div>`+
-          `<span style="font-size:0.72rem;color:#667;">Board ${_mitBoardCursor+1}/${B}</span>`+
+        `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">`+
+          `<div style="font-size:0.82rem;font-weight:700;color:#2a6496;">Table ${tableIdx+1} · Round ${r+1}</div>`+
+          `<div style="font-size:0.72rem;color:#667;">${confirmedCount}/${B} confirmed</div>`+
         `</div>`+
-        `<div style="font-size:0.8rem;color:#555;margin-bottom:10px;"><span style="font-weight:600;color:#1a3a5c;">${ns}</span> (N/S) vs <span style="font-weight:600;color:#1a3a5c;">${ew}</span> (E/W)</div>`+
-        `<div style="background:#e8f4fc;border-radius:6px;padding:10px;margin-bottom:12px;">`+
-          `<div style="font-size:0.82rem;font-weight:600;color:#2a6496;margin-bottom:8px;">Board ${boardNum}</div>`+
-          `<div style="display:flex;align-items:center;gap:8px;font-size:0.82rem;">`+
-            `<label style="min-width:80px;">N/S Score:</label>`+
-            `<input type="number" id="mit-ns-score" style="width:80px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.88rem;background:#fff;text-align:center;" value="${existing!==undefined?existing:''}" placeholder="e.g. 420" />`+
-            `<span style="font-size:0.74rem;color:#888;">(neg = EW wins)</span>`+
-          `</div>`+
-        `</div>`;
-      const entered = Object.keys(_mitLocalScores);
-      if (entered.length) {
-        html += `<div style="font-size:0.74rem;color:#667;margin-bottom:8px;">Entered: `;
-        entered.forEach(i => { html += `<span style="margin-right:6px;">B${boardFirst+parseInt(i)}:<b>${_mitLocalScores[i]}</b></span>`; });
-        html += `</div>`;
+        `<div style="font-size:0.8rem;color:#555;margin-bottom:10px;"><span style="font-weight:600;color:#1a3a5c;">${ns}</span> (N/S) vs <span style="font-weight:600;color:#1a3a5c;">${ew}</span> (E/W)</div>`;
+      if (!allConfirmed) {
+        const isFirst = _mitBoardCursor === 0;
+        const isLast = confirmedCount === B - 1 && _mitLocalScores[_mitBoardCursor] === undefined;
+        html +=
+          `<div style="background:#f8fafd;border:1px solid #d0e6f0;border-radius:8px;padding:14px 10px;margin-bottom:14px;">`+
+            `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">`+
+              `<span style="font-size:1.05rem;font-weight:700;color:#1a3a5c;">Board ${boardNum}</span>`+
+              `<span style="font-size:0.72rem;color:#667;background:#e8f4fc;border-radius:4px;padding:2px 8px;">Vul: ${vul}</span>`+
+            `</div>`+
+            `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;">`+
+              `<select id="dup-ct-${boardNum}" style="${ss}width:100px;" onchange="dupContractColor(this);dupSharedRecalcBoard(${boardNum})">${ctO}</select>`+
+              `<select id="dup-mx-${boardNum}" style="${ss}width:48px;" onchange="dupSharedRecalcBoard(${boardNum})">${mxO}</select>`+
+              `<select id="dup-by-${boardNum}" style="${ss}width:48px;" onchange="dupSharedRecalcBoard(${boardNum})">${byO}</select>`+
+              `<select id="dup-rs-${boardNum}" style="${ss}width:85px;" onchange="dupSharedRecalcBoard(${boardNum})">${rsO}</select>`+
+            `</div>`+
+            `<div id="dup-sc-${boardNum}" style="text-align:center;font-size:1.1rem;font-weight:700;color:#888;margin-bottom:12px;">—</div>`+
+            `<div style="display:flex;gap:8px;">`+
+              (!isFirst ? `<button class="btn-clear" style="flex:1;padding:9px;font-size:0.82rem;" onclick="mitSharedPrevBoard()">← Board ${boardNum-1}</button>` : '<div style="flex:1;"></div>')+
+              `<button class="btn-analyze" style="flex:2;padding:10px;font-size:0.88rem;" onclick="mitSharedConfirmBoard()">${isLast?'Confirm & Done ✓':'Confirm →'}</button>`+
+            `</div>`+
+          `</div>`;
       }
-      html += `<div style="display:flex;gap:6px;">`;
-      if (_mitBoardCursor > 0) html += `<button class="btn-clear" style="font-size:0.82rem;padding:9px;" onclick="mitSharedPrevBoard()">← Prev</button>`;
-      if (_mitBoardCursor < B - 1) {
-        html += `<button class="btn-analyze" style="flex:1;font-size:0.85rem;padding:9px;" onclick="mitSharedNextBoard()">Next →</button>`;
-      } else {
-        html += `<button class="btn-analyze" style="flex:1;font-size:0.85rem;padding:9px;background:#27ae60;" onclick="mitSharedSubmitRound()">Submit Round ${r+1}</button>`;
+      // Confirmed boards list
+      const confirmedIdxs = Object.keys(_mitLocalScores).map(Number).sort((a,b)=>a-b);
+      if (confirmedIdxs.length > 0) {
+        html += `<div style="font-size:0.72rem;font-weight:600;color:#667;margin-bottom:4px;">Confirmed boards</div>`;
+        confirmedIdxs.forEach(ci => {
+          const bd=boardFirst+ci, sv=_mitLocalScores[ci];
+          const ap=sv.ct==='AP';
+          const suS=ap?'':({'C':'♣','D':'♦','H':'♥','S':'♠','N':'NT'}[sv.su]||sv.su);
+          const mxS=ap?'':(sv.mx===2?'×':sv.mx===4?'××':'');
+          const ctD=ap?'All Pass':`${sv.lv}${suS}${mxS} by ${sv.by}`;
+          const scD=sv.sc>=0?'+'+sv.sc:String(sv.sc);
+          html+=`<div style="display:flex;align-items:center;gap:4px;padding:4px 0;border-bottom:1px solid #eef4f8;font-size:0.75rem;">
+            <span style="font-weight:700;color:#1a3a5c;min-width:36px;">Bd ${bd}</span>
+            <span style="flex:1;color:#444;">${ctD}</span>
+            <span style="font-weight:600;min-width:36px;text-align:right;color:${sv.sc>=0?'#2a82bd':'#c0392b'};">${scD}</span>
+            <button class="btn-clear" style="font-size:0.65rem;padding:2px 6px;margin-left:4px;" onclick="mitSharedEditBoard(${ci})">Edit</button>
+          </div>`;
+        });
       }
-      html += `</div>`;
+      if (allConfirmed) {
+        html += `<button class="btn-analyze" style="width:100%;font-size:0.85rem;padding:9px;background:#27ae60;margin-top:10px;" onclick="mitSharedSubmitRound()">Submit Round ${r+1}</button>`;
+      }
       card.innerHTML = html;
-      document.getElementById('mit-ns-score')?.focus();
+      // Restore saved values for current board if editing
+      const saved = _mitLocalScores[_mitBoardCursor];
+      if (saved && !allConfirmed) {
+        const savedCt = saved.ct || (saved.lv ? `${saved.lv}${saved.su}` : '');
+        const ctEl = document.getElementById(`dup-ct-${boardNum}`);
+        if (ctEl && savedCt) { ctEl.value = savedCt; dupContractColor(ctEl); }
+        const sv2 = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = String(val); };
+        sv2(`dup-mx-${boardNum}`, saved.mx != null ? saved.mx : 1);
+        sv2(`dup-by-${boardNum}`, saved.by);
+        sv2(`dup-rs-${boardNum}`, saved.rs);
+        dupSharedRecalcBoard(boardNum);
+      }
     }
 
-    function mitSharedNextBoard() {
-      const v = document.getElementById('mit-ns-score')?.value;
-      if (v===''||v===null||v===undefined) { alert('Enter a score (or 0)'); return; }
-      _mitLocalScores[_mitBoardCursor] = parseInt(v);
-      _mitBoardCursor++;
+    function mitSharedConfirmBoard() {
+      const game = _mitGame, tableIdx = _mitTableIdx;
+      const T = game.num_tables, B = game.boards_per_round;
+      const r = _mitCurrentRound;
+      const {boardSetIdx} = _mitMovement(T, r, tableIdx);
+      const {first: boardFirst} = _mitBoardRange(game, boardSetIdx);
+      const boardNum = boardFirst + _mitBoardCursor;
+      const ctVal = document.getElementById(`dup-ct-${boardNum}`)?.value;
+      if (!ctVal) { alert('Select a contract for Board '+boardNum); return; }
+      let lv, su, mx, by, rs, sc;
+      if (ctVal === 'AP') {
+        lv=null; su=null; mx=1; by=null; rs=0; sc=0;
+      } else {
+        lv=parseInt(ctVal); su=ctVal.slice(1);
+        mx=parseInt(document.getElementById(`dup-mx-${boardNum}`)?.value)||1;
+        by=document.getElementById(`dup-by-${boardNum}`)?.value;
+        rs=document.getElementById(`dup-rs-${boardNum}`)?.value;
+        if (!by) { alert('Select declarer for Board '+boardNum); return; }
+        if (rs===''||rs==null) { alert('Select result for Board '+boardNum); return; }
+        rs=parseInt(rs);
+        sc=dupContractScore(lv,su,mx,by,rs,boardNum);
+      }
+      _mitLocalScores[_mitBoardCursor] = {ct:ctVal, lv, su, mx, by, rs, sc};
+      if (Object.keys(_mitLocalScores).length === B) { mitSharedRenderBoard(); return; }
+      let next = _mitBoardCursor + 1;
+      while (next < B && _mitLocalScores[next] !== undefined) next++;
+      _mitBoardCursor = next < B ? next : _mitBoardCursor;
       mitSharedRenderBoard();
     }
+
     function mitSharedPrevBoard() {
-      const v = document.getElementById('mit-ns-score')?.value;
-      if (v!==''&&v!==null&&v!==undefined) _mitLocalScores[_mitBoardCursor] = parseInt(v);
-      _mitBoardCursor--;
-      mitSharedRenderBoard();
+      if (_mitBoardCursor > 0) { _mitBoardCursor--; mitSharedRenderBoard(); }
+    }
+    function mitSharedEditBoard(ci) {
+      _mitBoardCursor = ci; mitSharedRenderBoard();
     }
 
     async function mitSharedSubmitRound() {
-      const v = document.getElementById('mit-ns-score')?.value;
-      if (v===''||v===null||v===undefined) { alert('Enter a score'); return; }
-      _mitLocalScores[_mitBoardCursor] = parseInt(v);
       const game = _mitGame, tableIdx = _mitTableIdx, r = _mitCurrentRound;
       const T = game.num_tables, B = game.boards_per_round;
       const {boardSetIdx} = _mitMovement(T, r, tableIdx);
       const {first: boardFirst} = _mitBoardRange(game, boardSetIdx);
       const roundData = [];
-      for (let i = 0; i < B; i++) roundData.push({board: boardFirst+i, ns: _mitLocalScores[i]||0});
+      for (let i = 0; i < B; i++) {
+        const s = _mitLocalScores[i] || {};
+        roundData.push({board: boardFirst+i, ns: s.sc||0, ct: s.ct, lv: s.lv, su: s.su, mx: s.mx, by: s.by, rs: s.rs});
+      }
       const {data: latest} = await sb.from('mitchell_shared_games').select('board_results').eq('id',game.id).single();
       const allResults = latest?.board_results || {};
       allResults[`r${r}_t${tableIdx}`] = roundData;

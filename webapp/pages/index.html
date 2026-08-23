@@ -6010,6 +6010,12 @@
         if (!email) { alert(`Enter email for North player at Table ${t+1}`); return; }
         table_emails.push(email);
       }
+      const emailSet = new Set(table_emails);
+      if (emailSet.size < table_emails.length) {
+        const dup = table_emails.find((e, i) => table_emails.indexOf(e) !== i);
+        alert(`Duplicate email: ${dup}\nEach table must have a unique North player.`);
+        return;
+      }
       const btn = document.getElementById('mit-create-btn');
       if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
       const table_uids = [];

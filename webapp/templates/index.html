@@ -874,7 +874,7 @@
           </div>
           <div class="match-input-row">
             <label>Tables:</label>
-            <input class="match-num" type="number" id="mit-tables" min="2" max="40" placeholder="e.g. 7" oninput="updateMitchellInfo()" />
+            <input class="match-num" type="number" id="mit-tables" min="3" max="39" step="2" placeholder="e.g. 7" oninput="updateMitchellInfo()" />
           </div>
           <div class="match-input-row">
             <label>Rounds:</label>
@@ -4391,7 +4391,7 @@
       const tables = parseInt(document.getElementById('mit-tables').value);
       const rounds = parseInt(document.getElementById('mit-rounds').value);
       const bpr    = parseInt(document.getElementById('mit-boards').value);
-      if (!tables || tables < 2) { alert('Enter at least 2 tables.'); return; }
+      if (!tables || tables < 3) { alert('Enter at least 3 tables.'); return; }
       if (tables % 2 === 0) { alert('Standard Mitchell requires an odd number of tables.'); return; }
       if (!rounds || rounds < 1) { alert('Enter at least 1 round.'); return; }
       if (!bpr || bpr < 1) { alert('Enter boards per round.'); return; }
@@ -5934,7 +5934,7 @@
         `<div style="display:flex;flex-direction:column;gap:8px;font-size:0.82rem;">`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Game name:</label><input type="text" id="mit-s-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${mon} ${now.getDate()} Mitchell" /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Director:</label><input type="email" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#eaf3f8;color:#555;" value="${currentUser?.email||''}" disabled /></div>`+
-          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Tables:</label><input type="number" id="mit-s-tables" min="2" max="20" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="4" /></div>`+
+          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Tables:</label><input type="number" id="mit-s-tables" min="3" max="39" step="2" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="3" /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Rounds:</label><input type="number" id="mit-s-rounds" min="1" max="20" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="4" /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Boards / Round:</label><input type="number" id="mit-s-boards" min="1" max="28" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="2" /></div>`+
         `</div>`+
@@ -5950,7 +5950,8 @@
       const R = parseInt(document.getElementById('mit-s-rounds')?.value);
       const B = parseInt(document.getElementById('mit-s-boards')?.value);
       if (!name) { alert('Enter a game name'); return; }
-      if (!T || T < 2) { alert('Need at least 2 tables'); return; }
+      if (!T || T < 3) { alert('Need at least 3 tables'); return; }
+      if (T % 2 === 0) { alert('Standard Mitchell requires an odd number of tables.'); return; }
       if (!R || R < 1) { alert('Enter number of rounds'); return; }
       if (!B || B < 1) { alert('Enter boards per round'); return; }
       const card = document.getElementById('mit-dir-card');

@@ -6043,7 +6043,11 @@
           `<div style="font-size:0.78rem;color:#888;text-align:center;padding:6px;">Waiting for North players to submit scores…</div>`+
           `<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:6px;" onclick="mitSharedDirectorRefresh()">↺ Refresh</button>`;
       }
-      html += `<button class="btn-clear" style="width:100%;font-size:0.75rem;padding:7px;margin-top:6px;" onclick="mitSharedShowCreate()">+ New Game</button>`;
+      html +=
+        `<div style="display:flex;gap:6px;margin-top:6px;">`+
+          `<button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px;" onclick="mitSharedShowCreate()">+ New Game</button>`+
+          `<button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px;" onclick="mitSharedShowPrevious()">Load Game</button>`+
+        `</div>`;
       card.innerHTML = html;
     }
 
@@ -6232,6 +6236,7 @@
       const T = game.num_tables, R = game.rounds, B = game.boards_per_round;
       const results = game.board_results || {};
       const nsMPs = new Array(T).fill(0), ewMPs = new Array(T).fill(0);
+      const nsTop  = new Array(T).fill(0), ewTop  = new Array(T).fill(0);
       for (let setIdx = 0; setIdx < T; setIdx++) {
         for (let pos = 0; pos < B; pos++) {
           const plays = [];
@@ -6240,8 +6245,7 @@
               if ((t + r) % T === setIdx) {
                 const td = (results[`r${r}_t${t}`]||[])[pos];
                 if (td !== undefined) {
-                  const ewIdx = (t - r % T + T * 100) % T;
-                  plays.push({nsIdx: t, ewIdx, nsScore: td.ns});
+                  plays.push({nsIdx: t, ewIdx: (t - r % T + T * 100) % T, nsScore: td.ns});
                 }
               }
             }
@@ -6257,10 +6261,12 @@
             });
             nsMPs[play.nsIdx] += mp;
             ewMPs[play.ewIdx] += (top - mp);
+            nsTop[play.nsIdx] += top;
+            ewTop[play.ewIdx] += top;
           });
         }
       }
-      return {nsMPs, ewMPs};
+      return {nsMPs, ewMPs, nsTop, ewTop};
     }
 
     function mitSharedShowResults(game) {
@@ -6269,29 +6275,74 @@
       });
       const card = document.getElementById('mit-results-shared-card');
       card.style.display = '';
-      const {nsMPs, ewMPs} = mitSharedCalcMPs(game);
+      const {nsMPs, ewMPs, nsTop, ewTop} = mitSharedCalcMPs(game);
       const T = game.num_tables;
-      const nsRanked = game.ns_pairs.map((p,i)=>({name:p.name||`N/S ${i+1}`,mps:nsMPs[i]})).sort((a,b)=>b.mps-a.mps);
-      const ewRanked = game.ew_pairs.map((p,i)=>({name:p.name||`E/W ${i+1}`,mps:ewMPs[i]})).sort((a,b)=>b.mps-a.mps);
-      let html =
+      const pct = (mp, top) => top > 0 ? `${Math.round(mp/top*100)}%` : '-';
+      const mkTable = (rows, title) => {
+        let h = `<div style="font-size:0.82rem;font-weight:600;color:#2a6496;margin-bottom:4px;">${title}</div>`;
+        h += '<table class="swiss-table" style="width:100%;margin-bottom:14px;"><thead><tr><th>Rank</th><th>Pair</th><th style="text-align:right;">MPs</th><th style="text-align:right;">%</th></tr></thead><tbody>';
+        rows.forEach(({label, mp, top}, rank) => {
+          h += `<tr class="${rank===0?'rank-1':''}"><td>${rank+1}</td><td>${label}</td><td style="text-align:right;">${mp}</td><td style="text-align:right;">${pct(mp,top)}</td></tr>`;
+        });
+        h += '</tbody></table>';
+        return h;
+      };
+      // Overall: all pairs sorted by %
+      const all = [];
+      for (let k = 0; k < T; k++) {
+        if (nsTop[k] > 0) all.push({label:(game.ns_pairs[k]||{}).name||`N/S ${k+1}`, mp:nsMPs[k], top:nsTop[k]});
+        if (ewTop[k] > 0) all.push({label:(game.ew_pairs[k]||{}).name||`E/W ${k+1}`, mp:ewMPs[k], top:ewTop[k]});
+      }
+      all.sort((a,b) => (b.mp/b.top) - (a.mp/a.top));
+      const nsSorted = [...Array(T).keys()].sort((a,b) => nsMPs[b]-nsMPs[a]);
+      const ewSorted = [...Array(T).keys()].sort((a,b) => ewMPs[b]-ewMPs[a]);
+      const nsRows = nsSorted.map(k=>({label:(game.ns_pairs[k]||{}).name||`N/S ${k+1}`, mp:nsMPs[k], top:nsTop[k]}));
+      const ewRows = ewSorted.map(k=>({label:(game.ew_pairs[k]||{}).name||`E/W ${k+1}`, mp:ewMPs[k], top:ewTop[k]}));
+      card.innerHTML =
         `<div class="match-card-title" style="margin-bottom:4px;">${game.name}</div>`+
         `<div style="font-size:0.78rem;color:#555;margin-bottom:12px;">${T} tables · ${game.rounds} rounds · Matchpoints</div>`+
-        `<div style="font-size:0.85rem;font-weight:600;color:#2a6496;margin-bottom:6px;">N/S Standings</div>`+
-        `<table class="swiss-table" style="width:100%;margin-bottom:14px;"><thead><tr><th>Rank</th><th>Pair</th><th style="text-align:right;">MPs</th></tr></thead><tbody>`;
-      nsRanked.forEach((p,i)=>{ html+=`<tr class="${i===0?'rank-1':''}"><td>${i+1}</td><td>${p.name}</td><td style="text-align:right;">${p.mps}</td></tr>`; });
-      html +=
-        `</tbody></table>`+
-        `<div style="font-size:0.85rem;font-weight:600;color:#2a6496;margin-bottom:6px;">E/W Standings</div>`+
-        `<table class="swiss-table" style="width:100%;margin-bottom:12px;"><thead><tr><th>Rank</th><th>Pair</th><th style="text-align:right;">MPs</th></tr></thead><tbody>`;
-      ewRanked.forEach((p,i)=>{ html+=`<tr class="${i===0?'rank-1':''}"><td>${i+1}</td><td>${p.name}</td><td style="text-align:right;">${p.mps}</td></tr>`; });
-      html +=
-        `</tbody></table>`+
-        `<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;" onclick="mitSharedShowCreate()">+ New Game</button>`;
-      card.innerHTML = html;
+        mkTable(all,    'Overall Standings') +
+        mkTable(nsRows, 'NS Standings') +
+        mkTable(ewRows, 'EW Standings') +
+        `<div style="display:flex;gap:6px;margin-top:4px;">`+
+          `<button class="btn-analyze" style="flex:1;font-size:0.82rem;padding:8px;" onclick="mitSharedSaveToFile()">Save to File</button>`+
+          `<button class="btn-clear" style="flex:1;font-size:0.82rem;padding:8px;" onclick="mitSharedShowPrevious()">Load Game</button>`+
+        `</div>`+
+        `<button class="btn-clear" style="width:100%;font-size:0.75rem;padding:7px;margin-top:6px;" onclick="mitSharedShowCreate()">+ New Game</button>`;
+    }
+
+    function mitSharedSaveToFile() {
+      const game = _mitGame; if (!game) return;
+      const {nsMPs, ewMPs, nsTop, ewTop} = mitSharedCalcMPs(game);
+      const T = game.num_tables;
+      const pct = (mp, top) => top > 0 ? `${Math.round(mp/top*100)}%` : '-';
+      const pad = (s, n) => String(s).padEnd(n);
+      const all = [];
+      for (let k = 0; k < T; k++) {
+        if (nsTop[k] > 0) all.push({label:(game.ns_pairs[k]||{}).name||`N/S ${k+1}`, mp:nsMPs[k], top:nsTop[k]});
+        if (ewTop[k] > 0) all.push({label:(game.ew_pairs[k]||{}).name||`E/W ${k+1}`, mp:ewMPs[k], top:ewTop[k]});
+      }
+      all.sort((a,b) => (b.mp/b.top) - (a.mp/a.top));
+      const nsSorted = [...Array(T).keys()].sort((a,b) => nsMPs[b]-nsMPs[a]);
+      const ewSorted = [...Array(T).keys()].sort((a,b) => ewMPs[b]-ewMPs[a]);
+      let txt = `${game.name}\n${'='.repeat(Math.max(game.name.length,20))}\n`;
+      txt += `${new Date().toLocaleString()}  |  ${T} tables · ${game.rounds} rounds · ${game.boards_per_round} boards/round\n\n`;
+      txt += 'OVERALL STANDINGS\n'+pad('Rank',6)+pad('Pair',22)+pad('MPs',8)+'%\n';
+      all.forEach((p,r)=>{ txt+=pad(r+1,6)+pad(p.label,22)+pad(p.mp,8)+pct(p.mp,p.top)+'\n'; });
+      txt += '\nNS STANDINGS\n'+pad('Rank',6)+pad('Pair',22)+pad('MPs',8)+'%\n';
+      nsSorted.forEach((k,r)=>{ txt+=pad(r+1,6)+pad((game.ns_pairs[k]||{}).name||`N/S ${k+1}`,22)+pad(nsMPs[k],8)+pct(nsMPs[k],nsTop[k])+'\n'; });
+      txt += '\nEW STANDINGS\n'+pad('Rank',6)+pad('Pair',22)+pad('MPs',8)+'%\n';
+      ewSorted.forEach((k,r)=>{ txt+=pad(r+1,6)+pad((game.ew_pairs[k]||{}).name||`E/W ${k+1}`,22)+pad(ewMPs[k],8)+pct(ewMPs[k],ewTop[k])+'\n'; });
+      const blob = new Blob([txt], {type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download=`${game.name.replace(/[^a-z0-9]/gi,'_')}_results.txt`; a.click();
+      URL.revokeObjectURL(url);
     }
 
     async function mitSharedShowPrevious() {
+      ['mit-dir-game-card','mit-north-card','mit-results-shared-card'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
       const card = document.getElementById('mit-dir-card');
+      card.style.display = '';
       card.innerHTML = '<div style="color:#889;font-size:0.8rem;padding:8px;">Loading…</div>';
       const uid = currentUser?.id;
       const [r1,r2] = await Promise.all([

@@ -889,9 +889,13 @@
             <button class="btn-analyze" style="flex:1;font-size:0.88rem;padding:10px;" onclick="startMitchell()">Local Game</button>
             <button class="btn-clear" style="flex:1;font-size:0.88rem;padding:10px;" onclick="mitSharedOpen()">Shared Game</button>
           </div>
+          <button class="btn-clear" style="width:100%;font-size:0.82rem;padding:8px;margin-top:6px;" onclick="mitchellOpenLoadPrevious()">Load Previous</button>
         </div>
         <div id="mit-saved-card" class="match-card" style="display:none;">
-          <div class="match-card-title" style="margin-bottom:6px;">My Saved Games</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div class="match-card-title" style="margin-bottom:0;">My Saved Games</div>
+            <button class="btn-clear" style="font-size:0.72rem;padding:4px 8px;" onclick="document.getElementById('mit-saved-card').style.display='none'">&#10005; Close</button>
+          </div>
           <div id="mit-saved-rows"></div>
         </div>
         <div id="mitchell-active" style="display:none;flex-direction:column;gap:10px;">
@@ -4738,29 +4742,50 @@
     }
 
     async function mitchellLoadGames() {
-      const card = document.getElementById('mit-saved-card');
-      if (!card) return;
-      if (!currentUser || !sb) { card.style.display = 'none'; return; }
+      if (!currentUser || !sb) {
+        document.getElementById('mit-saved-rows').innerHTML = '<div style="font-size:0.82rem;color:#888;padding:8px 0;">Sign in to load saved games.</div>';
+        return;
+      }
       const { data } = await sb.from('pair_games')
         .select('id,name,tables,rounds,bpr,current_round,completed,updated_at,scores')
         .eq('user_id', currentUser.id)
         .order('updated_at', { ascending: false })
         .limit(10);
-      if (!data || data.length === 0) { card.style.display = 'none'; return; }
-      card.style.display = '';
+      if (!data || data.length === 0) {
+        document.getElementById('mit-saved-rows').innerHTML = '<div style="font-size:0.82rem;color:#888;padding:8px 0;">No saved games found.</div>';
+        return;
+      }
       let html = '';
       data.forEach(g => {
         const dt = new Date(g.updated_at).toLocaleDateString();
-        const status = g.completed ? 'Done' : `Rd ${g.current_round}/${g.rounds}`;
+        const status = g.completed
+          ? `<span style="font-size:0.65rem;font-weight:600;padding:2px 7px;border-radius:10px;background:#e8f5e9;color:#27ae60;">Done</span>`
+          : `<span style="font-size:0.65rem;font-weight:600;padding:2px 7px;border-radius:10px;background:#fff3e0;color:#e67e22;">Rd ${g.current_round}/${g.rounds}</span>`;
         html +=
           `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #e8f0f6;">` +
           `<div><div style="font-size:0.85rem;font-weight:600;color:#1a3a5c;">${g.name}</div>` +
-          `<div style="font-size:0.75rem;color:#666;">${g.tables}T · ${dt} · ${status}</div></div>` +
-          `<button style="font-size:0.75rem;padding:4px 10px;background:#2a82bd;color:#fff;border:none;border-radius:6px;cursor:pointer;" onclick="mitchellResumeGame('${g.id}')">Load</button>` +
-          `</div>`;
+          `<div style="font-size:0.75rem;color:#666;margin-top:2px;">${g.tables}T · ${dt} &nbsp;${status}</div></div>` +
+          `<div style="display:flex;gap:5px;">` +
+          `<button class="btn-clear" style="font-size:0.72rem;padding:4px 10px;" onclick="mitchellResumeGame('${g.id}')">Load</button>` +
+          `<button class="btn-clear" style="font-size:0.72rem;padding:4px 8px;color:#c0392b;border-color:#c0392b;" onclick="if(confirm('Delete this game?'))mitchellDeleteGame('${g.id}')">Del</button>` +
+          `</div></div>`;
       });
       document.getElementById('mit-saved-rows').innerHTML = html;
       window._mitSavedGames = data;
+    }
+
+    function mitchellOpenLoadPrevious() {
+      const card = document.getElementById('mit-saved-card');
+      if (!card) return;
+      card.style.display = '';
+      document.getElementById('mit-saved-rows').innerHTML = '<div style="color:#889;font-size:0.8rem;padding:8px;">Loading…</div>';
+      mitchellLoadGames().then(() => card.scrollIntoView({ behavior:'smooth', block:'nearest' }));
+    }
+
+    async function mitchellDeleteGame(id) {
+      if (!sb || !currentUser) return;
+      await sb.from('pair_games').delete().eq('id', id).eq('user_id', currentUser.id);
+      await mitchellLoadGames();
     }
 
     function mitchellResumeGame(id) {
@@ -4778,6 +4803,7 @@
         editingRound: null,
       };
       document.getElementById('mitchell-setup').style.display = 'none';
+      document.getElementById('mit-saved-card').style.display = 'none';
       document.getElementById('mitchell-active').style.display = 'flex';
       document.getElementById('mit-game-title').textContent = g.name;
       if (g.completed) {

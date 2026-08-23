@@ -6444,11 +6444,15 @@
         const stat=g.completed?'✓ Complete':'In Progress';
         const sc=g.completed?'#27ae60':'#e67e22';
         const d=new Date(g.updated_at).toLocaleDateString();
+        const isOwner = g.creator_id === uid;
         html+=`<div style="padding:10px 12px;border:1px solid #a0c4d8;border-radius:8px;margin-bottom:8px;background:#f0f7fb;display:flex;justify-content:space-between;align-items:center;gap:8px;">
           <div style="min-width:0;"><div style="font-size:0.85rem;font-weight:700;color:#1a3a5c;">${g.name}</div>
           <div style="font-size:0.74rem;color:#555;margin-top:2px;">${g.num_tables} tables · ${g.rounds} rounds · ${d}</div>
           <span style="font-size:0.72rem;font-weight:600;color:${sc};">${stat}</span></div>
-          <button class="btn-clear" style="font-size:0.72rem;padding:4px 10px;flex-shrink:0;" onclick="mitSharedLoadGame('${g.id}')">View</button>
+          <div style="display:flex;gap:5px;flex-shrink:0;">
+            <button class="btn-clear" style="font-size:0.72rem;padding:4px 10px;" onclick="mitSharedLoadGame('${g.id}')">Load</button>
+            ${isOwner?`<button class="btn-clear" style="font-size:0.72rem;padding:4px 8px;color:#c0392b;border-color:#c0392b;" onclick="mitSharedDeleteGame('${g.id}')">Del</button>`:''}
+          </div>
         </div>`;
       });
       html+='<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:4px;" onclick="mitSharedShowCreate()">← Back</button>';
@@ -6463,6 +6467,13 @@
       if(game.completed){mitSharedShowResults(game);}
       else if(game.creator_id===currentUser?.id){await mitSharedDirectorView(game);}
       else{const tIdx=(game.table_uids||[]).indexOf(currentUser?.id);if(tIdx>=0)await mitSharedNorthView(game,tIdx);}
+    }
+
+    async function mitSharedDeleteGame(id) {
+      if (!confirm('Delete this game? This cannot be undone.')) return;
+      const {error} = await sb.from('mitchell_shared_games').delete().eq('id', id).eq('creator_id', currentUser.id);
+      if (error) { alert('Delete failed: ' + error.message); return; }
+      await mitSharedShowPrevious();
     }
 
     const TEAM_MOVEMENTS = {

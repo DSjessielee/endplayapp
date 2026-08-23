@@ -5856,7 +5856,7 @@
     }
 
     // ── Shared Mitchell (multi-user, Supabase-backed) ─────────────────────
-    let _mitGame = null, _mitTableIdx = null, _mitLocalScores = {}, _mitBoardCursor = 0, _mitCurrentRound = 0;
+    let _mitGame = null, _mitTableIdx = null, _mitLocalScores = {}, _mitBoardCursor = 0, _mitCurrentRound = 0, _mitDirectorEditing = false;
 
     function _mitMovement(T, r, t) {
       return { nsIdx: t, ewIdx: (t - r % T + T * 100) % T, boardSetIdx: (t + r) % T };
@@ -5925,6 +5925,7 @@
         </div>`+
         `<div style="display:flex;flex-direction:column;gap:8px;font-size:0.82rem;">`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Game name:</label><input type="text" id="mit-s-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${mon} ${now.getDate()} Mitchell" /></div>`+
+          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Director:</label><input type="email" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#eaf3f8;color:#555;" value="${currentUser?.email||''}" disabled /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Tables:</label><input type="number" id="mit-s-tables" min="2" max="20" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="4" /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Rounds:</label><input type="number" id="mit-s-rounds" min="1" max="20" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="4" /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Boards / Round:</label><input type="number" id="mit-s-boards" min="1" max="28" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="2" /></div>`+
@@ -6015,6 +6016,7 @@
       card.style.display = '';
       const T = game.num_tables, R = game.rounds, B = game.boards_per_round;
       const results = game.board_results || {};
+      const isDirector = currentUser && currentUser.id === game.creator_id;
       let allDone = true;
       let html =
         `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">`+
@@ -6022,18 +6024,30 @@
           `<button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="mitSharedDirectorRefresh()">↺</button>`+
         `</div>`+
         `<div style="font-size:0.78rem;color:#555;margin-bottom:10px;">${T} tables · ${R} rounds · ${B} boards/round — Standard Mitchell</div>`+
-        `<div style="display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;font-size:0.78rem;align-items:center;margin-bottom:10px;">`+
-        `<div style="font-weight:600;color:#667;">Table</div><div style="font-weight:600;color:#667;">Pairs</div><div style="font-weight:600;color:#667;">Progress</div>`;
+        `<div style="display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;font-size:0.78rem;align-items:start;margin-bottom:10px;">`+
+        `<div style="font-weight:600;color:#667;">Table</div><div style="font-weight:600;color:#667;">Pairs</div><div style="font-weight:600;color:#667;">Rounds</div>`;
       for (let t = 0; t < T; t++) {
         let submitted = 0;
         for (let r = 0; r < R; r++) { if (results[`r${r}_t${t}`]) submitted++; }
         if (submitted < R) allDone = false;
         const ns = (game.ns_pairs[t]||{}).name || `N/S ${t+1}`;
         const ew = (game.ew_pairs[t]||{}).name || `E/W ${t+1}`;
+        let badges = `<div style="display:flex;flex-wrap:wrap;gap:3px;padding-top:2px;">`;
+        for (let r = 0; r < R; r++) {
+          const done = !!results[`r${r}_t${t}`];
+          if (done && isDirector) {
+            badges += `<button class="btn-clear" style="font-size:0.65rem;padding:2px 5px;color:#27ae60;min-width:32px;" onclick="mitSharedDirectorEdit(${t},${r})">R${r+1}✓</button>`;
+          } else if (done) {
+            badges += `<span style="font-size:0.72rem;color:#27ae60;padding:2px 4px;">R${r+1}✓</span>`;
+          } else {
+            badges += `<span style="font-size:0.72rem;color:#ccc;padding:2px 4px;">R${r+1}—</span>`;
+          }
+        }
+        badges += `</div>`;
         html +=
-          `<div style="font-weight:600;color:#1a3a5c;">T${t+1}</div>`+
-          `<div style="color:#333;font-size:0.76rem;">${ns} / ${ew}</div>`+
-          `<div style="font-size:0.75rem;font-weight:600;color:${submitted>=R?'#27ae60':'#e67e22'};">${submitted}/${R}</div>`;
+          `<div style="font-weight:600;color:#1a3a5c;padding-top:3px;">T${t+1}</div>`+
+          `<div style="color:#333;font-size:0.76rem;padding-top:4px;">${ns} / ${ew}</div>`+
+          badges;
       }
       html += `</div>`;
       if (allDone) {
@@ -6055,6 +6069,28 @@
       if (!_mitGame) return;
       const {data: game} = await sb.from('mitchell_shared_games').select('*').eq('id',_mitGame.id).single();
       if (game) await mitSharedDirectorView(game);
+    }
+
+    async function mitSharedDirectorEdit(tableIdx, roundIdx) {
+      const {data: game} = await sb.from('mitchell_shared_games').select('*').eq('id', _mitGame.id).single();
+      if (!game) { alert('Could not load game'); return; }
+      _mitGame = game;
+      _mitTableIdx = tableIdx;
+      _mitCurrentRound = roundIdx;
+      _mitDirectorEditing = true;
+      _mitBoardCursor = 0;
+      const T = game.num_tables, B = game.boards_per_round;
+      const {boardSetIdx} = _mitMovement(T, roundIdx, tableIdx);
+      const existing = (game.board_results || {})[`r${roundIdx}_t${tableIdx}`] || [];
+      _mitLocalScores = {};
+      existing.forEach((item, i) => {
+        if (item) _mitLocalScores[i] = {ct: item.ct || 'AP', lv: item.lv, su: item.su, mx: item.mx || 1, by: item.by, rs: item.rs, sc: item.ns};
+      });
+      ['mit-dir-card','mit-dir-game-card','mit-results-shared-card'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.style.display = 'none';
+      });
+      document.getElementById('mit-north-card').style.display = '';
+      mitSharedRenderBoard();
     }
 
     async function mitSharedFinish(gameId) {
@@ -6112,8 +6148,11 @@
       const rsO = '<option value="">Result</option>'+[...Array(13)].map((_,i)=>`<option value="${-(13-i)}">−${13-i}</option>`).join('')+'<option value="0" selected>= made</option>'+[...Array(6)].map((_,i)=>`<option value="${i+1}">+${i+1}</option>`).join('');
       let html =
         `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">`+
-          `<div style="font-size:0.82rem;font-weight:700;color:#2a6496;">Table ${tableIdx+1} · Round ${r+1}</div>`+
-          `<div style="font-size:0.72rem;color:#667;">${confirmedCount}/${B} confirmed</div>`+
+          `<div style="font-size:0.82rem;font-weight:700;color:#2a6496;">${_mitDirectorEditing?'[Director Edit] ':''}Table ${tableIdx+1} · Round ${r+1}</div>`+
+          `<div style="display:flex;gap:6px;align-items:center;">`+
+            (_mitDirectorEditing?`<button class="btn-clear" style="font-size:0.65rem;padding:3px 7px;" onclick="_mitDirectorEditing=false;mitSharedDirectorRefresh()">← Cancel</button>`:'') +
+            `<span style="font-size:0.72rem;color:#667;">${confirmedCount}/${B} confirmed</span>`+
+          `</div>`+
         `</div>`+
         `<div style="font-size:0.8rem;color:#555;margin-bottom:10px;"><span style="font-weight:600;color:#1a3a5c;">${ns}</span> (N/S) vs <span style="font-weight:600;color:#1a3a5c;">${ew}</span> (E/W)</div>`;
       if (!allConfirmed) {
@@ -6158,7 +6197,8 @@
         });
       }
       if (allConfirmed) {
-        html += `<button class="btn-analyze" style="width:100%;font-size:0.85rem;padding:9px;background:#27ae60;margin-top:10px;" onclick="mitSharedSubmitRound()">Submit Round ${r+1}</button>`;
+        const submitLabel = _mitDirectorEditing ? 'Save Edit' : `Submit Round ${r+1}`;
+        html += `<button class="btn-analyze" style="width:100%;font-size:0.85rem;padding:9px;background:#27ae60;margin-top:10px;" onclick="mitSharedSubmitRound()">${submitLabel}</button>`;
       }
       card.innerHTML = html;
       // Restore saved values for current board if editing
@@ -6209,6 +6249,7 @@
       if (_mitBoardCursor > 0) { _mitBoardCursor--; mitSharedRenderBoard(); }
     }
     function mitSharedEditBoard(ci) {
+      delete _mitLocalScores[ci];
       _mitBoardCursor = ci; mitSharedRenderBoard();
     }
 
@@ -6229,7 +6270,14 @@
         .update({board_results: allResults, updated_at: new Date().toISOString()}).eq('id',game.id);
       if (error) { alert('Submit failed: '+error.message); return; }
       const {data: updated} = await sb.from('mitchell_shared_games').select('*').eq('id',game.id).single();
-      if (updated) await mitSharedNorthView(updated, tableIdx);
+      if (updated) {
+        if (_mitDirectorEditing) {
+          _mitDirectorEditing = false;
+          await mitSharedDirectorView(updated);
+        } else {
+          await mitSharedNorthView(updated, tableIdx);
+        }
+      }
     }
 
     function mitSharedCalcMPs(game) {

@@ -4435,10 +4435,13 @@
       c.innerHTML = '';
       const isByestand = (mitchellState.movement === 'byestand');
       const relayT = tables, bsT = tables - 1; // 1-indexed
+      const S = isByestand ? tables - 1 : tables;
       const prev = mitchellState.scores[r] || [];
       for (let t = 0; t < tables; t++) {
         const ewPair = ((t - r) % tables + tables) % tables + 1; // EW move up → subtract r
-        const boardSet = (t + r) % tables;                       // boards move down → add r
+        const boardSet = isByestand
+          ? (t % S - r % S + S * 100) % S
+          : (t + r) % tables;
         const b1 = boardSet * bpr + 1;                          // first board number (1-indexed)
         const savedBoards = prev[t] || [];
         const tableRow = document.createElement('div');
@@ -4464,11 +4467,11 @@
       }
       if (isByestand) {
         const noteDiv = document.createElement('div');
-        noteDiv.style.cssText = 'font-size:0.72rem;color:#667;border-top:1px dashed #d0e6f0;margin-top:8px;padding-top:6px;';
-        let passSteps = `T1 → T${relayT}(Relay) → T${bsT}(BS)`;
-        for (let k = bsT - 1; k >= 2; k--) passSteps += ` → T${k}`;
-        passSteps += ' → T1';
-        noteDiv.innerHTML = `<b>Board passing after this round:</b> ${passSteps}`;
+        noteDiv.style.cssText = 'font-size:0.72rem;color:#2a6496;border-top:1px dashed #d0e6f0;margin-top:8px;padding-top:6px;line-height:1.5;';
+        let passSteps = `T${relayT}(Relay)→T${bsT}(BS)`;
+        for (let k = bsT - 1; k >= 2; k--) passSteps += `→T${k}`;
+        passSteps += `→T1→T${relayT}(Relay)`;
+        noteDiv.innerHTML = `<b>Board passing:</b> ${passSteps}<br><span style="color:#b7770d;">T1 &amp; T${relayT} share same board set — T${relayT} plays T1's boards mid-round.</span>`;
         c.appendChild(noteDiv);
       }
     }
@@ -4508,35 +4511,42 @@
     }
 
     function mitchellCalcMPs() {
-      const { tables, rounds, bpr, scores } = mitchellState;
+      const { tables, rounds, bpr, scores, movement } = mitchellState;
+      const isByestand = movement === 'byestand';
+      const S = isByestand ? tables - 1 : tables;
       const nsMPs = new Array(tables).fill(0);
       const ewMPs = new Array(tables).fill(0);
       const nsTop = new Array(tables).fill(0);
       const ewTop = new Array(tables).fill(0);
-      for (let boardNum = 0; boardNum < tables * bpr; boardNum++) {
-        const b   = Math.floor(boardNum / bpr); // board set (0-indexed)
-        const pos = boardNum % bpr;              // position within set
-        const entries = [];
-        for (let r = 0; r < rounds; r++) {
-          const t     = ((b - r) % tables + tables) % tables; // board set b is at this table
-          const ewIdx = ((t - r) % tables + tables) % tables; // EW pair at that table
-          const sc    = scores[r]?.[t]?.[pos];
-          if (sc !== undefined && sc !== null && sc !== '' && !isNaN(sc)) {
-            entries.push({ nsIdx: t, ewIdx, sc: Number(sc) });
+      for (let b = 0; b < S; b++) {
+        for (let pos = 0; pos < bpr; pos++) {
+          const entries = [];
+          for (let r = 0; r < rounds; r++) {
+            for (let t = 0; t < tables; t++) {
+              const bs = isByestand
+                ? (t % S - r % S + S * 100) % S
+                : (t + r) % tables;
+              if (bs !== b) continue;
+              const sc = scores[r]?.[t]?.[pos];
+              if (sc !== undefined && sc !== null && sc !== '' && !isNaN(sc)) {
+                const ewIdx = ((t - r) % tables + tables) % tables;
+                entries.push({ nsIdx: t, ewIdx, sc: Number(sc) });
+              }
+            }
           }
-        }
-        const boardTop = 2 * (entries.length - 1);
-        for (let i = 0; i < entries.length; i++) {
-          let mp = 0;
-          for (let j = 0; j < entries.length; j++) {
-            if (i === j) continue;
-            if (entries[i].sc > entries[j].sc) mp += 2;
-            else if (entries[i].sc === entries[j].sc) mp += 1;
+          const boardTop = 2 * (entries.length - 1);
+          for (let i = 0; i < entries.length; i++) {
+            let mp = 0;
+            for (let j = 0; j < entries.length; j++) {
+              if (i === j) continue;
+              if (entries[i].sc > entries[j].sc) mp += 2;
+              else if (entries[i].sc === entries[j].sc) mp += 1;
+            }
+            nsMPs[entries[i].nsIdx] += mp;
+            ewMPs[entries[i].ewIdx] += boardTop - mp;
+            nsTop[entries[i].nsIdx] += boardTop;
+            ewTop[entries[i].ewIdx] += boardTop;
           }
-          nsMPs[entries[i].nsIdx] += mp;
-          ewMPs[entries[i].ewIdx] += boardTop - mp;
-          nsTop[entries[i].nsIdx] += boardTop;
-          ewTop[entries[i].ewIdx] += boardTop;
         }
       }
       return { nsMPs, ewMPs, nsTop, ewTop };
@@ -5923,8 +5933,13 @@
     // ── Shared Mitchell (multi-user, Supabase-backed) ─────────────────────
     let _mitGame = null, _mitTableIdx = null, _mitLocalScores = {}, _mitBoardCursor = 0, _mitCurrentRound = 0, _mitDirectorEditing = false, _mitMoveType = 'mitchell';
 
-    function _mitMovement(T, r, t) {
-      return { nsIdx: t, ewIdx: (t - r % T + T * 100) % T, boardSetIdx: (t + r) % T };
+    function _mitMovement(T, r, t, movement) {
+      const isByestand = movement === 'byestand';
+      const S = isByestand ? T - 1 : T;
+      const boardSetIdx = isByestand
+        ? (t % S - r % S + S * 100) % S
+        : (t + r) % T;
+      return { nsIdx: t, ewIdx: (t - r % T + T * 100) % T, boardSetIdx };
     }
     function _mitBoardRange(game, boardSetIdx) {
       const B = game.boards_per_round;
@@ -6164,7 +6179,7 @@
       _mitDirectorEditing = true;
       _mitBoardCursor = 0;
       const T = game.num_tables, B = game.boards_per_round;
-      const {boardSetIdx} = _mitMovement(T, roundIdx, tableIdx);
+      const {boardSetIdx} = _mitMovement(T, roundIdx, tableIdx, game.movement);
       const existing = (game.board_results || {})[`r${roundIdx}_t${tableIdx}`] || [];
       _mitLocalScores = {};
       existing.forEach((item, i) => {
@@ -6217,7 +6232,7 @@
       const T = game.num_tables, B = game.boards_per_round;
       const r = _mitCurrentRound;
       const card = document.getElementById('mit-north-card');
-      const {ewIdx, boardSetIdx} = _mitMovement(T, r, tableIdx);
+      const {ewIdx, boardSetIdx} = _mitMovement(T, r, tableIdx, game.movement);
       const {first: boardFirst} = _mitBoardRange(game, boardSetIdx);
       const boardNum = boardFirst + _mitBoardCursor;
       const ns = (game.ns_pairs[tableIdx]||{}).name || `N/S ${tableIdx+1}`;
@@ -6310,7 +6325,7 @@
       const game = _mitGame, tableIdx = _mitTableIdx;
       const T = game.num_tables, B = game.boards_per_round;
       const r = _mitCurrentRound;
-      const {boardSetIdx} = _mitMovement(T, r, tableIdx);
+      const {boardSetIdx} = _mitMovement(T, r, tableIdx, game.movement);
       const {first: boardFirst} = _mitBoardRange(game, boardSetIdx);
       const boardNum = boardFirst + _mitBoardCursor;
       const ctVal = document.getElementById(`dup-ct-${boardNum}`)?.value;
@@ -6347,7 +6362,7 @@
     async function mitSharedSubmitRound() {
       const game = _mitGame, tableIdx = _mitTableIdx, r = _mitCurrentRound;
       const T = game.num_tables, B = game.boards_per_round;
-      const {boardSetIdx} = _mitMovement(T, r, tableIdx);
+      const {boardSetIdx} = _mitMovement(T, r, tableIdx, game.movement);
       const {first: boardFirst} = _mitBoardRange(game, boardSetIdx);
       const roundData = [];
       for (let i = 0; i < B; i++) {
@@ -6373,15 +6388,20 @@
 
     function mitSharedCalcMPs(game) {
       const T = game.num_tables, R = game.rounds, B = game.boards_per_round;
+      const isByestand = game.movement === 'byestand';
+      const S = isByestand ? T - 1 : T;
       const results = game.board_results || {};
       const nsMPs = new Array(T).fill(0), ewMPs = new Array(T).fill(0);
       const nsTop  = new Array(T).fill(0), ewTop  = new Array(T).fill(0);
-      for (let setIdx = 0; setIdx < T; setIdx++) {
+      for (let setIdx = 0; setIdx < S; setIdx++) {
         for (let pos = 0; pos < B; pos++) {
           const plays = [];
           for (let r = 0; r < R; r++) {
             for (let t = 0; t < T; t++) {
-              if ((t + r) % T === setIdx) {
+              const bs = isByestand
+                ? (t % S - r % S + S * 100) % S
+                : (t + r) % T;
+              if (bs === setIdx) {
                 const td = (results[`r${r}_t${t}`]||[])[pos];
                 if (td !== undefined) {
                   plays.push({nsIdx: t, ewIdx: (t - r % T + T * 100) % T, nsScore: td.ns});

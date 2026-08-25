@@ -4299,30 +4299,43 @@
 
     const PAIR_DESCS = {
       mitchell: 'Boards move up one table, E/W pairs move down, N/S pairs stay. Produces two winners (N/S and E/W). Best for 7+ tables with an even number.',
-      byestand: 'Like Standard Mitchell but for an odd number of tables — one table is a "bye stand" where boards rest for one round. Can be scored for one overall winner with a relay or skip.',
+      byestand: 'Mitchell movement for an even number of tables — one table is the "Bye-Stand" and one is the "Relay". Boards follow a special circulation pattern. Even tables only.',
       howell: 'All pairs move so every pair meets every other pair. One overall winner. Best for smaller games (3–7 tables).',
     };
     function updatePairDesc() {
       const mov = document.getElementById('pair-movement').value;
       document.getElementById('pair-desc').textContent = PAIR_DESCS[mov];
       const setupEl = document.getElementById('mitchell-setup');
-      if (setupEl) setupEl.style.display = mov === 'mitchell' ? '' : 'none';
-      if (mov === 'mitchell') updateMitchellInfo();
+      const tablesEl = document.getElementById('mit-tables');
+      const isMit = mov === 'mitchell' || mov === 'byestand';
+      if (setupEl) setupEl.style.display = isMit ? '' : 'none';
+      if (tablesEl) {
+        if (mov === 'byestand') { tablesEl.min = '4'; tablesEl.step = '2'; }
+        else { tablesEl.min = '3'; tablesEl.step = '2'; }
+      }
+      if (isMit) updateMitchellInfo();
     }
 
     function updateMitchellInfo() {
+      const mov = document.getElementById('pair-movement')?.value || 'mitchell';
+      const isByestand = mov === 'byestand';
       const tables = parseInt(document.getElementById('mit-tables').value) || 0;
       const rounds = parseInt(document.getElementById('mit-rounds').value) || 0;
       const bpr    = parseInt(document.getElementById('mit-boards').value) || 0;
       const el = document.getElementById('mitchell-info');
       if (!tables || !rounds || !bpr) { el.textContent = ''; return; }
       const totalBoards = rounds * bpr;
-      const sets = tables; // one set per table
-      const evenWarn = tables % 2 === 0 ? '⚠ Standard Mitchell requires an odd number of tables.' : '';
+      const sets = tables;
+      let tableWarn = '';
+      if (!isByestand && tables % 2 === 0) tableWarn = '⚠ Standard Mitchell requires an odd number of tables.';
+      if (isByestand && tables % 2 !== 0) tableWarn = '⚠ Bye-Stand Mitchell requires an even number of tables.';
       const roundsWarn = rounds > tables - 1 ? `⚠ Rounds (${rounds}) exceed tables−1 (${tables-1}); pairs will repeat opponents.` : '';
+      const bsInfo = isByestand && tables % 2 === 0 && tables >= 4
+        ? `<br><span style="color:#2a6496;">Relay: T${tables} · Bye-Stand: T${tables-1}</span>` : '';
       el.innerHTML =
         `Total boards: <b>${totalBoards}</b> &nbsp;·&nbsp; Board sets: <b>${sets}</b> (${bpr} board${bpr!==1?'s':''}/set)` +
-        (evenWarn ? `<br><span style="color:#c0392b;">${evenWarn}</span>` : '') +
+        bsInfo +
+        (tableWarn ? `<br><span style="color:#c0392b;">${tableWarn}</span>` : '') +
         (roundsWarn ? `<br><span style="color:#b7770d;">${roundsWarn}</span>` : '');
     }
 
@@ -4395,12 +4408,15 @@
       const tables = parseInt(document.getElementById('mit-tables').value);
       const rounds = parseInt(document.getElementById('mit-rounds').value);
       const bpr    = parseInt(document.getElementById('mit-boards').value);
-      if (!tables || tables < 3) { alert('Enter at least 3 tables.'); return; }
-      if (tables % 2 === 0) { alert('Standard Mitchell requires an odd number of tables.'); return; }
+      const movement = document.getElementById('pair-movement')?.value || 'mitchell';
+      const isByestand = movement === 'byestand';
+      if (!tables || tables < (isByestand ? 4 : 3)) { alert(`Enter at least ${isByestand ? 4 : 3} tables.`); return; }
+      if (!isByestand && tables % 2 === 0) { alert('Standard Mitchell requires an odd number of tables.'); return; }
+      if (isByestand && tables % 2 !== 0) { alert('Bye-Stand Mitchell requires an even number of tables.'); return; }
       if (!rounds || rounds < 1) { alert('Enter at least 1 round.'); return; }
       if (!bpr || bpr < 1) { alert('Enter boards per round.'); return; }
       const name = nameEl.value.trim() || nameEl.placeholder;
-      mitchellState = { name, tables, rounds, bpr, scores: [], currentRound: 0, completed: false };
+      mitchellState = { name, tables, rounds, bpr, scores: [], currentRound: 0, completed: false, movement };
       document.getElementById('mitchell-setup').style.display = 'none';
       const active = document.getElementById('mitchell-active');
       active.style.display = 'flex';
@@ -4417,6 +4433,8 @@
       }
       const c = document.getElementById('mit-round-rows');
       c.innerHTML = '';
+      const isByestand = (mitchellState.movement === 'byestand');
+      const relayT = tables, bsT = tables - 1; // 1-indexed
       const prev = mitchellState.scores[r] || [];
       for (let t = 0; t < tables; t++) {
         const ewPair = ((t - r) % tables + tables) % tables + 1; // EW move up → subtract r
@@ -4425,8 +4443,11 @@
         const savedBoards = prev[t] || [];
         const tableRow = document.createElement('div');
         tableRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;' + (t > 0 ? 'border-top:1px solid #d0e6f0;margin-top:2px;' : '');
+        let tLabel = `T${t+1}`;
+        if (isByestand && t+1 === relayT) tLabel += `<span style="font-size:0.6rem;color:#2a82bd;"> Relay</span>`;
+        else if (isByestand && t+1 === bsT) tLabel += `<span style="font-size:0.6rem;color:#b7770d;"> BS</span>`;
         let rowHtml =
-          `<span style="min-width:28px;text-align:center;font-size:0.72rem;font-weight:700;color:#2a6496;">T${t+1}</span>` +
+          `<span style="min-width:28px;text-align:center;font-size:0.72rem;font-weight:700;color:#2a6496;">${tLabel}</span>` +
           `<span style="font-size:0.82rem;font-weight:600;min-width:48px;">NS ${t+1}</span>` +
           `<span style="font-size:0.82rem;font-weight:600;min-width:48px;">EW ${ewPair}</span>`;
         for (let pos = 0; pos < bpr; pos++) {
@@ -4440,6 +4461,15 @@
         }
         tableRow.innerHTML = rowHtml;
         c.appendChild(tableRow);
+      }
+      if (isByestand) {
+        const noteDiv = document.createElement('div');
+        noteDiv.style.cssText = 'font-size:0.72rem;color:#667;border-top:1px dashed #d0e6f0;margin-top:8px;padding-top:6px;';
+        let passSteps = `T1 → T${relayT}(Relay) → T${bsT}(BS)`;
+        for (let k = bsT - 1; k >= 2; k--) passSteps += ` → T${k}`;
+        passSteps += ' → T1';
+        noteDiv.innerHTML = `<b>Board passing after this round:</b> ${passSteps}`;
+        c.appendChild(noteDiv);
       }
     }
 
@@ -4725,7 +4755,7 @@
       const payload = {
         user_id: currentUser.id,
         name, tables, rounds, bpr,
-        movement: 'mitchell',
+        movement: mitchellState.movement || 'mitchell',
         scores,
         current_round: currentRound,
         completed,
@@ -4747,7 +4777,7 @@
         return;
       }
       const { data } = await sb.from('pair_games')
-        .select('id,name,tables,rounds,bpr,current_round,completed,updated_at,scores')
+        .select('id,name,tables,rounds,bpr,current_round,completed,updated_at,scores,movement')
         .eq('user_id', currentUser.id)
         .order('updated_at', { ascending: false })
         .limit(10);
@@ -4800,6 +4830,7 @@
         scores: g.scores || [],
         currentRound: g.current_round,
         completed: g.completed,
+        movement: g.movement || 'mitchell',
         editingRound: null,
       };
       document.getElementById('mitchell-setup').style.display = 'none';
@@ -5890,7 +5921,7 @@
     }
 
     // ── Shared Mitchell (multi-user, Supabase-backed) ─────────────────────
-    let _mitGame = null, _mitTableIdx = null, _mitLocalScores = {}, _mitBoardCursor = 0, _mitCurrentRound = 0, _mitDirectorEditing = false;
+    let _mitGame = null, _mitTableIdx = null, _mitLocalScores = {}, _mitBoardCursor = 0, _mitCurrentRound = 0, _mitDirectorEditing = false, _mitMoveType = 'mitchell';
 
     function _mitMovement(T, r, t) {
       return { nsIdx: t, ewIdx: (t - r % T + T * 100) % T, boardSetIdx: (t + r) % T };
@@ -5902,6 +5933,7 @@
 
     function mitSharedOpen() {
       if (!currentUser) { showAuthModal(); return; }
+      _mitMoveType = document.getElementById('pair-movement')?.value || 'mitchell';
       document.getElementById('mitchell-setup').style.display = 'none';
       const active = document.getElementById('mitchell-active');
       if (active) active.style.display = 'none';
@@ -5952,15 +5984,19 @@
       const now = new Date();
       const mon = now.toLocaleString('en-US',{month:'short'});
       const ampm = now.getHours() < 12 ? 'AM' : 'PM';
+      const isByestandCreate = _mitMoveType === 'byestand';
+      const movLabel = isByestandCreate ? 'Bye-Stand Mitchell' : 'Standard Mitchell';
+      const tMin = isByestandCreate ? '4' : '3', tMax = isByestandCreate ? '40' : '39', tVal = isByestandCreate ? '4' : '3';
       card.innerHTML =
         `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <div class="match-card-title" style="margin-bottom:0;">Shared Mitchell</div>
+          <div class="match-card-title" style="margin-bottom:0;">Shared ${movLabel}</div>
           <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="mitSharedClose()">← Local</button>
         </div>`+
         `<div style="display:flex;flex-direction:column;gap:8px;font-size:0.82rem;">`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Game name:</label><input type="text" id="mit-s-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${mon} ${now.getDate()} Mitchell" /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Director:</label><input type="email" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#eaf3f8;color:#555;" value="${currentUser?.email||''}" disabled /></div>`+
-          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Tables:</label><input type="number" id="mit-s-tables" min="3" max="39" step="2" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="3" /></div>`+
+          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Tables:</label><input type="number" id="mit-s-tables" min="${tMin}" max="${tMax}" step="2" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${tVal}" /></div>`+
+          (isByestandCreate ? `<div style="font-size:0.72rem;color:#2a6496;padding-left:128px;">Relay: last table · Bye-Stand: second-to-last</div>` : '')+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Rounds:</label><input type="number" id="mit-s-rounds" min="1" max="20" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="4" /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Boards / Round:</label><input type="number" id="mit-s-boards" min="1" max="28" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="2" /></div>`+
         `</div>`+
@@ -5975,18 +6011,22 @@
       const T = parseInt(document.getElementById('mit-s-tables')?.value);
       const R = parseInt(document.getElementById('mit-s-rounds')?.value);
       const B = parseInt(document.getElementById('mit-s-boards')?.value);
+      const isByestandStep = _mitMoveType === 'byestand';
       if (!name) { alert('Enter a game name'); return; }
-      if (!T || T < 3) { alert('Need at least 3 tables'); return; }
-      if (T % 2 === 0) { alert('Standard Mitchell requires an odd number of tables.'); return; }
+      if (!T || T < (isByestandStep ? 4 : 3)) { alert(`Need at least ${isByestandStep ? 4 : 3} tables`); return; }
+      if (!isByestandStep && T % 2 === 0) { alert('Standard Mitchell requires an odd number of tables.'); return; }
+      if (isByestandStep && T % 2 !== 0) { alert('Bye-Stand Mitchell requires an even number of tables.'); return; }
       if (!R || R < 1) { alert('Enter number of rounds'); return; }
       if (!B || B < 1) { alert('Enter boards per round'); return; }
+      const movLabelStep = isByestandStep ? 'Bye-Stand Mitchell' : 'Standard Mitchell';
+      const bsStepNote = isByestandStep ? ` · Relay: T${T} · BS: T${T-1}` : '';
       const card = document.getElementById('mit-dir-card');
       let html =
         `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <div class="match-card-title" style="margin-bottom:0;">Pairs & Contacts</div>
           <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="mitSharedShowCreate()">← Back</button>
         </div>`+
-        `<div style="font-size:0.78rem;color:#2a6496;margin-bottom:10px;">${name} · ${T} tables · ${R} rounds · ${B} boards/round</div>`+
+        `<div style="font-size:0.78rem;color:#2a6496;margin-bottom:10px;">${name} · ${T} tables · ${R} rounds · ${B} boards/round${bsStepNote}</div>`+
         `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:0.74rem;font-weight:600;color:#667;padding:0 2px;margin-bottom:4px;"><span>N/S Pair</span><span>E/W Pair</span><span>North Email</span></div>`;
       for (let t = 0; t < T; t++) {
         html +=
@@ -6001,6 +6041,7 @@
         `<input type="hidden" id="mit-s-save-T" value="${T}" />`+
         `<input type="hidden" id="mit-s-save-R" value="${R}" />`+
         `<input type="hidden" id="mit-s-save-B" value="${B}" />`+
+        `<input type="hidden" id="mit-s-movement" value="${_mitMoveType}" />`+
         `<button class="btn-analyze" style="width:100%;font-size:0.85rem;padding:9px;margin-top:10px;" id="mit-create-btn" onclick="mitSharedCreate()">Create Game</button>`;
       card.innerHTML = html;
     }
@@ -6036,9 +6077,10 @@
         }
         table_uids.push(uid);
       }
+      const movement = document.getElementById('mit-s-movement')?.value || 'mitchell';
       const {data: game, error} = await sb.from('mitchell_shared_games').insert({
         creator_id: currentUser.id, name, num_tables: T, rounds: R, boards_per_round: B,
-        ns_pairs, ew_pairs, table_emails, table_uids, board_results: {}, completed: false
+        movement, ns_pairs, ew_pairs, table_emails, table_uids, board_results: {}, completed: false
       }).select().single();
       if (error) {
         alert('Create failed: ' + error.message);
@@ -6064,7 +6106,8 @@
           `<div class="match-card-title" style="margin-bottom:0;">${game.name}</div>`+
           `<button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="mitSharedDirectorRefresh()">↺</button>`+
         `</div>`+
-        `<div style="font-size:0.78rem;color:#555;margin-bottom:10px;">${T} tables · ${R} rounds · ${B} boards/round — Standard Mitchell</div>`+
+        `<div style="font-size:0.78rem;color:#555;margin-bottom:6px;">${T} tables · ${R} rounds · ${B} boards/round — ${game.movement==='byestand'?'Bye-Stand Mitchell':'Standard Mitchell'}</div>`+
+        (game.movement==='byestand'?`<div style="font-size:0.72rem;color:#2a6496;margin-bottom:8px;">Relay: T${T} · Bye-Stand: T${T-1}</div>`:'')+
         `<div style="display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;font-size:0.78rem;align-items:start;margin-bottom:10px;">`+
         `<div style="font-weight:600;color:#667;">Table</div><div style="font-weight:600;color:#667;">Pairs</div><div style="font-weight:600;color:#667;">Rounds</div>`;
       for (let t = 0; t < T; t++) {
@@ -6236,6 +6279,13 @@
             <button class="btn-clear" style="font-size:0.65rem;padding:2px 6px;margin-left:4px;" onclick="mitSharedEditBoard(${ci})">Edit</button>
           </div>`;
         });
+      }
+      if (game.movement === 'byestand') {
+        const N = T, t1 = tableIdx + 1;
+        let passTo = t1 === 1 ? `T${N} (Relay)` : t1 === N ? `T${N-1} (Bye-Stand)` : `T${t1-1}`;
+        const bsRole = t1 === N ? ' — Relay table' : t1 === N-1 ? ' — Bye-Stand table' : '';
+        html += `<div style="font-size:0.75rem;color:#2a6496;border-top:1px dashed #d0e6f0;margin-top:10px;padding-top:7px;">` +
+          `After this round: pass boards → <b>${passTo}</b>${bsRole}</div>`;
       }
       if (allConfirmed) {
         const submitLabel = _mitDirectorEditing ? 'Save Edit' : `Submit Round ${r+1}`;

@@ -2797,7 +2797,7 @@
         if (count < 4 || count % 2 !== 0) { alert('Standard Swiss requires an even number of teams (4, 6, 8 …).'); return; }
       }
       const nameEl = document.getElementById('sw-name');
-      const name = nameEl.value.trim() || nameEl.placeholder;
+      const name = nameEl.value.trim();
       const boards = parseInt(document.getElementById('sw-boards').value) || 8;
       const targetRounds = parseInt(document.getElementById('sw-rounds').value) || 0;
       if (isTriple && targetRounds > 0 && targetRounds % 2 !== 0) { alert('Swiss Triple requires an even number of rounds (2, 4, 6 …).'); return; }
@@ -3155,7 +3155,8 @@
       const el = document.getElementById('sw-name');
       if (!el) return;
       const now = new Date();
-      el.placeholder = `${now.toISOString().slice(0,10)} ${now.getHours()<12?'AM':'PM'}`;
+      const ampm = now.getHours()<12?'AM':'PM';
+      el.value = `${String(now.getFullYear()).slice(2)}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${ampm}`;
     })();
 
     // ---- General Team Game Setup ----
@@ -3245,7 +3246,7 @@
       const rounds = parseInt(document.getElementById('gt-rounds').value) || 5;
       const boards = parseInt(document.getElementById('gt-boards').value) || 8;
       const nameEl = document.getElementById('gt-name');
-      const name = nameEl.value.trim() || nameEl.placeholder;
+      const name = nameEl.value.trim();
       const teams = [];
       for (let i = 1; i <= count; i++) {
         const el = document.getElementById(`gt-t${i}`);
@@ -3317,8 +3318,8 @@
       const el = document.getElementById('gt-name');
       if (!el) return;
       const now = new Date();
-      const d = now.toISOString().slice(0,10);
-      el.value = `${d} ${now.getHours()<12?'AM':'PM'}`;
+      const ampm = now.getHours()<12?'AM':'PM';
+      el.value = `${String(now.getFullYear()).slice(2)}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${ampm}`;
     })();
 
     // ---- Game History + Presets ----
@@ -3902,7 +3903,7 @@
       const count = parseInt(document.getElementById('rr-count').value) || 4;
       if (count < 3) { alert('Round Robin requires at least 3 teams.'); return; }
       const nameEl = document.getElementById('rr-name');
-      const name = nameEl.value.trim() || nameEl.placeholder;
+      const name = nameEl.value.trim();
       const boards = parseInt(document.getElementById('rr-boards').value) || 8;
       const scoreType = document.getElementById('rr-scoretype').value || 'vp';
       const teams = [];
@@ -4225,7 +4226,8 @@
       const el = document.getElementById('rr-name');
       if (!el) return;
       const now = new Date();
-      el.placeholder = `${now.toISOString().slice(0,10)} ${now.getHours()<12?'AM':'PM'} Round Robin`;
+      const ampm = now.getHours()<12?'AM':'PM';
+      el.value = `${String(now.getFullYear()).slice(2)}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${ampm}`;
     })();
 
     // ---- GT Edit + Finish ----
@@ -4400,7 +4402,8 @@
       const el = document.getElementById('mit-name');
       if (!el) return;
       const now = new Date();
-      el.placeholder = `${now.toISOString().slice(0,10)} ${now.getHours()<12?'AM':'PM'}`;
+      const ampm = now.getHours()<12?'AM':'PM';
+      el.value = `${String(now.getFullYear()).slice(2)}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${ampm}`;
     })();
 
     function startMitchell() {
@@ -4415,7 +4418,7 @@
       if (isByestand && tables % 2 !== 0) { alert('Bye-Stand Mitchell requires an even number of tables.'); return; }
       if (!rounds || rounds < 1) { alert('Enter at least 1 round.'); return; }
       if (!bpr || bpr < 1) { alert('Enter boards per round.'); return; }
-      const name = nameEl.value.trim() || nameEl.placeholder;
+      const name = nameEl.value.trim();
       mitchellState = { name, tables, rounds, bpr, scores: [], currentRound: 0, completed: false, movement };
       document.getElementById('mitchell-setup').style.display = 'none';
       const active = document.getElementById('mitchell-active');
@@ -5389,7 +5392,7 @@
       const now=new Date();
       const mon=now.toLocaleString('en-US',{month:'short'});
       const ampm=now.getHours()<12?'AM':'PM';
-      const defaultName=`${mon} ${now.getDate()} ${ampm}`;
+      const defaultName=`${String(now.getFullYear()).slice(2)}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${ampm}`;
       document.getElementById('dup-team-title').textContent='Shared Duplicate';
       document.getElementById('dup-team-boards').innerHTML=
         `<div style="font-size:0.85rem;font-weight:600;color:#2a6496;margin-bottom:10px;">Create Match</div>`+
@@ -5615,7 +5618,7 @@
         const now=new Date();
         const mon=now.toLocaleString('en-US',{month:'short'});
         const ampm=now.getHours()<12?'AM':'PM';
-        const defaultName=`${mon} ${now.getDate()} ${ampm}`;
+        const defaultName=`${String(now.getFullYear()).slice(2)}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${ampm}`;
         document.getElementById('dup-team-title').textContent='Shared Duplicate';
         document.getElementById('dup-team-boards').innerHTML=
           `<div style="font-size:0.85rem;font-weight:600;color:#2a6496;margin-bottom:10px;">Create Match</div>`+
@@ -6021,7 +6024,7 @@
           <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="mitSharedClose()">← Local</button>
         </div>`+
         `<div style="display:flex;flex-direction:column;gap:8px;font-size:0.82rem;">`+
-          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Game name:</label><input type="text" id="mit-s-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${mon} ${now.getDate()} Mitchell" /></div>`+
+          `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Game name:</label><input type="text" id="mit-s-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${String(now.getFullYear()).slice(2)}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${ampm}" /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Director:</label><input type="email" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#eaf3f8;color:#555;" value="${currentUser?.email||''}" disabled /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Tables:</label><input type="number" id="mit-s-tables" min="${tMin}" max="${tMax}" step="2" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${tVal}" /></div>`+
           (isByestandCreate ? `<div style="font-size:0.72rem;color:#2a6496;padding-left:128px;">T1 &amp; last table relay (same boards) · Bye-Stand: board holder between top &amp; bottom halves</div>` : '')+
@@ -6059,8 +6062,8 @@
       for (let t = 0; t < T; t++) {
         html +=
           `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:5px;align-items:center;">`+
-            `<input type="text" id="mit-s-ns-${t}" placeholder="N/S ${t+1}" style="padding:4px 5px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.76rem;background:#f0f7fb;" />`+
-            `<input type="text" id="mit-s-ew-${t}" placeholder="E/W ${t+1}" style="padding:4px 5px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.76rem;background:#f0f7fb;" />`+
+            `<input type="text" id="mit-s-ns-${t}" value="NS-${t+1}" style="padding:4px 5px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.76rem;background:#f0f7fb;" />`+
+            `<input type="text" id="mit-s-ew-${t}" value="EW-${t+1}" style="padding:4px 5px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.76rem;background:#f0f7fb;" />`+
             `<input type="email" id="mit-s-email-${t}" placeholder="north@email" style="padding:4px 5px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.76rem;background:#f0f7fb;" />`+
           `</div>`;
       }

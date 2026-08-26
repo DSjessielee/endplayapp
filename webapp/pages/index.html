@@ -4325,7 +4325,7 @@
       if (isByestand && tables % 2 !== 0) tableWarn = '⚠ Bye-Stand Mitchell requires an even number of tables.';
       const roundsWarn = rounds > tables - 1 ? `⚠ Rounds (${rounds}) exceed tables−1 (${tables-1}); pairs will repeat opponents.` : '';
       const bsInfo = isByestand && tables % 2 === 0 && tables >= 4
-        ? `<br><span style="color:#2a6496;">Relay: T${tables} · Bye-Stand: T${tables-1}</span>` : '';
+        ? `<br><span style="color:#2a6496;">Relay: T1 &amp; T${tables} (same boards) · Bye-Stand: board holder between T${tables/2} &amp; T${tables/2+1}</span>` : '';
       el.innerHTML =
         `Total boards: <b>${totalBoards}</b> &nbsp;·&nbsp; Board sets: <b>${sets}</b> (${bpr} board${bpr!==1?'s':''}/set)` +
         bsInfo +
@@ -4428,21 +4428,24 @@
       const c = document.getElementById('mit-round-rows');
       c.innerHTML = '';
       const isByestand = (mitchellState.movement === 'byestand');
-      const relayT = tables, bsT = tables - 1; // 1-indexed
-      const S = isByestand ? tables - 1 : tables; // number of board sets
+      const relayT = tables; // 1-indexed: last table is relay
+      const half = isByestand ? Math.floor(tables / 2) : 0;
       const prev = mitchellState.scores[r] || [];
       for (let t = 0; t < tables; t++) {
         const ewPair = ((t - r) % tables + tables) % tables + 1;
-        const boardSet = isByestand
-          ? (t % S - r % S + S * 100) % S
-          : (t + r) % tables;
+        let boardSet;
+        if (!isByestand) {
+          boardSet = (t + r) % tables;
+        } else {
+          const p = (t === tables - 1) ? 0 : (t < half ? t : t + 1);
+          boardSet = (r + p) % tables;
+        }
         const b1 = boardSet * bpr + 1;                          // first board number (1-indexed)
         const savedBoards = prev[t] || [];
         const tableRow = document.createElement('div');
         tableRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;' + (t > 0 ? 'border-top:1px solid #d0e6f0;margin-top:2px;' : '');
         let tLabel = `T${t+1}`;
-        if (isByestand && t+1 === relayT) tLabel += `<span style="font-size:0.6rem;color:#2a82bd;"> Relay</span>`;
-        else if (isByestand && t+1 === bsT) tLabel += `<span style="font-size:0.6rem;color:#b7770d;"> BS</span>`;
+        if (isByestand && (t === 0 || t === tables - 1)) tLabel += `<span style="font-size:0.6rem;color:#2a82bd;"> Relay</span>`;
         let rowHtml =
           `<span style="min-width:28px;text-align:center;font-size:0.72rem;font-weight:700;color:#2a6496;">${tLabel}</span>` +
           `<span style="font-size:0.82rem;font-weight:600;min-width:48px;">NS ${t+1}</span>` +
@@ -4462,10 +4465,12 @@
       if (isByestand) {
         const noteDiv = document.createElement('div');
         noteDiv.style.cssText = 'font-size:0.72rem;color:#2a6496;border-top:1px dashed #d0e6f0;margin-top:8px;padding-top:6px;line-height:1.5;';
-        let passSteps = `T${relayT}(Relay)→T${bsT}(BS)`;
-        for (let k = bsT - 1; k >= 2; k--) passSteps += `→T${k}`;
-        passSteps += `→T1→T${relayT}(Relay)`;
-        noteDiv.innerHTML = `<b>Board passing:</b> ${passSteps}<br><span style="color:#b7770d;">T1 &amp; T${relayT} share same board set — T${relayT} plays T1's boards mid-round.</span>`;
+        let passSteps = `T${relayT}(Relay)`;
+        for (let k = relayT - 1; k > half; k--) passSteps += `→T${k}`;
+        passSteps += `→Bye-stand→T${half}`;
+        for (let k = half - 1; k >= 1; k--) passSteps += `→T${k}`;
+        passSteps += `→T${relayT}(Relay)`;
+        noteDiv.innerHTML = `<b>Board passing:</b> ${passSteps}<br><span style="color:#b7770d;">T1 &amp; T${relayT} share same board set (relay, 2 copies).</span>`;
         c.appendChild(noteDiv);
       }
     }
@@ -4507,19 +4512,23 @@
     function mitchellCalcMPs() {
       const { tables, rounds, bpr, scores, movement } = mitchellState;
       const isByestand = movement === 'byestand';
-      const S = isByestand ? tables - 1 : tables;
+      const half = isByestand ? Math.floor(tables / 2) : 0;
       const nsMPs = new Array(tables).fill(0);
       const ewMPs = new Array(tables).fill(0);
       const nsTop = new Array(tables).fill(0);
       const ewTop = new Array(tables).fill(0);
-      for (let b = 0; b < S; b++) {
+      for (let b = 0; b < tables; b++) {
         for (let pos = 0; pos < bpr; pos++) {
           const entries = [];
           for (let r = 0; r < rounds; r++) {
             for (let t = 0; t < tables; t++) {
-              const bs = isByestand
-                ? (t % S - r % S + S * 100) % S
-                : (t + r) % tables;
+              let bs;
+              if (!isByestand) {
+                bs = (t + r) % tables;
+              } else {
+                const p = (t === tables - 1) ? 0 : (t < half ? t : t + 1);
+                bs = (r + p) % tables;
+              }
               if (bs !== b) continue;
               const sc = scores[r]?.[t]?.[pos];
               if (sc !== undefined && sc !== null && sc !== '' && !isNaN(sc)) {
@@ -5927,10 +5936,14 @@
 
     function _mitMovement(T, r, t, movement) {
       const isByestand = movement === 'byestand';
-      const S = isByestand ? T - 1 : T;
-      const boardSetIdx = isByestand
-        ? (t % S - r % S + S * 100) % S
-        : (t + r) % T;
+      let boardSetIdx;
+      if (!isByestand) {
+        boardSetIdx = (t + r) % T;
+      } else {
+        const half = Math.floor(T / 2);
+        const pos = (t === T - 1) ? 0 : (t < half ? t : t + 1);
+        boardSetIdx = (r + pos) % T;
+      }
       return { nsIdx: t, ewIdx: (t - r % T + T * 100) % T, boardSetIdx };
     }
     function _mitBoardRange(game, boardSetIdx) {
@@ -6003,7 +6016,7 @@
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Game name:</label><input type="text" id="mit-s-name" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${mon} ${now.getDate()} Mitchell" /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Director:</label><input type="email" style="flex:1;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#eaf3f8;color:#555;" value="${currentUser?.email||''}" disabled /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Tables:</label><input type="number" id="mit-s-tables" min="${tMin}" max="${tMax}" step="2" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="${tVal}" /></div>`+
-          (isByestandCreate ? `<div style="font-size:0.72rem;color:#2a6496;padding-left:128px;">Relay: last table · Bye-Stand: second-to-last</div>` : '')+
+          (isByestandCreate ? `<div style="font-size:0.72rem;color:#2a6496;padding-left:128px;">T1 &amp; last table relay (same boards) · Bye-Stand: board holder between top &amp; bottom halves</div>` : '')+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;"># of Rounds:</label><input type="number" id="mit-s-rounds" min="1" max="20" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="4" /></div>`+
           `<div style="display:flex;align-items:center;gap:8px;"><label style="min-width:120px;">Boards / Round:</label><input type="number" id="mit-s-boards" min="1" max="28" style="width:55px;padding:5px 8px;border:1px solid #a0c4d8;border-radius:4px;font-size:0.82rem;background:#f0f7fb;" value="2" /></div>`+
         `</div>`+
@@ -6026,7 +6039,7 @@
       if (!R || R < 1) { alert('Enter number of rounds'); return; }
       if (!B || B < 1) { alert('Enter boards per round'); return; }
       const movLabelStep = isByestandStep ? 'Bye-Stand Mitchell' : 'Standard Mitchell';
-      const bsStepNote = isByestandStep ? ` · Relay: T${T} · BS: T${T-1}` : '';
+      const bsStepNote = isByestandStep ? ` · Relay: T1 & T${T} · Bye-stand: between T${T/2} & T${T/2+1}` : '';
       const card = document.getElementById('mit-dir-card');
       let html =
         `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -6289,10 +6302,14 @@
       }
       if (game.movement === 'byestand') {
         const N = T, t1 = tableIdx + 1;
-        let passTo = t1 === 1 ? `T${N} (Relay)` : t1 === N ? `T${N-1} (Bye-Stand)` : `T${t1-1}`;
-        const bsRole = t1 === N ? ' — Relay table' : t1 === N-1 ? ' — Bye-Stand table' : '';
+        const half = Math.floor(N / 2);
+        let passTo;
+        if (t1 === 1) passTo = `T${N} (Relay)`;
+        else if (t1 === half + 1) passTo = 'Bye-stand';
+        else passTo = `T${t1 - 1}`;
+        const relayNote = (t1 === 1 || t1 === N) ? ` — Relay (same boards as ${t1 === 1 ? `T${N}` : 'T1'})` : '';
         html += `<div style="font-size:0.75rem;color:#2a6496;border-top:1px dashed #d0e6f0;margin-top:10px;padding-top:7px;">` +
-          `After this round: pass boards → <b>${passTo}</b>${bsRole}</div>`;
+          `After this round: pass boards → <b>${passTo}</b>${relayNote}</div>`;
       }
       if (allConfirmed) {
         const submitLabel = _mitDirectorEditing ? 'Save Edit' : `Submit Round ${r+1}`;
@@ -6381,18 +6398,22 @@
     function mitSharedCalcMPs(game) {
       const T = game.num_tables, R = game.rounds, B = game.boards_per_round;
       const isByestand = game.movement === 'byestand';
-      const S = isByestand ? T - 1 : T;
+      const half = isByestand ? Math.floor(T / 2) : 0;
       const results = game.board_results || {};
       const nsMPs = new Array(T).fill(0), ewMPs = new Array(T).fill(0);
       const nsTop  = new Array(T).fill(0), ewTop  = new Array(T).fill(0);
-      for (let setIdx = 0; setIdx < S; setIdx++) {
+      for (let setIdx = 0; setIdx < T; setIdx++) {
         for (let pos = 0; pos < B; pos++) {
           const plays = [];
           for (let r = 0; r < R; r++) {
             for (let t = 0; t < T; t++) {
-              const bs = isByestand
-                ? (t % S - r % S + S * 100) % S
-                : (t + r) % T;
+              let bs;
+              if (!isByestand) {
+                bs = (t + r) % T;
+              } else {
+                const p = (t === T - 1) ? 0 : (t < half ? t : t + 1);
+                bs = (r + p) % T;
+              }
               if (bs === setIdx) {
                 const td = (results[`r${r}_t${t}`]||[])[pos];
                 if (td !== undefined) {

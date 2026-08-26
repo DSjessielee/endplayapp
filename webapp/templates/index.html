@@ -2587,7 +2587,7 @@
       if (!email) { msgEl.textContent = 'Enter your email first'; msgEl.className = 'auth-msg err'; return; }
       msgEl.textContent = 'Sending reset link...'; msgEl.className = 'auth-msg';
       const { error } = await sb.auth.resetPasswordForEmail(email, {
-        redirectTo: 'https://funbridge.cc',
+        redirectTo: window.location.origin,
       });
       if (error) { msgEl.textContent = error.message; msgEl.className = 'auth-msg err'; }
       else { msgEl.textContent = 'Check your email for the reset link!'; msgEl.className = 'auth-msg ok'; }

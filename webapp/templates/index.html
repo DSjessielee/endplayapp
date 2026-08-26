@@ -4331,7 +4331,7 @@
       let tableWarn = '';
       if (!isByestand && tables % 2 === 0) tableWarn = '⚠ Standard Mitchell requires an odd number of tables.';
       if (isByestand && tables % 2 !== 0) tableWarn = '⚠ Bye-Stand Mitchell requires an even number of tables.';
-      const roundsWarn = rounds > tables - 1 ? `⚠ Rounds (${rounds}) exceed tables−1 (${tables-1}); pairs will repeat opponents.` : '';
+      const roundsWarn = rounds > tables ? `⚠ Rounds (${rounds}) exceed tables (${tables}); pairs will repeat opponents.` : '';
       const bsInfo = isByestand && tables % 2 === 0 && tables >= 4
         ? `<br><span style="color:#2a6496;">Relay: T1 &amp; T${tables} (same boards) · Bye-Stand: board holder between T${tables/2} &amp; T${tables/2+1}</span>` : '';
       el.innerHTML =

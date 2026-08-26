@@ -4435,6 +4435,17 @@
       const half = isByestand ? Math.floor(tables / 2) : 0;
       const prev = mitchellState.scores[r] || [];
       for (let t = 0; t < tables; t++) {
+        if (isByestand && t === half) {
+          const byeBS = (r + half) % tables;
+          const bsB1 = byeBS * bpr + 1;
+          const byeRow = document.createElement('div');
+          byeRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;border-top:1px solid #d0e6f0;margin-top:2px;';
+          let byeHtml = `<span style="min-width:28px;text-align:center;font-size:0.72rem;font-weight:700;color:#888;">Bye</span>`;
+          byeHtml += `<span style="font-size:0.82rem;color:#999;font-style:italic;min-width:96px;">Bye-stand (idle)</span>`;
+          for (let pos = 0; pos < bpr; pos++) byeHtml += `<span style="font-size:0.78rem;color:#aaa;">Bd ${bsB1 + pos}</span>`;
+          byeRow.innerHTML = byeHtml;
+          c.appendChild(byeRow);
+        }
         const ewPair = ((t - r) % tables + tables) % tables + 1;
         let boardSet;
         if (!isByestand) {
@@ -4446,7 +4457,7 @@
         const b1 = boardSet * bpr + 1;                          // first board number (1-indexed)
         const savedBoards = prev[t] || [];
         const tableRow = document.createElement('div');
-        tableRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;' + (t > 0 ? 'border-top:1px solid #d0e6f0;margin-top:2px;' : '');
+        tableRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;' + (t > 0 || isByestand ? 'border-top:1px solid #d0e6f0;margin-top:2px;' : '');
         let tLabel = `T${t+1}`;
         if (isByestand && (t === 0 || t === tables - 1)) tLabel += `<span style="font-size:0.6rem;color:#2a82bd;"> Relay</span>`;
         let rowHtml =

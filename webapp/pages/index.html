@@ -4464,8 +4464,9 @@
           `<span style="min-width:28px;text-align:center;font-size:0.72rem;font-weight:700;color:#2a6496;">${tLabel}</span>` +
           `<span style="font-size:0.82rem;font-weight:600;min-width:48px;">NS ${t+1}</span>` +
           `<span style="font-size:0.82rem;font-weight:600;min-width:48px;">EW ${ewPair}</span>`;
+        const relayOff = (isByestand && t === tables - 1 && bpr > 1) ? ((bpr - 1 - r) % bpr + bpr) % bpr : 0;
         for (let pos = 0; pos < bpr; pos++) {
-          const boardNum = b1 + pos;
+          const boardNum = b1 + (pos + relayOff) % bpr;
           const saved = savedBoards[pos] !== undefined && savedBoards[pos] !== null ? savedBoards[pos] : '';
           rowHtml +=
             `<span style="font-size:0.78rem;color:#667;">Bd ${boardNum}</span>` +
@@ -4544,7 +4545,9 @@
                 bs = (r + p) % tables;
               }
               if (bs !== b) continue;
-              const sc = scores[r]?.[t]?.[pos];
+              const relayOff = (isByestand && t === tables - 1 && bpr > 1) ? ((bpr - 1 - r) % bpr + bpr) % bpr : 0;
+              const scPos = relayOff === 0 ? pos : (pos - relayOff + bpr * 1000) % bpr;
+              const sc = scores[r]?.[t]?.[scPos];
               if (sc !== undefined && sc !== null && sc !== '' && !isNaN(sc)) {
                 const ewIdx = ((t - r) % tables + tables) % tables;
                 entries.push({ nsIdx: t, ewIdx, sc: Number(sc) });
@@ -6253,7 +6256,9 @@
       const card = document.getElementById('mit-north-card');
       const {ewIdx, boardSetIdx} = _mitMovement(T, r, tableIdx, game.movement);
       const {first: boardFirst} = _mitBoardRange(game, boardSetIdx);
-      const boardNum = boardFirst + _mitBoardCursor;
+      const isRelayTN = game.movement === 'byestand' && tableIdx === T - 1 && B > 1;
+      const relayOff = isRelayTN ? ((B - 1 - r) % B + B) % B : 0;
+      const boardNum = boardFirst + (_mitBoardCursor + relayOff) % B;
       const ns = (game.ns_pairs[tableIdx]||{}).name || `N/S ${tableIdx+1}`;
       const ew = (game.ew_pairs[ewIdx]||{}).name || `E/W ${ewIdx+1}`;
       const confirmedCount = Object.keys(_mitLocalScores).length;
@@ -6290,7 +6295,7 @@
             `</div>`+
             `<div id="dup-sc-${boardNum}" style="text-align:center;font-size:1.1rem;font-weight:700;color:#888;margin-bottom:12px;">—</div>`+
             `<div style="display:flex;gap:8px;">`+
-              (!isFirst ? `<button class="btn-clear" style="flex:1;padding:9px;font-size:0.82rem;" onclick="mitSharedPrevBoard()">← Board ${boardNum-1}</button>` : '<div style="flex:1;"></div>')+
+              (!isFirst ? `<button class="btn-clear" style="flex:1;padding:9px;font-size:0.82rem;" onclick="mitSharedPrevBoard()">← ${isRelayTN ? 'Prev' : 'Board '+(boardNum-1)}</button>` : '<div style="flex:1;"></div>')+
               `<button class="btn-analyze" style="flex:2;padding:10px;font-size:0.88rem;" onclick="mitSharedConfirmBoard()">${isLast?'Confirm & Done ✓':'Confirm →'}</button>`+
             `</div>`+
           `</div>`;
@@ -6300,7 +6305,7 @@
       if (confirmedIdxs.length > 0) {
         html += `<div style="font-size:0.72rem;font-weight:600;color:#667;margin-bottom:4px;">Confirmed boards</div>`;
         confirmedIdxs.forEach(ci => {
-          const bd=boardFirst+ci, sv=_mitLocalScores[ci];
+          const bd = boardFirst + (ci + relayOff) % B, sv=_mitLocalScores[ci];
           const ap=sv.ct==='AP';
           const suS=ap?'':({'C':'♣','D':'♦','H':'♥','S':'♠','N':'NT'}[sv.su]||sv.su);
           const mxS=ap?'':(sv.mx===2?'×':sv.mx===4?'××':'');
@@ -6350,7 +6355,9 @@
       const r = _mitCurrentRound;
       const {boardSetIdx} = _mitMovement(T, r, tableIdx, game.movement);
       const {first: boardFirst} = _mitBoardRange(game, boardSetIdx);
-      const boardNum = boardFirst + _mitBoardCursor;
+      const isRelayTN = game.movement === 'byestand' && tableIdx === T - 1 && B > 1;
+      const relayOff = isRelayTN ? ((B - 1 - r) % B + B) % B : 0;
+      const boardNum = boardFirst + (_mitBoardCursor + relayOff) % B;
       const ctVal = document.getElementById(`dup-ct-${boardNum}`)?.value;
       if (!ctVal) { alert('Select a contract for Board '+boardNum); return; }
       let lv, su, mx, by, rs, sc;
@@ -6387,9 +6394,12 @@
       const T = game.num_tables, B = game.boards_per_round;
       const {boardSetIdx} = _mitMovement(T, r, tableIdx, game.movement);
       const {first: boardFirst} = _mitBoardRange(game, boardSetIdx);
+      const isRelayTN = game.movement === 'byestand' && tableIdx === T - 1 && B > 1;
+      const relayOff = isRelayTN ? ((B - 1 - r) % B + B) % B : 0;
       const roundData = [];
       for (let i = 0; i < B; i++) {
-        const s = _mitLocalScores[i] || {};
+        const cursorIdx = relayOff === 0 ? i : (i - relayOff + B * 1000) % B;
+        const s = _mitLocalScores[cursorIdx] || {};
         roundData.push({board: boardFirst+i, ns: s.sc||0, ct: s.ct, lv: s.lv, su: s.su, mx: s.mx, by: s.by, rs: s.rs});
       }
       const {data: latest} = await sb.from('mitchell_shared_games').select('board_results').eq('id',game.id).single();

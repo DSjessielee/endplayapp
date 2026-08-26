@@ -911,7 +911,10 @@
                 <button class="btn-analyze" style="width:100%;font-size:0.88rem;padding:10px;" onclick="mitchellSaveEdit()">Save Edit</button>
                 <button class="btn-clear" style="font-size:0.75rem;padding:7px;" onclick="mitchellCancelEdit()">Cancel Edit</button>
               </div>
-              <button class="btn-clear" style="font-size:0.75rem;padding:7px;" onclick="mitchellNewGame()">New Game</button>
+              <div style="display:flex;gap:6px;">
+                <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px;" onclick="openSaveMatchModal('mitchell')">Save</button>
+                <button class="btn-clear" style="flex:1;font-size:0.75rem;padding:7px;" onclick="mitchellNewGame()">New Game</button>
+              </div>
             </div>
           </div>
           <div id="mit-history-card" class="match-card" style="display:none;">
@@ -922,8 +925,7 @@
             <div class="match-card-title" style="margin-bottom:8px;">Final Results</div>
             <div id="mit-results"></div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;">
-              <button class="btn-analyze" style="font-size:0.88rem;padding:10px;" id="mit-save-btn" onclick="mitchellSaveResults(this)">Save to Cloud</button>
-              <button class="btn-analyze" style="font-size:0.88rem;padding:10px;background:#27ae60;" onclick="mitchellSaveLocalOnly()">Save to Local File</button>
+              <button class="btn-analyze" style="font-size:0.88rem;padding:10px;" onclick="openSaveMatchModal('mitchell')">Save</button>
               <button class="btn-clear" style="font-size:0.75rem;padding:7px;" onclick="mitchellNewGame()">New Game</button>
             </div>
           </div>
@@ -6872,6 +6874,7 @@
       else if (_saveMatchFmt === 'swiss') state = swissState;
       else if (_saveMatchFmt === 'rr') state = rrState;
       else if (_saveMatchFmt === 'gt') state = gtState;
+      else if (_saveMatchFmt === 'mitchell') state = mitchellState;
       if (!state) { alert('No active match to save.'); return; }
       const safeName = (state.name || 'match').replace(/[^a-z0-9]/gi, '_');
       const blob = new Blob([JSON.stringify({format: _saveMatchFmt, state, savedAt: new Date().toISOString()}, null, 2)], {type: 'application/json'});
@@ -6887,6 +6890,7 @@
       if (!currentUser || !sb) { closeSaveMatchModal(); showAuthModal(); return; }
       if (_saveMatchFmt === 'swiss') { closeSaveMatchModal(); dbSave('swiss'); return; }
       if (_saveMatchFmt === 'gt') { closeSaveMatchModal(); dbSave('gt'); return; }
+      if (_saveMatchFmt === 'mitchell') { closeSaveMatchModal(); await mitchellSaveToDb(); showToast('Game saved!', 'ok'); return; }
       let state;
       if (_saveMatchFmt === 'dup') state = dupState;
       else if (_saveMatchFmt === 'rr') state = rrState;

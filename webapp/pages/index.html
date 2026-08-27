@@ -6840,15 +6840,21 @@
     function openSaveMatchModal(fmt) {
       _saveMatchFmt = fmt;
       const onlineBtn = document.getElementById('save-match-online-btn');
+      const fileOnly = fmt === 'mitchell' && mitchellState?.movement === 'byestand';
       if (onlineBtn) {
-        if (currentUser) {
-          onlineBtn.textContent = '☁️ Save online';
-          onlineBtn.disabled = false;
-          onlineBtn.style.opacity = '1';
+        if (fileOnly) {
+          onlineBtn.style.display = 'none';
         } else {
-          onlineBtn.textContent = '☁️ Save online (log in required)';
-          onlineBtn.disabled = false;
-          onlineBtn.style.opacity = '0.7';
+          onlineBtn.style.display = '';
+          if (currentUser) {
+            onlineBtn.textContent = '☁️ Save online';
+            onlineBtn.disabled = false;
+            onlineBtn.style.opacity = '1';
+          } else {
+            onlineBtn.textContent = '☁️ Save online (log in required)';
+            onlineBtn.disabled = false;
+            onlineBtn.style.opacity = '0.7';
+          }
         }
       }
       document.getElementById('saveMatchModal').classList.add('show');

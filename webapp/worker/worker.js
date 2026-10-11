@@ -115,9 +115,10 @@ async function handleExtractImage(request, env) {
   const prompt = isSingle ? SINGLE_HAND_PROMPT : VISION_PROMPT;
 
   const body = JSON.stringify({
-    model: isSingle ? (env.ANTHROPIC_SINGLE_HAND_MODEL || "claude-3-5-sonnet-latest")
-      : (env.ANTHROPIC_IMAGE_MODEL || "claude-3-5-haiku-latest"),
-    max_tokens: isSingle ? 600 : 500,
+    model: isSingle ? (env.ANTHROPIC_SINGLE_HAND_MODEL || "claude-sonnet-5-5")
+      : (env.ANTHROPIC_IMAGE_MODEL || "claude-haiku-5-5"),
+    // Current models think by default; thinking tokens count against max_tokens.
+    max_tokens: 16000,
     messages: [{
       role: "user",
       content: [
@@ -143,7 +144,11 @@ async function handleExtractImage(request, env) {
   }
 
   const result = await resp.json();
-  const text = result.content[0].text;
+  if (result.stop_reason === "refusal") {
+    return jsonResponse({ error: ["Claude declined to read this image"] }, 400);
+  }
+  // Thinking blocks may precede the answer; take the text block(s).
+  const text = (result.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
 
   if (isSingle) {
     const lines = text.trim().split("\n");

@@ -82,12 +82,12 @@ DENOM_NAMES = {
 
 def get_anthropic_model() -> str:
     """Return the default Claude model used for a full board image."""
-    return os.environ.get("ANTHROPIC_IMAGE_MODEL") or "claude-3-5-haiku-latest"
+    return os.environ.get("ANTHROPIC_IMAGE_MODEL") or "claude-haiku-5-5"
 
 
 def get_single_hand_model() -> str:
     """Return the Claude model used for a single-hand image extraction."""
-    return os.environ.get("ANTHROPIC_SINGLE_HAND_MODEL") or "claude-3-5-sonnet-latest"
+    return os.environ.get("ANTHROPIC_SINGLE_HAND_MODEL") or "claude-sonnet-5-5"
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +153,7 @@ def extract_hands_via_claude(image_bytes: bytes, media_type: str) -> Optional[di
 
     body = json.dumps({
         "model": get_anthropic_model(),
-        "max_tokens": 300,
+        "max_tokens": 16000,
         "messages": [{"role": "user", "content": [
             {"type": "image", "source": {
                 "type": "base64", "media_type": media_type, "data": image_data}},
@@ -170,11 +170,16 @@ def extract_hands_via_claude(image_bytes: bytes, media_type: str) -> Optional[di
             "Content-Type": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=90) as resp:
         result = json.loads(resp.read())
 
-    text = result["content"][0]["text"]
+    text = _response_text(result)
     return _parse_hands_from_response(text)
+
+
+def _response_text(result: dict) -> str:
+    """Join the text blocks; thinking blocks may come before the answer."""
+    return "\n".join(b["text"] for b in result.get("content", []) if b.get("type") == "text")
 
 
 def _parse_hands_from_response(text: str) -> Optional[dict[str, str]]:
@@ -205,7 +210,7 @@ def _extract_single_hand(image_bytes: bytes, media_type: str, direction: str) ->
 
     body = json.dumps({
         "model": get_single_hand_model(),
-        "max_tokens": 1000,
+        "max_tokens": 16000,
         "messages": [{"role": "user", "content": [
             {"type": "image", "source": {
                 "type": "base64", "media_type": media_type, "data": image_data}},
@@ -222,10 +227,10 @@ def _extract_single_hand(image_bytes: bytes, media_type: str, direction: str) ->
             "Content-Type": "application/json",
         },
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
+    with urllib.request.urlopen(req, timeout=90) as resp:
         result = json.loads(resp.read())
 
-    text = result["content"][0]["text"]
+    text = _response_text(result)
     lines = text.strip().split("\n")
     hand_line = lines[-1]
     for line in reversed(lines):

@@ -4931,6 +4931,11 @@
       return diff >= 0 ? imp : -imp;
     }
 
+    // Each team's own IMP total: the IMPs it won across the boards (positive = team 1).
+    function dupImpGross(imps) {
+      return imps.reduce((g, i) => { if (i > 0) g.t1 += i; else if (i < 0) g.t2 -= i; return g; }, {t1: 0, t2: 0});
+    }
+
     function dupContractScore(lv, suit, mx, dec, ot, b1) {
       const vul = dupIsVul(dec, b1);
       const tv = (suit==='C'||suit==='D') ? 20 : 30;
@@ -5255,15 +5260,22 @@
       }
       const total=boardScores.reduce((s,b)=>s+(b?.imp??0),0);
       // An edit of a finished round replaces that round's total instead of adding a new one.
-      if(dupState.editingResults) dupState.roundResults[dupState.roundResults.length-1]=total;
-      else dupState.roundResults.push(total);
+      const gross=dupImpGross(boardScores.map(b=>b?.imp??0));
+      dupState.roundGross ||= [];
+      if(dupState.editingResults){
+        dupState.roundResults[dupState.roundResults.length-1]=total;
+        dupState.roundGross[dupState.roundResults.length-1]=gross;
+      } else {
+        dupState.roundResults.push(total);
+        dupState.roundGross[dupState.roundResults.length-1]=gross;
+      }
       dupState.editingResults=false;
       document.getElementById('gt-dup-calc-btn').style.display='none';
       dupState.totalImp=total; dupState.completed=true;
       const isLastRound = dupState.currentRound >= (dupState.totalRounds||1) - 1;
       const isMultiRound = (dupState.totalRounds||1) > 1;
       const t1=teams[0], t2=teams[1];
-      const t1Imp=Math.max(0,total), t2Imp=Math.max(0,-total);
+      const t1Imp=gross.t1, t2Imp=gross.t2;
       const winner=total>0?t1.name:total<0?t2.name:null;
       const fmtC=fmtContractBy;
       const playerLine=(team)=>{
@@ -5295,14 +5307,16 @@
                :`<div style="font-size:0.95rem;font-weight:700;color:#555;">Tied — 0 IMPs</div>`) +
         `</div>` +
         `<div style="display:flex;gap:8px;margin-top:10px;">` +
-        `<div style="flex:1;padding:10px;background:#f0f7fb;border-radius:8px;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${t1.name}</div>${playerLine(t1)}<div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t1Imp} IMP</div></div>` +
-        `<div style="flex:1;padding:10px;background:#f0f7fb;border-radius:8px;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${t2.name}</div>${playerLine(t2)}<div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t2Imp} IMP</div></div>` +
+        `<div style="flex:1;padding:10px;background:#f0f7fb;border-radius:8px;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${t1.name}</div>${playerLine(t1)}<div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">${t1Imp} IMP</div></div>` +
+        `<div style="flex:1;padding:10px;background:#f0f7fb;border-radius:8px;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${t2.name}</div>${playerLine(t2)}<div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">${t2Imp} IMP</div></div>` +
         `</div>` +
         `<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:10px;" onclick="dupEditResults()">✎ Edit Boards</button>`;
       if (isMultiRound) {
         const cumTotal = dupState.roundResults.reduce((s,r)=>s+r,0);
-        const cumT1 = dupState.roundResults.reduce((s,r)=>s+Math.max(0,r),0);
-        const cumT2 = dupState.roundResults.reduce((s,r)=>s+Math.max(0,-r),0);
+        // Rounds saved before per-team totals existed only have the margin.
+        const rg = (r,i) => dupState.roundGross?.[i] || {t1:Math.max(0,r), t2:Math.max(0,-r)};
+        const cumT1 = dupState.roundResults.reduce((s,r,i)=>s+rg(r,i).t1,0);
+        const cumT2 = dupState.roundResults.reduce((s,r,i)=>s+rg(r,i).t2,0);
         const cumWinner = cumTotal>0?t1.name:cumTotal<0?t2.name:null;
         const roundsDone = dupState.currentRound+1;
         html+=`<div style="margin-top:10px;padding:10px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;">` +
@@ -5984,21 +5998,22 @@
       const isMulti=(total_rounds||1)>1;
       let html='';
       if(isMulti && rr.length>1){
-        let cumImp=0;
+        let cumImp=0,cumT1=0,cumT2=0;
         html+=`<div style="font-size:0.82rem;font-weight:700;color:#2a6496;margin-bottom:6px;">Round Summary</div>`;
         html+=`<div style="display:grid;grid-template-columns:60px 1fr 1fr 55px;gap:2px;padding:2px 0 5px;border-bottom:1px solid #d0e6f0;font-size:0.7rem;font-weight:600;color:#2a6496;"><span>Round</span><span>${team1_name}</span><span>${team2_name}</span><span style="text-align:right;">IMP</span></div>`;
         rr.forEach((rd,i)=>{
           const ri=rd.imp||0; cumImp+=ri;
-          const t1pts=Math.max(0,ri),t2pts=Math.max(0,-ri);
+          const {t1:t1pts,t2:t2pts}=dupImpGross((rd.boards||[]).map(bd=>bd.imp||0));
+          cumT1+=t1pts; cumT2+=t2pts;
           html+=`<div style="display:grid;grid-template-columns:60px 1fr 1fr 55px;gap:2px;align-items:center;padding:3px 0;border-bottom:1px solid #eef4f8;font-size:0.78rem;">
             <span style="color:#555;font-weight:600;">R${i+1}</span>
-            <span style="color:#2a6496;">+${t1pts}</span>
-            <span style="color:#2a6496;">+${t2pts}</span>
+            <span style="color:#2a6496;">${t1pts}</span>
+            <span style="color:#2a6496;">${t2pts}</span>
             <span style="text-align:right;font-weight:600;color:${ri>0?'#2a82bd':ri<0?'#c0392b':'#888'}">${ri>=0?'+':''}${ri}</span></div>`;
         });
-        const cumT1=Math.max(0,cumImp),cumT2=Math.max(0,-cumImp),cumWin=cumImp>0?team1_name:cumImp<0?team2_name:null;
+        const cumWin=cumImp>0?team1_name:cumImp<0?team2_name:null;
         html+=`<div style="margin:10px 0 14px;padding:12px;background:${cumWin?'#e8f4fc':'#f0f0f0'};border-radius:8px;text-align:center;">${cumWin?`<div style="font-size:1rem;font-weight:700;color:#1a3a5c;">${cumWin} wins the match!</div><div style="font-size:0.82rem;color:#555;margin-top:2px;">${Math.abs(cumImp)} IMP total</div>`:'<div style="font-size:0.95rem;font-weight:700;color:#555;">Match tied — 0 IMPs</div>'}</div>`;
-        html+=`<div style="display:flex;gap:8px;margin-bottom:14px;"><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.8rem;font-weight:600;color:#2a6496;">${team1_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${cumT1}</div></div><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.8rem;font-weight:600;color:#2a6496;">${team2_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${cumT2}</div></div></div>`;
+        html+=`<div style="display:flex;gap:8px;margin-bottom:14px;"><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.8rem;font-weight:600;color:#2a6496;">${team1_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">${cumT1} IMP</div></div><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.8rem;font-weight:600;color:#2a6496;">${team2_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">${cumT2} IMP</div></div></div>`;
         rr.forEach((rd,i)=>{
           html+=`<div style="font-size:0.8rem;font-weight:600;color:#2a6496;margin:8px 0 4px;">Round ${i+1} Boards</div>`;
           html+=`<div style="display:grid;grid-template-columns:28px 1fr 1fr 50px;gap:2px;padding:2px 0 4px;border-bottom:1px solid #d0e6f0;font-size:0.68rem;font-weight:600;color:#2a6496;"><span>Bd</span><span>${team1_name}</span><span>${team2_name}</span><span style="text-align:right;">IMP</span></div>`;
@@ -6021,9 +6036,9 @@
             <span>${bd.c2}<br><span style="font-size:0.68rem;color:#667;">${bd.s2sc>=0?'+':''}${bd.s2sc}</span></span>
             <span style="text-align:right;font-weight:600;color:${bd.imp>0?'#2a82bd':bd.imp<0?'#c0392b':'#888'}">${bd.imp>=0?'+':''}${bd.imp}</span></div>`;
         });
-        const t1I=Math.max(0,total),t2I=Math.max(0,-total),win=total>0?team1_name:total<0?team2_name:null;
+        const {t1:t1I,t2:t2I}=dupImpGross((rd.boards||[]).map(bd=>bd.imp||0)),win=total>0?team1_name:total<0?team2_name:null;
         html+=`<div style="margin-top:12px;padding:12px;background:${win?'#e8f4fc':'#f0f0f0'};border-radius:8px;text-align:center;">${win?`<div style="font-size:1rem;font-weight:700;color:#1a3a5c;">${win} wins!</div><div style="font-size:0.85rem;color:#555;margin-top:2px;">${Math.abs(total)} IMP${Math.abs(total)!==1?'s':''}</div>`:'<div style="font-size:0.95rem;font-weight:700;color:#555;">Tied — 0 IMPs</div>'}</div>
-        <div style="display:flex;gap:8px;margin-top:8px;"><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team1_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t1I} IMP</div></div><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team2_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t2I} IMP</div></div></div>`;
+        <div style="display:flex;gap:8px;margin-top:8px;"><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team1_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">${t1I} IMP</div></div><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team2_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">${t2I} IMP</div></div></div>`;
       }
       if(hasLastBoards){
         html+=`<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:10px;" onclick="dupSharedEditResults()">✎ Edit Boards${isMulti?` (Round ${rr.length})`:''}</button>`;

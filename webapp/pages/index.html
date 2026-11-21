@@ -1232,7 +1232,7 @@
             <div id="dup-admin-match-card" class="match-card" style="display:none;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <div class="match-card-title" id="dup-admin-match-title" style="margin-bottom:0;"></div>
-                <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="dupSharedAdminView()">← Back</button>
+                <button class="btn-clear" style="font-size:0.72rem;padding:5px 8px;" onclick="dupSharedAdminBack()">← Back</button>
               </div>
               <div id="dup-admin-boards"></div>
             </div>
@@ -4415,7 +4415,7 @@
       if (!rounds || rounds < 1) { alert('Enter at least 1 round.'); return; }
       if (!bpr || bpr < 1) { alert('Enter boards per round.'); return; }
       const name = nameEl.value.trim();
-      mitchellState = { name, tables, rounds, bpr, scores: [], currentRound: 0, completed: false, movement };
+      mitchellState = { name, tables, rounds, bpr, scores: [], declarers: [], currentRound: 0, completed: false, movement };
       document.getElementById('mitchell-setup').style.display = 'none';
       const active = document.getElementById('mitchell-active');
       active.style.display = 'flex';
@@ -4458,6 +4458,7 @@
         }
         const b1 = boardSet * bpr + 1;                          // first board number (1-indexed)
         const savedBoards = prev[t] || [];
+        const savedDecs = mitchellState.declarers?.[r]?.[t] || [];
         const tableRow = document.createElement('div');
         tableRow.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:5px 0;' + (t > 0 || isByestand ? 'border-top:1px solid #d0e6f0;margin-top:2px;' : '');
         let tLabel = `T${t+1}`;
@@ -4474,7 +4475,10 @@
             `<span style="font-size:0.78rem;color:#667;">Bd ${boardNum}</span>` +
             `<input type="number" step="1" id="mit-sc-${t}-${pos}" value="${saved}" data-prev="${saved || 0}" placeholder="e.g. 140" ` +
             `onkeydown="mitScoreKeydown(event)" oninput="mitScoreInput(this)" ` +
-            `style="width:90px;padding:5px 6px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.85rem;text-align:center;" />`;
+            `style="width:90px;padding:5px 6px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.85rem;text-align:center;" />` +
+            `<select id="mit-by-${t}-${pos}" title="Declarer" style="padding:5px 2px;border:1px solid #a0c4d8;border-radius:4px;background:#f0f7fb;color:#1a1a2e;font-size:0.8rem;">` +
+            ['','N','S','E','W'].map(d => `<option value="${d}"${d === (savedDecs[pos] || '') ? ' selected' : ''}>${d || 'By'}</option>`).join('') +
+            `</select>`;
         }
         tableRow.innerHTML = rowHtml;
         c.appendChild(tableRow);
@@ -4492,23 +4496,34 @@
       }
     }
 
-    function mitchellCompleteRound() {
-      const { tables, rounds, bpr, currentRound } = mitchellState;
-      const roundScores = [];
+    // Read the score and declarer inputs of the round on screen; null if invalid.
+    function mitchellReadRound() {
+      const { tables, bpr } = mitchellState;
+      const scores = [], decs = [];
       for (let t = 0; t < tables; t++) {
-        const tableScores = [];
+        const tableScores = [], tableDecs = [];
         for (let pos = 0; pos < bpr; pos++) {
           const v = document.getElementById(`mit-sc-${t}-${pos}`)?.value?.trim();
-          if (v === '' || v === undefined) { alert(`Enter NS score for Table ${t+1}, Board ${pos+1}.`); return; }
+          if (v === '' || v === undefined) { alert(`Enter NS score for Table ${t+1}, Board ${pos+1}.`); return null; }
           const sc = Number(v);
           if (!isLegalBridgeScore(sc)) {
-            alert(`Invalid score at Table ${t+1}, Board ${pos+1}. Must be a legal bridge score (e.g. 140, -50, 420).`); return;
+            alert(`Invalid score at Table ${t+1}, Board ${pos+1}. Must be a legal bridge score (e.g. 140, -50, 420).`); return null;
           }
           tableScores.push(sc);
+          tableDecs.push(document.getElementById(`mit-by-${t}-${pos}`)?.value || '');
         }
-        roundScores.push(tableScores);
+        scores.push(tableScores);
+        decs.push(tableDecs);
       }
-      mitchellState.scores[currentRound] = roundScores;
+      return { scores, decs };
+    }
+
+    function mitchellCompleteRound() {
+      const { rounds, currentRound } = mitchellState;
+      const rd = mitchellReadRound();
+      if (!rd) return;
+      mitchellState.scores[currentRound] = rd.scores;
+      (mitchellState.declarers ||= [])[currentRound] = rd.decs;
       mitchellState.currentRound++;
       mitchellRenderHistory();
       if (mitchellState.currentRound >= rounds) {
@@ -4534,6 +4549,7 @@
       const ewMPs = new Array(tables).fill(0);
       const nsTop = new Array(tables).fill(0);
       const ewTop = new Array(tables).fill(0);
+      const travellers = {};  // board number → entries, for the board-by-board results
       for (let b = 0; b < tables; b++) {
         for (let pos = 0; pos < bpr; pos++) {
           const entries = [];
@@ -4552,10 +4568,12 @@
               const sc = scores[r]?.[t]?.[scPos];
               if (sc !== undefined && sc !== null && sc !== '' && !isNaN(sc)) {
                 const ewIdx = ((t - r) % tables + tables) % tables;
-                entries.push({ nsIdx: t, ewIdx, sc: Number(sc) });
+                const dec = mitchellState.declarers?.[r]?.[t]?.[scPos] || '';
+                entries.push({ nsIdx: t, ewIdx, sc: Number(sc), r, dec });
               }
             }
           }
+          if (entries.length) travellers[b * bpr + pos + 1] = entries;
           const boardTop = 2 * (entries.length - 1);
           for (let i = 0; i < entries.length; i++) {
             let mp = 0;
@@ -4564,6 +4582,7 @@
               if (entries[i].sc > entries[j].sc) mp += 2;
               else if (entries[i].sc === entries[j].sc) mp += 1;
             }
+            entries[i].mp = mp;
             nsMPs[entries[i].nsIdx] += mp;
             ewMPs[entries[i].ewIdx] += boardTop - mp;
             nsTop[entries[i].nsIdx] += boardTop;
@@ -4571,7 +4590,7 @@
           }
         }
       }
-      return { nsMPs, ewMPs, nsTop, ewTop };
+      return { nsMPs, ewMPs, nsTop, ewTop, travellers };
     }
 
     function mitchellBuildAllPairs() {
@@ -4606,8 +4625,28 @@
       document.getElementById('mit-results').innerHTML =
         mkTable(all,    'Overall Standings') + '<div style="height:12px;"></div>' +
         mkTable(nsRows, 'NS Standings')      + '<div style="height:12px;"></div>' +
-        mkTable(ewRows, 'EW Standings');
+        mkTable(ewRows, 'EW Standings') +
+        mitchellBoardResultsHtml(mitchellCalcMPs().travellers);
       document.getElementById('mit-results-card').style.display = '';
+    }
+
+    // Board-by-board results with declarer; Edit reopens that round's score entry.
+    function mitchellBoardResultsHtml(travellers) {
+      const nums = Object.keys(travellers).map(Number).sort((a,b) => a-b);
+      if (!nums.length) return '';
+      let h = `<div style="font-size:0.82rem;font-weight:600;color:#2a6496;margin:14px 0 4px;">Board Results</div>`;
+      nums.forEach(bn => {
+        h += `<div style="font-size:0.78rem;font-weight:700;color:#1a3a5c;margin-top:8px;">Board ${bn}</div>`;
+        h += '<table class="swiss-table" style="width:100%;"><thead><tr><th>NS</th><th>EW</th><th>Declarer</th><th style="text-align:right;">NS Score</th><th style="text-align:right;">NS MP</th><th></th></tr></thead><tbody>';
+        [...travellers[bn]].sort((a,b) => b.sc - a.sc).forEach(e => {
+          h += `<tr><td>NS ${e.nsIdx+1}</td><td>EW ${e.ewIdx+1}</td><td>${e.dec || '—'}</td>` +
+            `<td style="text-align:right;">${e.sc}</td><td style="text-align:right;">${e.mp}</td>` +
+            `<td style="text-align:right;"><button class="btn-clear" style="font-size:0.65rem;padding:2px 6px;" title="Edit round ${e.r+1} scores" ` +
+            `onclick="mitchellEditRound(${e.r});document.getElementById('mitchell-active').scrollIntoView({behavior:'smooth'})">Edit R${e.r+1}</button></td></tr>`;
+        });
+        h += '</tbody></table>';
+      });
+      return h;
     }
 
     function mitchellGenerateResultsText() {
@@ -4719,7 +4758,8 @@
           `</div>` +
           `<div style="display:flex;flex-wrap:wrap;gap:3px 10px;padding:3px 0 5px;">`;
         for (let t = 0; t < tables; t++) {
-          const sc = (scores[r]?.[t] ?? []).join(', ');
+          const decs = mitchellState.declarers?.[r]?.[t] || [];
+          const sc = (scores[r]?.[t] ?? []).map((v, i) => decs[i] ? `${v} ${decs[i]}` : v).join(', ');
           html += `<span style="font-size:0.78rem;color:#555;">T${t+1}: ${sc}</span>`;
         }
         html += `</div>`;
@@ -4752,20 +4792,10 @@
     function mitchellSaveEdit() {
       const r = mitchellState.editingRound;
       if (r === null || r === undefined) return;
-      const { tables, bpr } = mitchellState;
-      const roundScores = [];
-      for (let t = 0; t < tables; t++) {
-        const tableScores = [];
-        for (let pos = 0; pos < bpr; pos++) {
-          const v = document.getElementById(`mit-sc-${t}-${pos}`)?.value?.trim();
-          if (v === '' || v === undefined) { alert(`Enter NS score for Table ${t+1}, Board ${pos+1}.`); return; }
-          const sc = Number(v);
-          if (!isLegalBridgeScore(sc)) { alert(`Invalid score at Table ${t+1}, Board ${pos+1}.`); return; }
-          tableScores.push(sc);
-        }
-        roundScores.push(tableScores);
-      }
-      mitchellState.scores[r] = roundScores;
+      const rd = mitchellReadRound();
+      if (!rd) return;
+      mitchellState.scores[r] = rd.scores;
+      (mitchellState.declarers ||= [])[r] = rd.decs;
       mitchellState.editingRound = null;
       document.getElementById('mit-edit-btns').style.display = 'none';
       mitchellRenderHistory();
@@ -4793,13 +4823,14 @@
         completed,
         updated_at: new Date().toISOString(),
       };
+      const save = (p) => mitchellState.dbId
+        ? sb.from('pair_games').update(p).eq('id', mitchellState.dbId)
+        : sb.from('pair_games').insert(p).select('id').single();
       try {
-        if (mitchellState.dbId) {
-          await sb.from('pair_games').update(payload).eq('id', mitchellState.dbId);
-        } else {
-          const { data, error } = await sb.from('pair_games').insert(payload).select('id').single();
-          if (!error && data) mitchellState.dbId = data.id;
-        }
+        let res = await save({ ...payload, declarers: mitchellState.declarers || [] });
+        // A database without the declarers column rejects it; save scores alone.
+        if (res.error) res = await save(payload);
+        if (!mitchellState.dbId && !res.error && res.data) mitchellState.dbId = res.data.id;
       } catch(e) { /* non-fatal */ }
     }
 
@@ -4809,7 +4840,7 @@
         return;
       }
       const { data } = await sb.from('pair_games')
-        .select('id,name,tables,rounds,bpr,current_round,completed,updated_at,scores,movement')
+        .select('*')
         .eq('user_id', currentUser.id)
         .order('updated_at', { ascending: false })
         .limit(10);
@@ -4860,6 +4891,7 @@
         rounds: g.rounds,
         bpr: g.bpr,
         scores: g.scores || [],
+        declarers: g.declarers || [],
         currentRound: g.current_round,
         completed: g.completed,
         movement: g.movement || 'mitchell',
@@ -4919,6 +4951,19 @@
         if (ot>0) sc += (mx===1?tv:mx===2?(vul?200:100):(vul?400:200))*ot;
       }
       return (dec==='N'||dec==='S') ? sc : -sc;
+    }
+
+    // "4♠× by E +1" label for a recorded contract (handles every stored shape).
+    function fmtContractBy(c) {
+      if (!c) return '—';
+      const ct = c.ct || (c.lv ? `${c.lv}${c.su}` : '');
+      if (!ct) return '—';
+      if (ct === 'AP') return 'All Pass';
+      const lv = parseInt(ct), su = ct.slice(1), mx = parseInt(c.mx) || 1, rs = parseInt(c.rs);
+      const suS = {'C':'♣','D':'♦','H':'♥','S':'♠','N':'NT'}[su] || su;
+      const mxS = mx === 4 ? '××' : mx === 2 ? '×' : '';
+      const rsS = isNaN(rs) ? '' : rs === 0 ? ' =' : rs > 0 ? ` +${rs}` : ` ${rs}`;
+      return `${lv}${suS}${mxS}${c.by ? ' by ' + c.by : ''}${rsS}`;
     }
 
     async function dupShowPlayers() {
@@ -5018,24 +5063,26 @@
       const key=t===0?'sc1':'sc2';
       const isAP=ctVal==='AP';
       ['mx','by','rs'].forEach(id=>{const el=document.getElementById(`dup-${id}-${t}-${b}`);if(el){el.disabled=isAP;el.style.opacity=isAP?'0.35':'';}});
+      const cKey=`contract${t+1}`;
       if(isAP){
         if(scEl)scEl.textContent='0';
-        dupState.boardScores[b][key]=0;dupUpdateImp(b);return;
+        dupState.boardScores[b][key]=0;dupState.boardScores[b][cKey]={ct:'AP',mx:'1',by:'',rs:'0'};dupUpdateImp(b);return;
       }
       if(!ctVal){
         if(scEl)scEl.textContent='—';
-        dupState.boardScores[b][key]=null;dupUpdateImp(b);return;
+        dupState.boardScores[b][key]=null;dupState.boardScores[b][cKey]=null;dupUpdateImp(b);return;
       }
       const lv=parseInt(ctVal),su=ctVal.slice(1);
       dupSetResultOpts(rsEl,lv,rsEl?.value);
       const rs=rsEl?.value;
       if(!by||rs===''||rs===undefined||rs===null){
         if(scEl)scEl.textContent='—';
-        dupState.boardScores[b][key]=null;
+        dupState.boardScores[b][key]=null;dupState.boardScores[b][cKey]=null;
       }else{
         const score=dupContractScore(lv,su,mx,by,parseInt(rs),b+1);
         if(scEl){scEl.textContent=score>=0?`+${score}`:`${score}`;}
         dupState.boardScores[b][key]=score;
+        dupState.boardScores[b][cKey]={ct:ctVal,mx:String(mx),by,rs};
       }
       dupUpdateImp(b);
     }
@@ -5207,15 +5254,18 @@
         else sc.imp=null;
       }
       const total=boardScores.reduce((s,b)=>s+(b?.imp??0),0);
-      dupState.roundResults.push(total);
+      // An edit of a finished round replaces that round's total instead of adding a new one.
+      if(dupState.editingResults) dupState.roundResults[dupState.roundResults.length-1]=total;
+      else dupState.roundResults.push(total);
+      dupState.editingResults=false;
+      document.getElementById('gt-dup-calc-btn').style.display='none';
       dupState.totalImp=total; dupState.completed=true;
       const isLastRound = dupState.currentRound >= (dupState.totalRounds||1) - 1;
       const isMultiRound = (dupState.totalRounds||1) > 1;
       const t1=teams[0], t2=teams[1];
       const t1Imp=Math.max(0,total), t2Imp=Math.max(0,-total);
       const winner=total>0?t1.name:total<0?t2.name:null;
-      const sn={'C':'♣','D':'♦','H':'♥','S':'♠','N':'NT'};
-      const fmtC=(c)=>c?`${c.lv}${sn[c.su]||c.su}${c.mx==='2'||c.mx===2?'×':c.mx==='4'||c.mx===4?'××':''} by ${c.by} (${parseInt(c.rs)>0?'+'+c.rs:c.rs==='0'||c.rs===0?'=':c.rs})`:'—';
+      const fmtC=fmtContractBy;
       const playerLine=(team)=>{
         const ns=team.players?.ns?.map(p=>p.name).join(' / ')||'';
         const ew=team.players?.ew?.map(p=>p.name).join(' / ')||'';
@@ -5247,7 +5297,8 @@
         `<div style="display:flex;gap:8px;margin-top:10px;">` +
         `<div style="flex:1;padding:10px;background:#f0f7fb;border-radius:8px;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${t1.name}</div>${playerLine(t1)}<div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t1Imp} IMP</div></div>` +
         `<div style="flex:1;padding:10px;background:#f0f7fb;border-radius:8px;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${t2.name}</div>${playerLine(t2)}<div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t2Imp} IMP</div></div>` +
-        `</div>`;
+        `</div>` +
+        `<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:10px;" onclick="dupEditResults()">✎ Edit Boards</button>`;
       if (isMultiRound) {
         const cumTotal = dupState.roundResults.reduce((s,r)=>s+r,0);
         const cumT1 = dupState.roundResults.reduce((s,r)=>s+Math.max(0,r),0);
@@ -5271,6 +5322,25 @@
       document.getElementById('gt-dup-result-actions').style.display = isLastRound ? '' : 'none';
       document.getElementById('gt-dup-boards-card').style.display='none';
       document.getElementById('gt-dup-results-card').style.display='';
+    }
+
+    // Reopen every board of the round on screen for correction; Recalculate rebuilds the results.
+    function dupEditResults() {
+      dupState.editingResults=true;
+      dupRenderBoards();
+      dupState.boardScores.forEach((s,b)=>[0,1].forEach(t=>{
+        const c=s[`contract${t+1}`], ctEl=document.getElementById(`dup-ct-${t}-${b}`);
+        if(!c||!ctEl) return;
+        ctEl.value=c.ct; dupContractColor(ctEl);
+        document.getElementById(`dup-mx-${t}-${b}`).value=c.mx||'1';
+        document.getElementById(`dup-by-${t}-${b}`).value=c.by||'';
+        if(c.ct!=='AP') dupSetResultOpts(document.getElementById(`dup-rs-${t}-${b}`),parseInt(c.ct),c.rs);
+        dupUpdateBoard(t,b);
+      }));
+      const btn=document.getElementById('gt-dup-calc-btn');
+      btn.textContent='Recalculate Results'; btn.style.display='';
+      document.getElementById('gt-dup-results-card').style.display='none';
+      document.getElementById('gt-dup-boards-card').style.display='';
     }
 
     async function checkPendingDupMatch() {
@@ -5510,8 +5580,8 @@
       }
       html+=`<div style="display:flex;gap:6px;margin-top:12px;">
         <button class="btn-analyze" style="flex:1;font-size:0.8rem;padding:8px;" onclick="dupSharedAdminSave()">Save Changes</button>
-        <button class="btn-clear" style="font-size:0.78rem;padding:8px 10px;" onclick="dupSharedAdminToggleComplete()">${completed?'Reopen':'Mark Complete'}</button>
-        <button class="btn-clear" style="font-size:0.78rem;padding:8px 10px;color:#c0392b;border-color:#c0392b;" onclick="dupSharedAdminDelete()">Delete</button>
+        ${currentUser?.email===DUP_ADMIN_EMAIL?`<button class="btn-clear" style="font-size:0.78rem;padding:8px 10px;" onclick="dupSharedAdminToggleComplete()">${completed?'Reopen':'Mark Complete'}</button>
+        <button class="btn-clear" style="font-size:0.78rem;padding:8px 10px;color:#c0392b;border-color:#c0392b;" onclick="dupSharedAdminDelete()">Delete</button>`:''}
       </div>`;
       document.getElementById('dup-admin-boards').innerHTML=html;
       for(let b=1;b<=boards;b++){
@@ -5577,9 +5647,14 @@
         } else if(impEl){impEl.textContent='—';impEl.style.color='#888';}
       }
       const completed=t1s.length===boards&&t2s.length===boards;
-      const {error}=await sb.from('dup_matches').update({team1_scores:t1s,team2_scores:t2s,completed,updated_at:new Date().toISOString()}).eq('id',id);
+      const upd={team1_scores:t1s,team2_scores:t2s,completed,updated_at:new Date().toISOString()};
+      // Keep the stored round summary in step with corrected boards.
+      const rr=[...(_dupSharedMatch.round_results||[])],cur=_dupSharedMatch.current_round||0;
+      if(completed&&rr.length>cur){rr[cur]=_dupSharedCalcRoundData({..._dupSharedMatch,team1_scores:t1s,team2_scores:t2s});upd.round_results=rr;}
+      const {error}=await sb.from('dup_matches').update(upd).eq('id',id);
       if(error){alert('Save failed: '+error.message);return;}
-      _dupSharedMatch={..._dupSharedMatch,team1_scores:t1s,team2_scores:t2s,completed};
+      _dupSharedMatch={..._dupSharedMatch,...upd};
+      if(_dupSharedEditFromResults){dupSharedAdminBack();return;}
       const banner=document.querySelector('#dup-admin-boards div:first-child');
       if(banner){banner.textContent=completed?'✓ Complete':'In progress';banner.style.background=completed?'#e8f5e9':'#fff3e0';banner.style.color=completed?'#27ae60':'#e67e22';}
       const btn=document.querySelector('#dup-admin-boards button.btn-analyze');
@@ -5864,8 +5939,7 @@
         const s1=t1map[b],s2=t2map[b];
         if(s1?.sc!=null&&s2?.sc!=null){
           const i=dupCalcImp(s1.sc-s2.sc); imp+=i;
-          const fmtC=s=>s.ct==='AP'?'AP':`${s.lv}${s.su==='N'?'NT':s.su}${s.mx>2?'××':s.mx>1?'×':''}`;
-          boards.push({b,s1sc:s1.sc,s2sc:s2.sc,imp:i,c1:fmtC(s1),c2:fmtC(s2)});
+          boards.push({b,s1sc:s1.sc,s2sc:s2.sc,imp:i,c1:fmtContractBy(s1),c2:fmtContractBy(s2)});
         }
       }
       return {imp, boards};
@@ -5897,12 +5971,16 @@
         document.getElementById('dup-team-card').style.display = 'none';
       } else {
         _dupSharedRenderTeamBoards(m, _dupSharedRole);
+        document.getElementById('dup-team-card').style.display = '';
       }
     }
 
     function _dupSharedRenderFullResults(m) {
       const {boards,team1_name,team2_name,round_results,total_rounds}=m;
-      const rr=round_results||[];
+      const rr=[...(round_results||[])];
+      // The last round's board entries are still stored: rebuild it so declarers and edits show.
+      const hasLastBoards=(m.team1_scores||[]).length>=boards&&(m.team2_scores||[]).length>=boards;
+      if(rr.length&&hasLastBoards) rr[rr.length-1]=_dupSharedCalcRoundData(m);
       const isMulti=(total_rounds||1)>1;
       let html='';
       if(isMulti && rr.length>1){
@@ -5947,7 +6025,27 @@
         html+=`<div style="margin-top:12px;padding:12px;background:${win?'#e8f4fc':'#f0f0f0'};border-radius:8px;text-align:center;">${win?`<div style="font-size:1rem;font-weight:700;color:#1a3a5c;">${win} wins!</div><div style="font-size:0.85rem;color:#555;margin-top:2px;">${Math.abs(total)} IMP${Math.abs(total)!==1?'s':''}</div>`:'<div style="font-size:0.95rem;font-weight:700;color:#555;">Tied — 0 IMPs</div>'}</div>
         <div style="display:flex;gap:8px;margin-top:8px;"><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team1_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t1I} IMP</div></div><div style="flex:1;padding:8px;background:#f0f7fb;border-radius:6px;text-align:center;"><div style="font-size:0.82rem;font-weight:600;color:#2a6496;">${team2_name}</div><div style="font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-top:4px;">+${t2I} IMP</div></div></div>`;
       }
+      if(hasLastBoards){
+        html+=`<button class="btn-clear" style="width:100%;font-size:0.8rem;padding:8px;margin-top:10px;" onclick="dupSharedEditResults()">✎ Edit Boards${isMulti?` (Round ${rr.length})`:''}</button>`;
+      }
       document.getElementById('dup-shared-results').innerHTML=html;
+    }
+
+    let _dupSharedEditFromResults=false;
+    async function dupSharedEditResults() {
+      if(!_dupSharedMatch) return;
+      _dupSharedEditFromResults=true;
+      document.getElementById('dup-shared-results-card').style.display='none';
+      document.getElementById('dup-team-card').style.display='none';
+      await dupSharedOpenAdminMatch(_dupSharedMatch.id);
+    }
+
+    function dupSharedAdminBack() {
+      if(_dupSharedEditFromResults){
+        _dupSharedEditFromResults=false;
+        document.getElementById('dup-admin-match-card').style.display='none';
+        dupSharedRefreshResults();
+      } else dupSharedAdminView();
     }
 
     // ── Shared Mitchell (multi-user, Supabase-backed) ─────────────────────
@@ -6174,7 +6272,7 @@
       }
       html += `</div>`;
       if (allDone) {
-        html += `<button class="btn-analyze" style="width:100%;font-size:0.85rem;padding:9px;" onclick="mitSharedFinish('${game.id}')">Calculate Results</button>`;
+        html += `<button class="btn-analyze" style="width:100%;font-size:0.85rem;padding:9px;" onclick="mitSharedFinish('${game.id}')">${game.completed ? 'View Results' : 'Calculate Results'}</button>`;
       } else {
         html +=
           `<div style="font-size:0.78rem;color:#888;text-align:center;padding:6px;">Waiting for North players to submit scores…</div>`+
@@ -6414,7 +6512,8 @@
       if (updated) {
         if (_mitDirectorEditing) {
           _mitDirectorEditing = false;
-          await mitSharedDirectorView(updated);
+          if (updated.completed) mitSharedShowResults(updated);  // edited from the results page
+          else await mitSharedDirectorView(updated);
         } else {
           await mitSharedNorthView(updated, tableIdx);
         }
@@ -6428,6 +6527,7 @@
       const results = game.board_results || {};
       const nsMPs = new Array(T).fill(0), ewMPs = new Array(T).fill(0);
       const nsTop  = new Array(T).fill(0), ewTop  = new Array(T).fill(0);
+      const travellers = {};  // board number → plays, for the board-by-board results
       for (let setIdx = 0; setIdx < T; setIdx++) {
         for (let pos = 0; pos < B; pos++) {
           const plays = [];
@@ -6443,11 +6543,12 @@
               if (bs === setIdx) {
                 const td = (results[`r${r}_t${t}`]||[])[pos];
                 if (td !== undefined) {
-                  plays.push({nsIdx: t, ewIdx: (t - r % T + T * 100) % T, nsScore: td.ns});
+                  plays.push({nsIdx: t, ewIdx: (t - r % T + T * 100) % T, nsScore: td.ns, r, td});
                 }
               }
             }
           }
+          if (plays.length) travellers[setIdx * B + pos + 1] = plays;
           if (plays.length < 2) continue;
           const top = 2 * (plays.length - 1);
           plays.forEach(play => {
@@ -6457,6 +6558,7 @@
               if (play.nsScore > other.nsScore) mp += 2;
               else if (play.nsScore === other.nsScore) mp += 1;
             });
+            play.mp = mp;
             nsMPs[play.nsIdx] += mp;
             ewMPs[play.ewIdx] += (top - mp);
             nsTop[play.nsIdx] += top;
@@ -6464,16 +6566,39 @@
           });
         }
       }
-      return {nsMPs, ewMPs, nsTop, ewTop};
+      return {nsMPs, ewMPs, nsTop, ewTop, travellers};
+    }
+
+    // Board-by-board results with contract and declarer; the director can edit any table/round.
+    function mitSharedBoardResultsHtml(game, travellers) {
+      const nums = Object.keys(travellers).map(Number).sort((a,b) => a-b);
+      if (!nums.length) return '';
+      const isDirector = currentUser && currentUser.id === game.creator_id;
+      const nsName = k => (game.ns_pairs[k]||{}).name || `N/S ${k+1}`;
+      const ewName = k => (game.ew_pairs[k]||{}).name || `E/W ${k+1}`;
+      let h = `<div style="font-size:0.82rem;font-weight:600;color:#2a6496;margin-bottom:4px;">Board Results</div>`;
+      nums.forEach(bn => {
+        h += `<div style="font-size:0.78rem;font-weight:700;color:#1a3a5c;margin-top:8px;">Board ${bn} <span style="font-weight:400;color:#667;">Vul: ${dupVulLabel(bn)}</span></div>`;
+        h += `<table class="swiss-table" style="width:100%;margin-bottom:6px;"><thead><tr><th>NS</th><th>EW</th><th>Contract</th><th style="text-align:right;">NS</th><th style="text-align:right;">MP</th>${isDirector?'<th></th>':''}</tr></thead><tbody>`;
+        [...travellers[bn]].sort((a,b) => b.nsScore - a.nsScore).forEach(p => {
+          h += `<tr><td>${nsName(p.nsIdx)}</td><td>${ewName(p.ewIdx)}</td><td>${fmtContractBy(p.td)}</td>` +
+            `<td style="text-align:right;">${p.nsScore}</td><td style="text-align:right;">${p.mp ?? '-'}</td>` +
+            (isDirector ? `<td style="text-align:right;"><button class="btn-clear" style="font-size:0.65rem;padding:2px 6px;" title="Edit table ${p.nsIdx+1}, round ${p.r+1}" onclick="mitSharedDirectorEdit(${p.nsIdx},${p.r})">Edit</button></td>` : '') +
+            `</tr>`;
+        });
+        h += '</tbody></table>';
+      });
+      return h;
     }
 
     function mitSharedShowResults(game) {
+      _mitGame = game;
       ['mit-dir-card','mit-dir-game-card','mit-north-card'].forEach(id => {
         const el = document.getElementById(id); if (el) el.style.display = 'none';
       });
       const card = document.getElementById('mit-results-shared-card');
       card.style.display = '';
-      const {nsMPs, ewMPs, nsTop, ewTop} = mitSharedCalcMPs(game);
+      const {nsMPs, ewMPs, nsTop, ewTop, travellers} = mitSharedCalcMPs(game);
       const T = game.num_tables;
       const pct = (mp, top) => top > 0 ? `${Math.round(mp/top*100)}%` : '-';
       const mkTable = (rows, title) => {
@@ -6502,6 +6627,7 @@
         mkTable(all,    'Overall Standings') +
         mkTable(nsRows, 'NS Standings') +
         mkTable(ewRows, 'EW Standings') +
+        mitSharedBoardResultsHtml(game, travellers) +
         `<div style="display:flex;gap:6px;margin-top:4px;">`+
           `<button class="btn-analyze" style="flex:1;font-size:0.82rem;padding:8px;" onclick="mitSharedSaveToFile()">Save to File</button>`+
           `<button class="btn-clear" style="flex:1;font-size:0.82rem;padding:8px;" onclick="mitSharedShowPrevious()">Load Game</button>`+
@@ -6531,6 +6657,15 @@
       nsSorted.forEach((k,r)=>{ txt+=pad(r+1,6)+pad((game.ns_pairs[k]||{}).name||`N/S ${k+1}`,22)+pad(nsMPs[k],8)+pct(nsMPs[k],nsTop[k])+'\n'; });
       txt += '\nEW STANDINGS\n'+pad('Rank',6)+pad('Pair',22)+pad('MPs',8)+'%\n';
       ewSorted.forEach((k,r)=>{ txt+=pad(r+1,6)+pad((game.ew_pairs[k]||{}).name||`E/W ${k+1}`,22)+pad(ewMPs[k],8)+pct(ewMPs[k],ewTop[k])+'\n'; });
+      const {travellers} = mitSharedCalcMPs(game);
+      txt += '\nBOARD RESULTS\n';
+      Object.keys(travellers).map(Number).sort((a,b)=>a-b).forEach(bn => {
+        txt += `Board ${bn}\n`;
+        [...travellers[bn]].sort((a,b)=>b.nsScore-a.nsScore).forEach(p => {
+          txt += '  '+pad((game.ns_pairs[p.nsIdx]||{}).name||`N/S ${p.nsIdx+1}`,20)+pad((game.ew_pairs[p.ewIdx]||{}).name||`E/W ${p.ewIdx+1}`,20)+
+            pad(fmtContractBy(p.td),18)+pad(p.nsScore,7)+(p.mp ?? '-')+'\n';
+        });
+      });
       const blob = new Blob([txt], {type:'text/plain'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href=url; a.download=`${game.name.replace(/[^a-z0-9]/gi,'_')}_results.txt`; a.click();
